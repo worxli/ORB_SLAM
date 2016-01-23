@@ -61,6 +61,7 @@ void LoopClosing::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
+        double t_before = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
@@ -73,9 +74,12 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
+        double t_elapse = ros::Time::now().toSec() - t_before;
+        cout << "[time] LoopClosing run " << ros::Time::now() << " " << t_elapse << " secs"<<endl;
         }
 
         ResetIfRequested();
+
         r.sleep();
     }
 }

@@ -62,11 +62,12 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     K.at<float>(1,2) = cy;
     K.copyTo(mK);
 
-    cv::Mat DistCoef(4,1,CV_32F);
+    cv::Mat DistCoef(5,1,CV_32F);
     DistCoef.at<float>(0) = fSettings["Camera.k1"];
     DistCoef.at<float>(1) = fSettings["Camera.k2"];
     DistCoef.at<float>(2) = fSettings["Camera.p1"];
     DistCoef.at<float>(3) = fSettings["Camera.p2"];
+    DistCoef.at<float>(4) = fSettings["Camera.k3"];
     DistCoef.copyTo(mDistCoef);
 
     float fps = fSettings["Camera.fps"];
@@ -87,6 +88,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     cout << "- k2: " << DistCoef.at<float>(1) << endl;
     cout << "- p1: " << DistCoef.at<float>(2) << endl;
     cout << "- p2: " << DistCoef.at<float>(3) << endl;
+    cout << "- k3: " << DistCoef.at<float>(4) << endl;
     cout << "- fps: " << fps << endl;
 
 
@@ -160,7 +162,7 @@ void Tracking::SetKeyFrameDatabase(KeyFrameDatabase *pKFDB)
 void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
-    ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &Tracking::GrabImage, this);
+    ros::Subscriber sub = nodeHandler.subscribe("/vio_ros/raw_image", 1, &Tracking::GrabImage, this);
 
     ros::spin();
 }
@@ -171,6 +173,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     cv::Mat im;
 
     // Copy the ros image message to cv::Mat. Convert to grayscale if it is a color image.
+    double t_begin = ros::Time::now().toSec();
+    
     cv_bridge::CvImageConstPtr cv_ptr;
     try
     {
@@ -314,12 +318,15 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
     }
 
+    double t_elapsed = ros::Time::now().toSec() - t_begin;
+    cout << "[time] Tracking run " << ros::Time::now() << " " << t_elapsed << " secs" << endl;
 }
 
 
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
+    printf("[Tracking:1stInitialization] numOfFeatures: %d\n", mCurrentFrame.mvKeys.size());
     if(mCurrentFrame.mvKeys.size()>100)
     {
         mInitialFrame = Frame(mCurrentFrame);

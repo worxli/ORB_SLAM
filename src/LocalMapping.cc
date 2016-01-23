@@ -50,6 +50,7 @@ void LocalMapping::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
+        double t_before = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {            
             // Tracking will see that Local Mapping is busy
@@ -85,6 +86,9 @@ void LocalMapping::Run()
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+            double t_elapsed = ros::Time::now().toSec() - t_before;
+            cout << "[time] LocalMapping run " << ros::Time::now() << " " << t_elapsed << " secs" << endl;
         }
 
         // Safe area to stop
@@ -101,6 +105,7 @@ void LocalMapping::Run()
         }
 
         ResetIfRequested();
+
         r.sleep();
     }
 }
