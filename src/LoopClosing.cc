@@ -61,7 +61,7 @@ void LoopClosing::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-        double t_before = ros::Time::now().toSec();
+        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
@@ -74,8 +74,7 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-        double t_elapse = ros::Time::now().toSec() - t_before;
-        cout << "[time] LoopClosing run " << ros::Time::now() << " " << t_elapse << " secs"<<endl;
+        cout << "[time] LoopClosing run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<< endl << endl;
         }
 
         ResetIfRequested();
@@ -99,6 +98,7 @@ bool LoopClosing::CheckNewKeyFrames()
 
 bool LoopClosing::DetectLoop()
 {
+    double t_begin = ros::Time::now().toSec();
     {
         boost::mutex::scoped_lock lock(mMutexLoopQueue);
         mpCurrentKF = mlpLoopKeyFrameQueue.front();
@@ -112,6 +112,7 @@ bool LoopClosing::DetectLoop()
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
+        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
         return false;
     }
 
@@ -137,10 +138,11 @@ bool LoopClosing::DetectLoop()
     // Query the database imposing the minimum score
     vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
 
-
     // If there are no loop candidates, just add new keyframe and return false
     if(vpCandidateKFs.empty())
     {
+        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+
         mpKeyFrameDB->add(mpCurrentKF);
         mvConsistentGroups.clear();
         mpCurrentKF->SetErase();
@@ -207,7 +209,7 @@ bool LoopClosing::DetectLoop()
 
     // Update Covisibility Consistent Groups
     mvConsistentGroups = vCurrentConsistentGroups;
-
+    cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
 
     // Add Current Keyframe to database
     mpKeyFrameDB->add(mpCurrentKF);
@@ -229,6 +231,7 @@ bool LoopClosing::DetectLoop()
 bool LoopClosing::ComputeSim3()
 {
     // For each consistent loop candidate we try to compute a Sim3
+    double t_begin = ros::Time::now().toSec();
 
     const int nInitialCandidates = mvpEnoughConsistentCandidates.size();
 
@@ -345,6 +348,8 @@ bool LoopClosing::ComputeSim3()
         for(int i=0; i<nInitialCandidates; i++)
              mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
+        cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+
         return false;
     }
 
@@ -381,6 +386,8 @@ bool LoopClosing::ComputeSim3()
             nTotalMatches++;
     }
 
+    cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+
     if(nTotalMatches>=40)
     {
         for(int i=0; i<nInitialCandidates; i++)
@@ -400,6 +407,7 @@ bool LoopClosing::ComputeSim3()
 
 void LoopClosing::CorrectLoop()
 {
+    double t_begin = ros::Time::now().toSec();
     // Send a stop signal to Local Mapping
     // Avoid new keyframes are inserted while correcting the loop
     mpLocalMapper->RequestStop();
@@ -547,6 +555,9 @@ void LoopClosing::CorrectLoop()
     //Add edge
     mpMatchedKF->AddLoopEdge(mpCurrentKF);
     mpCurrentKF->AddLoopEdge(mpMatchedKF);
+
+    cout << "[time] LoopClosing run closeLoop " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+
 
     ROS_INFO("Loop Closed!");
 

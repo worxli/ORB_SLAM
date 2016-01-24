@@ -19,7 +19,7 @@
 */
 
 #include "Tracking.h"
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 
 #include<opencv2/opencv.hpp>
@@ -205,6 +205,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     else
         mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
 
+    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+
     // Depending on the state of the Tracker we perform different tasks
 
     if(mState==NO_IMAGES_YET)
@@ -318,15 +320,13 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
     }
 
-    double t_elapsed = ros::Time::now().toSec() - t_begin;
-    cout << "[time] Tracking run " << ros::Time::now() << " " << t_elapsed << " secs" << endl;
+    cout << "[time] Tracking run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
 }
 
 
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    printf("[Tracking:1stInitialization] numOfFeatures: %d\n", mCurrentFrame.mvKeys.size());
     if(mCurrentFrame.mvKeys.size()>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
@@ -355,9 +355,12 @@ void Tracking::Initialize()
         return;
     }    
 
+
     // Find correspondences
+    double t_begin = ros::Time::now().toSec();
     ORBmatcher matcher(0.9,true);
     int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
+    cout << "[time] Tracking run matching " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Check if there are enough correspondences
     if(nmatches<100)
@@ -370,6 +373,7 @@ void Tracking::Initialize()
     cv::Mat tcw; // Current Camera Translation
     vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
+    t_begin = ros::Time::now().toSec();
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
         for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
@@ -380,6 +384,7 @@ void Tracking::Initialize()
                 nmatches--;
             }           
         }
+        cout << "[time] Tracking run triangulation " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
         CreateInitialMap(Rcw,tcw);
     }
@@ -501,6 +506,7 @@ bool Tracking::TrackPreviousFrame()
     if(mpMap->KeyFramesInMap()>5)
         minOctave = maxOctave/2+1;
 
+    double t_begin = ros::Time::now().toSec();
     int nmatches = matcher.WindowSearch(mLastFrame,mCurrentFrame,200,vpMapPointMatches,minOctave);
 
     // If not enough matches, search again without scale constraint
@@ -513,11 +519,14 @@ bool Tracking::TrackPreviousFrame()
             nmatches=0;
         }
     }
+    cout << "[time] Tracking run matching " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+
 
     mLastFrame.mTcw.copyTo(mCurrentFrame.mTcw);
     mCurrentFrame.mvpMapPoints=vpMapPointMatches;
 
     // If enough correspondeces, optimize pose and project points from previous frame to search more correspondences
+    t_begin = ros::Time::now().toSec();
     if(nmatches>=10)
     {
         // Optimize pose with correspondences
@@ -546,6 +555,8 @@ bool Tracking::TrackPreviousFrame()
     // Optimize pose again with all correspondences
     Optimizer::PoseOptimization(&mCurrentFrame);
 
+    cout << "[time] Tracking run poseOpt2PrevFrame " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+
     // Discard outliers
     for(size_t i =0; i<mCurrentFrame.mvbOutlier.size(); i++)
         if(mCurrentFrame.mvbOutlier[i])
@@ -569,13 +580,18 @@ bool Tracking::TrackWithMotionModel()
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
     // Project points seen in previous frame
+    double t_begin = ros::Time::now().toSec();
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,15);
+    cout << "[time] Tracking run matching " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+
 
     if(nmatches<20)
        return false;
 
     // Optimize pose with all correspondences
+    t_begin = ros::Time::now().toSec();
     Optimizer::PoseOptimization(&mCurrentFrame);
+    cout << "[time] Tracking run poseOptMotion " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Discard outliers
     for(size_t i =0; i<mCurrentFrame.mvpMapPoints.size(); i++)
@@ -601,6 +617,7 @@ bool Tracking::TrackLocalMap()
     // Update Local Map and Track
 
     // Update Local Map
+    double t_begin = ros::Time::now().toSec();
     UpdateReference();
 
     // Search Local MapPoints
@@ -608,6 +625,8 @@ bool Tracking::TrackLocalMap()
 
     // Optimize Pose
     mnMatchesInliers = Optimizer::PoseOptimization(&mCurrentFrame);
+
+    cout << "[time] Tracking run poseOpt2LocalMap " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Update MapPoints Statistics
     for(size_t i=0; i<mCurrentFrame.mvpMapPoints.size(); i++)
