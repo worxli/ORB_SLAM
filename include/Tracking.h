@@ -90,6 +90,7 @@ public:
 
 
 protected:
+    void GrabPose(const geometry_msgs::Pose& msg);
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
     void FirstInitialization();
@@ -180,6 +181,10 @@ protected:
 
     // Transfor broadcaster (for visualization in rviz)
     tf::TransformBroadcaster mTfBr;
+
+    // cam pose
+    geometry_msgs::Pose mPose, mPrevPose;
+    int mTotalFrame, mSkippedFrame;
 };
 
 } //namespace ORB_SLAM

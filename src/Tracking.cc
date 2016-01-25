@@ -142,6 +142,9 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     tf::Transform tfT;
     tfT.setIdentity();
     mTfBr.sendTransform(tf::StampedTransform(tfT,ros::Time::now(), "/ORB_SLAM/World", "/ORB_SLAM/Camera"));
+
+    mTotalFrame=0;
+    mSkippedFrame=0;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -163,7 +166,7 @@ void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(/*"/camera/image_raw"*/ "/vio_ros/raw_image", 1, &Tracking::GrabImage, this);
-
+    ros::Subscriber sub_pose = nodeHandler.subscribe("/vio_ros/pose", 1, &Tracking::GrabPose, this);
     ros::spin();
 }
 
@@ -200,15 +203,99 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv_ptr->image.copyTo(im);
     }
 
+    if(mState==INITIALIZING){
+        double deltaD;
+        double diff_x = (mPose.position.x - mPrevPose.position.x);
+        double diff_y = (mPose.position.y - mPrevPose.position.y);
+        double diff_z = (mPose.position.z - mPrevPose.position.z);
+
+        deltaD = sqrt(diff_x*diff_x + diff_y*diff_y + diff_z*diff_z);
+
+        tf::Quaternion _poseQuaternion;
+        tf::quaternionMsgToTF(mPose.orientation, _poseQuaternion);
+        tf::Matrix3x3 orientation(_poseQuaternion);
+
+        tf::Quaternion _poseQuaternion_prev;
+        tf::quaternionMsgToTF(mPrevPose.orientation, _poseQuaternion_prev);
+        tf::Matrix3x3 orientation_prev(_poseQuaternion_prev);
+
+        tf::Matrix3x3 deltaR = orientation*orientation_prev.inverse();
+        tfScalar roll, pitch, yaw;
+        deltaR.getEulerYPR(yaw, pitch, roll);
+        double deltaAngle = (double)(fabs(roll) + fabs(pitch) + fabs(yaw));
+
+        printf("[Tracking:210] time %.2f deltaD %.2f deltaR %.2f\n", ros::Time::now().toSec(), deltaD*100, deltaAngle*180.0/3.14159);
+        mTotalFrame++;
+        if (deltaD < 100 && deltaAngle < (13.0/180.0)*3.14159){
+            mSkippedFrame++;
+            printf("[Tracking:212] time %.2f skipFrame %d totalFrame %d\n", ros::Time::now().toSec(), mSkippedFrame, mTotalFrame);
+            return;
+        }
+    }
+    mPrevPose = mPose;
+
     if(mState==WORKING || mState==LOST)
         mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
     else
         mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
 
-    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+//    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Depending on the state of the Tracker we perform different tasks
 
+    /*
+     * TODO: DELETE BELOW PORTION
+    */
+    if (mState==NO_IMAGES_YET){
+        mInitialFrame = mCurrentFrame;
+        mState=INITIALIZING;
+        mLastProcessedState=INITIALIZING;
+        if(mpInitializer)
+            delete mpInitializer;
+
+        mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
+
+        return;
+    }
+
+    ORBmatcher matcher(0.9,true);
+    mvbPrevMatched.resize(mInitialFrame.mvKeysUn.size());
+    for(size_t i=0; i<mInitialFrame.mvKeysUn.size(); i++)
+        mvbPrevMatched[i]=mInitialFrame.mvKeysUn[i].pt;
+    int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
+    cv::Mat Rcw; // Current Camera Rotation
+    cv::Mat tcw; // Current Camera Translation
+    vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
+
+    if(nmatches < 9){
+        printf("[Tracking:271] time %.2f nmatches %d\n", ros::Time::now().toSec(), nmatches);
+        mpFramePublisher->Update(this);
+        mInitialFrame = Frame(mCurrentFrame);
+        return;
+    }
+
+    if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+    {
+        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
+        {
+            if(mvIniMatches[i]>=0 && !vbTriangulated[i])
+            {
+                mvIniMatches[i]=-1;
+                nmatches--;
+            }
+        }
+     }
+    if(mpInitializer)
+        delete mpInitializer;
+    mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
+
+    mpFramePublisher->Update(this);
+    mInitialFrame = Frame(mCurrentFrame);
+    printf("[Tracking:256] time %.2f nmatches %d\n", ros::Time::now().toSec(), nmatches);
+    return;
+    /*
+     * DELETE ABOVE PORTION
+    */
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -301,7 +388,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         }
 
         mLastFrame = Frame(mCurrentFrame);
-     }       
+     }
 
     // Update drawer
     mpFramePublisher->Update(this);
@@ -1116,6 +1203,14 @@ void Tracking::CheckResetByPublishers()
             }
         }
         r.sleep();
+    }
+}
+
+void Tracking::GrabPose(const geometry_msgs::Pose &msg)
+{
+    mPose = msg;
+    if (mState == NO_IMAGES_YET){
+        mPrevPose = mPose;
     }
 }
 
