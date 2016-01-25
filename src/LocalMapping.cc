@@ -50,7 +50,6 @@ void LocalMapping::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {            
             // Tracking will see that Local Mapping is busy
@@ -59,45 +58,9 @@ void LocalMapping::Run()
             // BoW conversion and insertion in Map
             ProcessNewKeyFrame();
 
-            // Check recent MapPoints
-            double t_begin_mapPts = ros::Time::now().toSec();
-            MapPointCulling();
-            cout << "[time] LocalMapping run CullingPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-            // Triangulate new MapPoints
-            t_begin_mapPts = ros::Time::now().toSec();
-            CreateNewMapPoints();
-            cout << "[time] LocalMapping run TriagNewPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-            // Find more matches in neighbor keyframes and fuse point duplications
-            t_begin_mapPts = ros::Time::now().toSec();
-            SearchInNeighbors();
-            cout << "[time] LocalMapping run fusePtsDupl " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-            mbAbortBA = false;
-
-            if(!CheckNewKeyFrames() && !stopRequested())
-            {
-                // Local BA
-                double t_beginBA = ros::Time::now().toSec();
-                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA);
-
-                // Check redundant local Keyframes
-                KeyFrameCulling();
-
-                mpMap->SetFlagAfterBA();
-
-                // Tracking will see Local Mapping idle
-                if(!CheckNewKeyFrames())
-                    SetAcceptKeyFrames(true);
-
-                cout << "[time] LocalMapping run BA " << ros::Time::now() << " " << ros::Time::now().toSec() - t_beginBA << " secs" << endl;
-            }
-
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
-            cout << "[time] LocalMapping run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
-        }
+         }
 
         // Safe area to stop
         if(stopRequested())
@@ -147,41 +110,6 @@ void LocalMapping::ProcessNewKeyFrame()
 
     if(mpCurrentKeyFrame->mnId==0)
         return;
-
-    // Associate MapPoints to the new keyframe and update normal and descriptor
-    vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-    if(mpCurrentKeyFrame->mnId>1) //This operations are already done in the tracking for the first two keyframes
-    {
-        for(size_t i=0; i<vpMapPointMatches.size(); i++)
-        {
-            MapPoint* pMP = vpMapPointMatches[i];
-            if(pMP)
-            {
-                if(!pMP->isBad())
-                {
-                    pMP->AddObservation(mpCurrentKeyFrame, i);
-                    pMP->UpdateNormalAndDepth();
-                    pMP->ComputeDistinctiveDescriptors();
-                }
-            }
-        }
-    }
-
-    if(mpCurrentKeyFrame->mnId==1)
-    {
-        for(size_t i=0; i<vpMapPointMatches.size(); i++)
-        {
-            MapPoint* pMP = vpMapPointMatches[i];
-            if(pMP)
-            {
-                mlpRecentAddedMapPoints.push_back(pMP);
-            }
-        }
-    }  
-    cout << "[time] LocalMapping run BoW " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
-
-    // Update links in the Covisibility Graph
-    mpCurrentKeyFrame->UpdateConnections();
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);

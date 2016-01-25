@@ -61,20 +61,10 @@ void LoopClosing::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
-            if(DetectLoop())
-            {
-               // Compute similarity transformation [sR|t]
-               if(ComputeSim3())
-               {
-                   // Perform loop fusion and pose graph optimization
-                   CorrectLoop();
-               }
-            }
-        cout << "[time] LoopClosing run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<< endl << endl;
+            DetectLoop();
         }
 
         ResetIfRequested();
@@ -112,7 +102,6 @@ bool LoopClosing::DetectLoop()
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
-        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
         return false;
     }
 

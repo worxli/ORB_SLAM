@@ -166,7 +166,7 @@ void FramePublisher::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
         s << " TRACKING ";
         int nKFs = mpMap->KeyFramesInMap();
         int nMPs = mpMap->MapPointsInMap();
-        s << " - KFs: " << nKFs << " , MPs: " << nMPs << " , Tracked: " << mnTracked;
+        s << " - KFs: " << nKFs << " , Tracked: " << mnTracked << " , MPs: " << nMPs ;
     }
     else if(nState==Tracking::LOST)
     {
