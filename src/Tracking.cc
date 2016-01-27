@@ -203,7 +203,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     }
 
     mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
-    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+    //cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Depending on the state of the Tracker we perform different tasks
 
@@ -218,7 +218,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             delete mpInitializer;
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-        CreateNewKeyFrame();
+  //      CreateNewKeyFrame();
         return;
     }
 
@@ -232,7 +232,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
     if(nmatches < 9){
-        printf("[Tracking:271] time %.2f nmatches %d\n", ros::Time::now().toSec(), nmatches);
+        printf("%d\n", nmatches);
         mpFramePublisher->Update(this);
         mInitialFrame = Frame(mCurrentFrame);
         return;
@@ -255,8 +255,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     mpFramePublisher->Update(this);
     mInitialFrame = Frame(mCurrentFrame);
-    CreateNewKeyFrame();
-    printf("[Tracking:256] time %.2f nmatches %d\n", ros::Time::now().toSec(), nmatches);
+//    CreateNewKeyFrame();
+    printf("%d\n", nmatches);
     return;
  }
 
