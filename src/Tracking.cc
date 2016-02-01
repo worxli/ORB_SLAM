@@ -163,7 +163,7 @@ void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(/*"/camera/image_raw"*/ "/vio_ros/raw_image", 1, &Tracking::GrabImage, this);
-
+    ros::Subscriber sub_pose = nodeHandler.subscribe("/vio_ros/pose", 1, &Tracking::GrabPose, this);
     ros::spin();
 }
 
@@ -200,10 +200,10 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv_ptr->image.copyTo(im);
     }
 
-    if(mState==WORKING || mState==LOST)
+//    if(mState==WORKING || mState==LOST)
         mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
-    else
-        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+//    else
+//        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
 
     cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
@@ -323,25 +323,31 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     cout << "[time] Tracking run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
 }
 
+void Tracking::GrabPose(const geometry_msgs::Pose &msg)
+{
+    mPose = msg;
+}
+
 
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
     if(mCurrentFrame.mvKeys.size()>100)
     {
-        mInitialFrame = Frame(mCurrentFrame);
+//        mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
-        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
-        for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
-            mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
+//        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
+//        for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
+//            mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
 
-        if(mpInitializer)
-            delete mpInitializer;
+//        if(mpInitializer)
+//            delete mpInitializer;
 
-        mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
+//        mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
 
 
-        mState = INITIALIZING;
+//        mState = INITIALIZING;
+        mState = WORKING;
     }
 }
 

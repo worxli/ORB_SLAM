@@ -515,6 +515,9 @@ int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoi
     return nmatches;
 }
 
+/**
+  project 3D map points to image frame for more feature matching based on estimated pose.
+**/
 
 int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<MapPoint *> &vpMapPointMatches2)
 {
