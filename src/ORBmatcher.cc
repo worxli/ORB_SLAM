@@ -46,6 +46,14 @@ ORBmatcher::ORBmatcher(float nnratio, bool checkOri): mfNNratio(nnratio), mbChec
 {
 }
 
+
+/**
+ * @brief ORBmatcher::SearchByProjection: Project 3D landmark points into Frame F, search for 3D-2D feature matchings
+ * @param F
+ * @param vpMapPoints, input
+ * @param th
+ * @return
+ */
 int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoints, const float th)
 {
     int nmatches=0;
@@ -133,6 +141,15 @@ float ORBmatcher::RadiusByViewingCos(const float &viewCos)
 }
 
 
+/**
+ * @brief ORBmatcher::CheckDistEpipolarLine: check whether projected point within allowable distance from the epipolar line
+ * @param kp1
+ * @param kp2
+ * @param F12
+ * @param pKF2
+ * @return
+ */
+
 bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoint &kp2,const cv::Mat &F12,const KeyFrame* pKF2)
 {
     // Epipolar line in second image l = x1'F12 = [a b c]
@@ -151,6 +168,14 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
 
     return dsqr<3.84*pKF2->GetSigma2(kp2.octave);
 }
+
+/**
+ * @brief ORBmatcher::SearchByBoW: Search for matching by using DBoW2::FeatureVector between 2 frames
+ * @param pKF
+ * @param F
+ * @param vpMapPointMatches
+ * @return
+ */
 
 int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPointMatches)
 {
@@ -283,6 +308,17 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
     return nmatches;
 }
 
+
+/**
+ * @brief ORBmatcher::SearchByProjection: project 3D map points into keyframe pKF for feature matching
+ * @param pKF: matching frame, input
+ * @param Scw
+ * @param vpPoints: 3D map points, input
+ * @param vpMatched
+ * @param th
+ * @return
+ */
+
 int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapPoint*> &vpPoints, vector<MapPoint*> &vpMatched, int th)
 {
     // Get Calibration Parameters for later projection
@@ -406,6 +442,17 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
     return nmatches;
 }
 
+/**
+ * @brief ORBmatcher::WindowSearch: find feature matchings between frame F1 & F2 at specified scale levels
+ * @param F1
+ * @param F2
+ * @param windowSize
+ * @param vpMapPointMatches2, return vpMapPointMatches2[index_F2] = F1_MapPt
+ * @param minScaleLevel
+ * @param maxScaleLevel
+ * @return
+ */
+
 int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoint *> &vpMapPointMatches2, int minScaleLevel, int maxScaleLevel)
 {
     int nmatches=0;
@@ -516,8 +563,13 @@ int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoi
 }
 
 /**
-  project 3D map points to image frame for more feature matching based on estimated pose.
-**/
+ * @brief ORBmatcher::SearchByProjection: searching for matching between F1 and F2 by projecting all 3D map points in F1 to F2
+ * @param F1
+ * @param F2
+ * @param windowSize
+ * @param vpMapPointMatches2
+ * @return
+ */
 
 int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<MapPoint *> &vpMapPointMatches2)
 {
@@ -596,7 +648,16 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
     return nmatches;
 }
 
-
+/**
+ * @brief ORBmatcher::SearchForInitialization: find feature matchings by brute-force search in F2,
+ *                                             search area is constrained within a radius of feature location in F1
+ * @param F1
+ * @param F2
+ * @param vbPrevMatched
+ * @param vnMatches12
+ * @param windowSize
+ * @return
+ */
 
 int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector<int> &vnMatches12, int windowSize)
 {
@@ -714,6 +775,14 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
 
     return nmatches;
 }
+
+/**
+ * @brief ORBmatcher::SearchByBoW: feature matching by searching among DBoW feature vectors
+ * @param pKF1
+ * @param pKF2
+ * @param vpMatches12
+ * @return
+ */
 
 int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches12)
 {
@@ -851,6 +920,18 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
     return nmatches;
 }
+
+/**
+ * @brief ORBmatcher::SearchForTriangulation: search feature matchings by comparing DBoW feature vectors, sort them according to distance
+ *                                            and then further check with epipolar constraints
+ * @param pKF1
+ * @param pKF2
+ * @param F12
+ * @param vMatchedKeys1
+ * @param vMatchedKeys2
+ * @param vMatchedPairs
+ * @return
+ */
 
 int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F12,
 vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector<pair<size_t, size_t> > &vMatchedPairs)
@@ -1016,6 +1097,15 @@ vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector
     return nmatches;
 }
 
+/**
+ * @brief ORBmatcher::Fuse
+ *                    given keyFrame pKF and mapPoints, find 3D-2D correspondences and fuse them together
+ * @param pKF
+ * @param vpMapPoints
+ * @param th
+ * @return
+ */
+
 int ORBmatcher::Fuse(KeyFrame *pKF, vector<MapPoint *> &vpMapPoints, float th)
 {
     cv::Mat Rcw = pKF->GetRotation();
@@ -1135,6 +1225,16 @@ int ORBmatcher::Fuse(KeyFrame *pKF, vector<MapPoint *> &vpMapPoints, float th)
 
     return nFused;
 }
+
+/**
+ * @brief ORBmatcher::Fuse
+ *                    find 3D-2D feature correspondeces by using pose given by Scw to project map points into image frame and fuse them together
+ * @param pKF
+ * @param Scw
+ * @param vpPoints
+ * @param th
+ * @return
+ */
 
 int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoints, float th)
 {
@@ -1266,6 +1366,19 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
     return nFused;
 
 }
+
+/**
+ * @brief ORBmatcher::SearchBySim3
+ *                      search for feature matchings between KF1 and KF2 by transforming 3D map points in F1 to F2 given the similarity transformation between them
+ * @param pKF1
+ * @param pKF2
+ * @param vpMatches12
+ * @param s12
+ * @param R12
+ * @param t12
+ * @param th
+ * @return
+ */
 
 int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &vpMatches12,
                                    const float &s12, const cv::Mat &R12, const cv::Mat &t12, float th)
@@ -1401,7 +1514,7 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
         }
     }
 
-    // Transform from KF2 to KF2 and search
+    // Transform from KF2 to KF1 and search
     for(int i2=0; i2<N2; i2++)
     {
         MapPoint* pMP = vpMapPoints2[i2];
@@ -1506,6 +1619,15 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
 
     return nFound;
 }
+
+/**
+ * @brief ORBmatcher::SearchByProjection
+ *                              search for feature matchings by projecting 3D mappoints from LastFrame into current frame
+ * @param CurrentFrame
+ * @param LastFrame
+ * @param th
+ * @return
+ */
 
 int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, float th)
 {
@@ -1621,6 +1743,17 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
 
    return nmatches;
 }
+
+/**
+ * @brief ORBmatcher::SearchByProjection
+ *                  Search feature matchings by projecting 3D map points in pKF to CurrentFrame
+ * @param CurrentFrame
+ * @param pKF
+ * @param sAlreadyFound
+ * @param th
+ * @param ORBdist
+ * @return
+ */
 
 int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set<MapPoint*> &sAlreadyFound, float th ,int ORBdist)
 {

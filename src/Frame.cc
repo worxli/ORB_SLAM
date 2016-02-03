@@ -51,6 +51,18 @@ Frame::Frame(const Frame &frame)
         mTcw = frame.mTcw.clone();
 }
 
+/**
+ * @brief Frame::Frame
+ *          extract features
+ *          undistort keypoints
+ *          assign feature to grid
+ * @param im_
+ * @param timeStamp
+ * @param extractor
+ * @param voc
+ * @param K
+ * @param distCoef
+ */
 
 Frame::Frame(cv::Mat &im_, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef)
     :mpORBvocabulary(voc),mpORBextractor(extractor), im(im_),mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone())
@@ -133,6 +145,14 @@ void Frame::UpdatePoseMatrices()
     mOw = -mRcw.t()*mtcw;
 }
 
+/**
+ * @brief Frame::isInFrustum
+ *              check whether a 3D landmark point in the image and assign it to the point in image frame
+ * @param pMP
+ * @param viewingCosLimit
+ * @return
+ */
+
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {
     pMP->mbTrackInView = false;
@@ -195,6 +215,17 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
     return true;
 }
+
+/**
+ * @brief Frame::GetFeaturesInArea
+ *              Get features in the area centered @ (x, y) with radius r, as well as from minLevel - maxLevel
+ * @param x
+ * @param y
+ * @param r
+ * @param minLevel
+ * @param maxLevel
+ * @return
+ */
 
 vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
 {
@@ -263,6 +294,13 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
 }
 
+/**
+ * @brief Frame::PosInGrid, return the grid cell that KeyPoint lies in
+ * @param kp
+ * @param posX
+ * @param posY
+ * @return
+ */
 bool Frame::PosInGrid(cv::KeyPoint &kp, int &posX, int &posY)
 {
     posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
@@ -275,6 +313,10 @@ bool Frame::PosInGrid(cv::KeyPoint &kp, int &posX, int &posY)
     return true;
 }
 
+/**
+ * @brief Frame::ComputeBoW
+ * compute bag of word for current frame
+ */
 
 void Frame::ComputeBoW()
 {

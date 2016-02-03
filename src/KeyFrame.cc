@@ -123,6 +123,13 @@ cv::Mat KeyFrame::GetTranslation()
     return Tcw.rowRange(0,3).col(3).clone();
 }
 
+/**
+ * @brief KeyFrame::AddConnection
+ *                  add connection between KeyFrame pKF and current KeyFrame
+ * @param pKF
+ * @param weight
+ */
+
 void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)
 {
     {
@@ -137,6 +144,11 @@ void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)
 
     UpdateBestCovisibles();
 }
+
+/**
+ * @brief KeyFrame::UpdateBestCovisibles
+ *          Update ordered connected keyframes
+ */
 
 void KeyFrame::UpdateBestCovisibles()
 {
@@ -655,6 +667,13 @@ bool KeyFrame::IsInImage(const float &x, const float &y) const
 {
     return (x>=mnMinX && x<mnMaxX && y>=mnMinY && y<mnMaxY);
 }
+
+/**
+ * @brief KeyFrame::ComputeSceneMedianDepth
+ *                  compute the qth median 3D map poings scene depth
+ * @param q
+ * @return
+ */
 
 float KeyFrame::ComputeSceneMedianDepth(int q)
 {

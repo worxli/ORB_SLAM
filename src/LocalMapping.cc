@@ -217,6 +217,11 @@ void LocalMapping::MapPointCulling()
     }
 }
 
+/**
+ * @brief LocalMapping::CreateNewMapPoints
+ * triagulate new map points based on the poses of two keyframes
+ */
+
 void LocalMapping::CreateNewMapPoints()
 {
     // Take neighbor keyframes in covisibility graph

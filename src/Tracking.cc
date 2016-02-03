@@ -200,10 +200,10 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv_ptr->image.copyTo(im);
     }
 
-//    if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
-//    else
-//        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+    /**
+     * do feature extraction and descriptor computation
+    **/
+    mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
 
     cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
@@ -220,87 +220,90 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     {
         FirstInitialization();
     }
-    else if(mState==INITIALIZING)
-    {
-        Initialize();
-    }
     else
     {
-        // System is initialized. Track Frame.
-        bool bOK;
+        // not 1st frame anymore, do feature matching with previous frame
 
-        // Initial Camera Pose Estimation from Previous Frame (Motion Model or Coarse) or Relocalisation
-        if(mState==WORKING && !RelocalisationRequested())
-        {
-            if(!mbMotionModel || mpMap->KeyFramesInMap()<4 || mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
-                bOK = TrackPreviousFrame();
-            else
-            {
-                bOK = TrackWithMotionModel();
-                if(!bOK)
-                    bOK = TrackPreviousFrame();
-            }
-        }
-        else
-        {
-            bOK = Relocalisation();
-        }
+        // insert key-frame to local-mapping
 
-        // If we have an initial estimation of the camera pose and matching. Track the local map.
-        if(bOK)
-            bOK = TrackLocalMap();
+        // update current frame as last frame
 
-        // If tracking were good, check if we insert a keyframe
-        if(bOK)
-        {
-            mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
-            if(NeedNewKeyFrame())
-                CreateNewKeyFrame();
+//        // System is initialized. Track Frame.
+//        bool bOK;
 
-            // We allow points with high innovation (considererd outliers by the Huber Function)
-            // pass to the new keyframe, so that bundle adjustment will finally decide
-            // if they are outliers or not. We don't want next frame to estimate its position
-            // with those points so we discard them in the frame.
-            for(size_t i=0; i<mCurrentFrame.mvbOutlier.size();i++)
-            {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-                    mCurrentFrame.mvpMapPoints[i]=NULL;
-            }
-        }
+//        // Initial Camera Pose Estimation from Previous Frame (Motion Model or Coarse) or Relocalisation
+//        if(mState==WORKING && !RelocalisationRequested())
+//        {
+//            if(!mbMotionModel || mpMap->KeyFramesInMap()<4 || mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+//                bOK = TrackPreviousFrame();
+//            else
+//            {
+//                bOK = TrackWithMotionModel();
+//                if(!bOK)
+//                    bOK = TrackPreviousFrame();
+//            }
+//        }
+//        else
+//        {
+//            bOK = Relocalisation();
+//        }
 
-        if(bOK)
-            mState = WORKING;
-        else
-            mState=LOST;
+//        // If we have an initial estimation of the camera pose and matching. Track the local map.
+//        if(bOK)
+//            bOK = TrackLocalMap();
 
-        // Reset if the camera get lost soon after initialization
-        if(mState==LOST)
-        {
-            if(mpMap->KeyFramesInMap()<=5)
-            {
-                Reset();
-                return;
-            }
-        }
+//        // If tracking were good, check if we insert a keyframe
+//        if(bOK)
+//        {
+//            mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
-        // Update motion model
-        if(mbMotionModel)
-        {
-            if(bOK && !mLastFrame.mTcw.empty())
-            {
-                cv::Mat LastRwc = mLastFrame.mTcw.rowRange(0,3).colRange(0,3).t();
-                cv::Mat Lasttwc = -LastRwc*mLastFrame.mTcw.rowRange(0,3).col(3);
-                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-                LastRwc.copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-                Lasttwc.copyTo(LastTwc.rowRange(0,3).col(3));
-                mVelocity = mCurrentFrame.mTcw*LastTwc;
-            }
-            else
-                mVelocity = cv::Mat();
-        }
+//            if(NeedNewKeyFrame())
+//                CreateNewKeyFrame();
 
-        mLastFrame = Frame(mCurrentFrame);
+//            // We allow points with high innovation (considererd outliers by the Huber Function)
+//            // pass to the new keyframe, so that bundle adjustment will finally decide
+//            // if they are outliers or not. We don't want next frame to estimate its position
+//            // with those points so we discard them in the frame.
+//            for(size_t i=0; i<mCurrentFrame.mvbOutlier.size();i++)
+//            {
+//                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+//                    mCurrentFrame.mvpMapPoints[i]=NULL;
+//            }
+//        }
+
+//        if(bOK)
+//            mState = WORKING;
+//        else
+//            mState=LOST;
+
+//        // Reset if the camera get lost soon after initialization
+//        if(mState==LOST)
+//        {
+//            if(mpMap->KeyFramesInMap()<=5)
+//            {
+//                Reset();
+//                return;
+//            }
+//        }
+
+//        // Update motion model
+//        if(mbMotionModel)
+//        {
+//            if(bOK && !mLastFrame.mTcw.empty())
+//            {
+//                cv::Mat LastRwc = mLastFrame.mTcw.rowRange(0,3).colRange(0,3).t();
+//                cv::Mat Lasttwc = -LastRwc*mLastFrame.mTcw.rowRange(0,3).col(3);
+//                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
+//                LastRwc.copyTo(LastTwc.rowRange(0,3).colRange(0,3));
+//                Lasttwc.copyTo(LastTwc.rowRange(0,3).col(3));
+//                mVelocity = mCurrentFrame.mTcw*LastTwc;
+//            }
+//            else
+//                mVelocity = cv::Mat();
+//        }
+
+//        mLastFrame = Frame(mCurrentFrame);
      }       
 
     // Update drawer
@@ -334,19 +337,8 @@ void Tracking::FirstInitialization()
     //We ensure a minimum ORB features to continue, otherwise discard frame
     if(mCurrentFrame.mvKeys.size()>100)
     {
-//        mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
-//        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
-//        for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
-//            mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
-
-//        if(mpInitializer)
-//            delete mpInitializer;
-
-//        mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
-
-//        mState = INITIALIZING;
+        CreateNewKeyFrame();
         mState = WORKING;
     }
 }

@@ -454,6 +454,16 @@ static int bit_pattern_31_[256*4] =
     -1,-6, 0,-11/*mean (0.127148), correlation (0.547401)*/
 };
 
+/**
+ * @brief ORBextractor::ORBextractor
+ *                      extract ORB features with _nfeatures at _nlevels levels
+ * @param _nfeatures
+ * @param _scaleFactor
+ * @param _nlevels
+ * @param _scoreType
+ * @param _fastTh
+ */
+
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _scoreType,
          int _fastTh):
     nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
