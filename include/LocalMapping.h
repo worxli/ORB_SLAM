@@ -82,6 +82,8 @@ protected:
     cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
     void ResetIfRequested();
+
+protected:
     bool mbResetRequested;
     boost::mutex mMutexReset;
 
@@ -94,7 +96,7 @@ protected:
 
     KeyFrame* mpCurrentKeyFrame;
 
-    std::list<MapPoint*> mlpRecentAddedMapPoints;
+    std::vector<MapPoint*> mlpRecentAddedMapPoints;
 
     boost::mutex mMutexNewKFs;    
 

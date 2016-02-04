@@ -92,6 +92,7 @@ public:
 protected:
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
     void GrabPose(const geometry_msgs::Pose& msg);
+    void RosPoseMsg2Mat();
 
     void FirstInitialization();
     void Initialize();
@@ -164,6 +165,8 @@ protected:
     boost::mutex mMutexTrack;
     boost::mutex mMutexForceRelocalisation;
 
+    boost::mutex mMutexUpdatePose;
+
     //Reset
     bool mbPublisherStopped;
     bool mbReseting;
@@ -182,7 +185,7 @@ protected:
     // Transfor broadcaster (for visualization in rviz)
     tf::TransformBroadcaster mTfBr;
 
-    geometry_msgs::Pose mPose;
+    cv::Mat mPoseMat;
 };
 
 } //namespace ORB_SLAM

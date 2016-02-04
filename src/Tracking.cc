@@ -22,7 +22,7 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include<opencv2/opencv.hpp>
+#include <opencv2/opencv.hpp>
 
 #include"ORBmatcher.h"
 #include"FramePublisher.h"
@@ -105,7 +105,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     int nFeatures = fSettings["ORBextractor.nFeatures"];
     float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
     int nLevels = fSettings["ORBextractor.nLevels"];
-    int fastTh = fSettings["ORBextractor.fastTh"];    
+    int fastTh = fSettings["ORBextractor.fastTh"];
     int Score = fSettings["ORBextractor.nScoreType"];
 
     assert(Score==1 || Score==0);
@@ -125,7 +125,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
 
     // ORB extractor for initialization
     // Initialization uses only points from the finest scale level
-    mpIniORBextractor = new ORBextractor(nFeatures*2,1.2,8,Score,fastTh);  
+    mpIniORBextractor = new ORBextractor(nFeatures*2,1.2,8,Score,fastTh);
 
     int nMotion = fSettings["UseMotionModel"];
     mbMotionModel = nMotion;
@@ -142,6 +142,8 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     tf::Transform tfT;
     tfT.setIdentity();
     mTfBr.sendTransform(tf::StampedTransform(tfT,ros::Time::now(), "/ORB_SLAM/World", "/ORB_SLAM/Camera"));
+
+    mPoseMat = cv::Mat::eye(4, 4, CV_32F);
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -163,7 +165,7 @@ void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
     ros::Subscriber sub = nodeHandler.subscribe(/*"/camera/image_raw"*/ "/vio_ros/raw_image", 1, &Tracking::GrabImage, this);
-    ros::Subscriber sub_pose = nodeHandler.subscribe("/vio_ros/pose", 1, &Tracking::GrabPose, this);
+    ros::Subscriber sub_pose = nodeHandler.subscribe("/vio_ros/keyFrame_pose", 1, &Tracking::GrabPose, this);
     ros::spin();
 }
 
@@ -200,135 +202,185 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv_ptr->image.copyTo(im);
     }
 
-    /**
-     * do feature extraction and descriptor computation
-    **/
+    //do feature extraction and descriptor computation
+
     mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
 
-    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
-
-    // Depending on the state of the Tracker we perform different tasks
-
-    if(mState==NO_IMAGES_YET)
+    //register KF with current Pose
     {
-        mState = NOT_INITIALIZED;
+        boost::mutex::scoped_lock lock(mMutexUpdatePose);
+        mPoseMat.copyTo(mCurrentFrame.mTcw);
     }
 
-    mLastProcessedState=mState;
+    CreateNewKeyFrame();
 
-    if(mState==NOT_INITIALIZED)
-    {
-        FirstInitialization();
-    }
-    else
-    {
-        // not 1st frame anymore, do feature matching with previous frame
-
-        // insert key-frame to local-mapping
-
-        // update current frame as last frame
-
-
-//        // System is initialized. Track Frame.
-//        bool bOK;
-
-//        // Initial Camera Pose Estimation from Previous Frame (Motion Model or Coarse) or Relocalisation
-//        if(mState==WORKING && !RelocalisationRequested())
-//        {
-//            if(!mbMotionModel || mpMap->KeyFramesInMap()<4 || mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
-//                bOK = TrackPreviousFrame();
-//            else
-//            {
-//                bOK = TrackWithMotionModel();
-//                if(!bOK)
-//                    bOK = TrackPreviousFrame();
-//            }
-//        }
-//        else
-//        {
-//            bOK = Relocalisation();
-//        }
-
-//        // If we have an initial estimation of the camera pose and matching. Track the local map.
-//        if(bOK)
-//            bOK = TrackLocalMap();
-
-//        // If tracking were good, check if we insert a keyframe
-//        if(bOK)
-//        {
-//            mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
-
-//            if(NeedNewKeyFrame())
-//                CreateNewKeyFrame();
-
-//            // We allow points with high innovation (considererd outliers by the Huber Function)
-//            // pass to the new keyframe, so that bundle adjustment will finally decide
-//            // if they are outliers or not. We don't want next frame to estimate its position
-//            // with those points so we discard them in the frame.
-//            for(size_t i=0; i<mCurrentFrame.mvbOutlier.size();i++)
-//            {
-//                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-//                    mCurrentFrame.mvpMapPoints[i]=NULL;
-//            }
-//        }
-
-//        if(bOK)
-//            mState = WORKING;
-//        else
-//            mState=LOST;
-
-//        // Reset if the camera get lost soon after initialization
-//        if(mState==LOST)
-//        {
-//            if(mpMap->KeyFramesInMap()<=5)
-//            {
-//                Reset();
-//                return;
-//            }
-//        }
-
-//        // Update motion model
-//        if(mbMotionModel)
-//        {
-//            if(bOK && !mLastFrame.mTcw.empty())
-//            {
-//                cv::Mat LastRwc = mLastFrame.mTcw.rowRange(0,3).colRange(0,3).t();
-//                cv::Mat Lasttwc = -LastRwc*mLastFrame.mTcw.rowRange(0,3).col(3);
-//                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-//                LastRwc.copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-//                Lasttwc.copyTo(LastTwc.rowRange(0,3).col(3));
-//                mVelocity = mCurrentFrame.mTcw*LastTwc;
-//            }
-//            else
-//                mVelocity = cv::Mat();
-//        }
-
-//        mLastFrame = Frame(mCurrentFrame);
-     }       
-
-    // Update drawer
-    mpFramePublisher->Update(this);
+    // for rviz visualization
+    mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
     if(!mCurrentFrame.mTcw.empty())
     {
-        cv::Mat Rwc = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3).t();
-        cv::Mat twc = -Rwc*mCurrentFrame.mTcw.rowRange(0,3).col(3);
-        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
-                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
-                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
-        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+        cv::Mat Rcw = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3);
+        cv::Mat tcw = mCurrentFrame.mTcw.rowRange(0,3).col(3);
+        tf::Matrix3x3 M(Rcw.at<float>(0,0),Rcw.at<float>(0,1),Rcw.at<float>(0,2),
+                        Rcw.at<float>(1,0),Rcw.at<float>(1,1),Rcw.at<float>(1,2),
+                        Rcw.at<float>(2,0),Rcw.at<float>(2,1),Rcw.at<float>(2,2));
+        tf::Vector3 V(tcw.at<float>(0), tcw.at<float>(1), tcw.at<float>(2));
 
         tf::Transform tfTcw(M,V);
 
         mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
     }
 
-    cout << "[time] Tracking run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
+    mpFramePublisher->Update(this);
+
+    //    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+
+    // Depending on the state of the Tracker we perform different tasks
+
+    //    if(mState==NO_IMAGES_YET)
+    //    {
+    //        mState = NOT_INITIALIZED;
+    //    }
+
+    //    mLastProcessedState=mState;
+
+    //    if(mState==NOT_INITIALIZED)
+    //    {
+    //        FirstInitialization();
+    //    }
+    //    else
+    //    {
+    // not 1st frame anymore, do feature matching with previous frame
+
+
+    // insert key-frame to local-mapping
+
+    // update current frame as last frame
+
+
+    //        // System is initialized. Track Frame.
+    //        bool bOK;
+
+    //        // Initial Camera Pose Estimation from Previous Frame (Motion Model or Coarse) or Relocalisation
+    //        if(mState==WORKING && !RelocalisationRequested())
+    //        {
+    //            if(!mbMotionModel || mpMap->KeyFramesInMap()<4 || mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+    //                bOK = TrackPreviousFrame();
+    //            else
+    //            {
+    //                bOK = TrackWithMotionModel();
+    //                if(!bOK)
+    //                    bOK = TrackPreviousFrame();
+    //            }
+    //        }
+    //        else
+    //        {
+    //            bOK = Relocalisation();
+    //        }
+
+    //        // If we have an initial estimation of the camera pose and matching. Track the local map.
+    //        if(bOK)
+    //            bOK = TrackLocalMap();
+
+    //        // If tracking were good, check if we insert a keyframe
+    //        if(bOK)
+    //        {
+    //            mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
+
+    //            if(NeedNewKeyFrame())
+    //                CreateNewKeyFrame();
+
+    //            // We allow points with high innovation (considererd outliers by the Huber Function)
+    //            // pass to the new keyframe, so that bundle adjustment will finally decide
+    //            // if they are outliers or not. We don't want next frame to estimate its position
+    //            // with those points so we discard them in the frame.
+    //            for(size_t i=0; i<mCurrentFrame.mvbOutlier.size();i++)
+    //            {
+    //                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+    //                    mCurrentFrame.mvpMapPoints[i]=NULL;
+    //            }
+    //        }
+
+    //        if(bOK)
+    //            mState = WORKING;
+    //        else
+    //            mState=LOST;
+
+    //        // Reset if the camera get lost soon after initialization
+    //        if(mState==LOST)
+    //        {
+    //            if(mpMap->KeyFramesInMap()<=5)
+    //            {
+    //                Reset();
+    //                return;
+    //            }
+    //        }
+
+    //        // Update motion model
+    //        if(mbMotionModel)
+    //        {
+    //            if(bOK && !mLastFrame.mTcw.empty())
+    //            {
+    //                cv::Mat LastRwc = mLastFrame.mTcw.rowRange(0,3).colRange(0,3).t();
+    //                cv::Mat Lasttwc = -LastRwc*mLastFrame.mTcw.rowRange(0,3).col(3);
+    //                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
+    //                LastRwc.copyTo(LastTwc.rowRange(0,3).colRange(0,3));
+    //                Lasttwc.copyTo(LastTwc.rowRange(0,3).col(3));
+    //                mVelocity = mCurrentFrame.mTcw*LastTwc;
+    //            }
+    //            else
+    //                mVelocity = cv::Mat();
+    //        }
+
+    //        mLastFrame = Frame(mCurrentFrame);
+    //     }
+
+    // Update drawer
+    //    mpFramePublisher->Update(this);
+
+    //    if(!mCurrentFrame.mTcw.empty())
+    //    {
+    //        cv::Mat Rwc = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3).t();
+    //        cv::Mat twc = -Rwc*mCurrentFrame.mTcw.rowRange(0,3).col(3);
+    //        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+    //                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+    //                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+    //        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+
+    //        tf::Transform tfTcw(M,V);
+
+    //        mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
+    //    }
+
+    //    cout << "[time] Tracking run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
 }
 
 void Tracking::GrabPose(const geometry_msgs::Pose &msg)
 {
-    mPose = msg;
+    boost::mutex::scoped_lock lock(mMutexUpdatePose);
+//    cout << "[Tracking:GrabPose] befor: " << msg.position.x << " " << msg.position.y << " " << msg.position.z << endl;
+    tf::Pose pose;
+    tf::poseMsgToTF(msg, pose);
+    tf::Matrix3x3 rotation = pose.getBasis();
+    tf::Vector3   translation = pose.getOrigin();
+
+    mPoseMat.at<float>(0,0) = rotation.getRow(0).getX();
+    mPoseMat.at<float>(0,1) = rotation.getRow(0).getY();
+    mPoseMat.at<float>(0,2) = rotation.getRow(0).getZ();
+
+    mPoseMat.at<float>(1,0) = rotation.getRow(1).getX();
+    mPoseMat.at<float>(1,1) = rotation.getRow(1).getY();
+    mPoseMat.at<float>(1,2) = rotation.getRow(1).getZ();
+
+    mPoseMat.at<float>(2,0) = rotation.getRow(2).getX();
+    mPoseMat.at<float>(2,1) = rotation.getRow(2).getY();
+    mPoseMat.at<float>(2,2) = rotation.getRow(2).getZ();
+
+    mPoseMat.at<float>(0,3) = translation.getX();
+    mPoseMat.at<float>(1,3) = translation.getY();
+    mPoseMat.at<float>(2,3) = translation.getZ();
+
+//    cout << "[Tracking:GrabPose] after: " << translation.getX() << " " << translation.getY() << " " << translation.getZ() << endl;
 }
 
 
@@ -351,7 +403,7 @@ void Tracking::Initialize()
         fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
         mState = NOT_INITIALIZED;
         return;
-    }    
+    }
 
 
     // Find correspondences
@@ -365,7 +417,7 @@ void Tracking::Initialize()
     {
         mState = NOT_INITIALIZED;
         return;
-    }  
+    }
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
@@ -380,7 +432,7 @@ void Tracking::Initialize()
             {
                 mvIniMatches[i]=-1;
                 nmatches--;
-            }           
+            }
         }
         cout << "[time] Tracking run triangulation " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
@@ -584,7 +636,7 @@ bool Tracking::TrackWithMotionModel()
 
 
     if(nmatches<20)
-       return false;
+        return false;
 
     // Optimize pose with all correspondences
     t_begin = ros::Time::now().toSec();
@@ -728,14 +780,14 @@ void Tracking::SearchReferencePointsInFrustum()
         if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
             continue;
         if(pMP->isBad())
-            continue;        
+            continue;
         // Project (this fills MapPoint variables for matching)
         if(mCurrentFrame.isInFrustum(pMP,0.5))
         {
             pMP->IncreaseVisible();
             nToMatch++;
         }
-    }    
+    }
 
 
     if(nToMatch>0)
@@ -921,7 +973,7 @@ bool Tracking::Relocalisation()
                 vpPnPsolvers[i] = pSolver;
                 nCandidates++;
             }
-        }        
+        }
     }
 
     // Alternatively perform some iterations of P4P RANSAC
@@ -1013,7 +1065,7 @@ bool Tracking::Relocalisation()
 
                 // If the pose is supported by enough inliers stop ransacs and continue
                 if(nGood>=50)
-                {                    
+                {
                     bMatch = true;
                     break;
                 }

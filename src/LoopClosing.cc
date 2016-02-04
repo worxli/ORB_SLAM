@@ -74,7 +74,7 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-        cout << "[time] LoopClosing run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<< endl << endl;
+//        cout << "[time] LoopClosing run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<< endl << endl;
         }
 
         ResetIfRequested();
@@ -112,7 +112,7 @@ bool LoopClosing::DetectLoop()
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
-        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+//        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
         return false;
     }
 
@@ -209,7 +209,7 @@ bool LoopClosing::DetectLoop()
 
     // Update Covisibility Consistent Groups
     mvConsistentGroups = vCurrentConsistentGroups;
-    cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+//    cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
 
     // Add Current Keyframe to database
     mpKeyFrameDB->add(mpCurrentKF);

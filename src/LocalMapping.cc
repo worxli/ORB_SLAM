@@ -56,47 +56,60 @@ void LocalMapping::Run()
             // Tracking will see that Local Mapping is busy
             SetAcceptKeyFrames(false);
 
-            // BoW conversion and insertion in Map
             ProcessNewKeyFrame();
 
-            // Check recent MapPoints
-            double t_begin_mapPts = ros::Time::now().toSec();
-            MapPointCulling();
-            cout << "[time] LocalMapping run CullingPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-            // Triangulate new MapPoints
-            t_begin_mapPts = ros::Time::now().toSec();
-            CreateNewMapPoints();
-            cout << "[time] LocalMapping run TriagNewPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-            // Find more matches in neighbor keyframes and fuse point duplications
-            t_begin_mapPts = ros::Time::now().toSec();
             SearchInNeighbors();
-            cout << "[time] LocalMapping run fusePtsDupl " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
 
-            mbAbortBA = false;
+            CreateNewMapPoints();
 
-            if(!CheckNewKeyFrames() && !stopRequested())
-            {
-                // Local BA
-                double t_beginBA = ros::Time::now().toSec();
-                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA);
+            MapPointCulling();
 
-                // Check redundant local Keyframes
-                KeyFrameCulling();
-
-                mpMap->SetFlagAfterBA();
-
-                // Tracking will see Local Mapping idle
-                if(!CheckNewKeyFrames())
-                    SetAcceptKeyFrames(true);
-
-                cout << "[time] LocalMapping run BA " << ros::Time::now() << " " << ros::Time::now().toSec() - t_beginBA << " secs" << endl;
-            }
+            if(!CheckNewKeyFrames())
+                SetAcceptKeyFrames(true);
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
-            cout << "[time] LocalMapping run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
+//            // BoW conversion and insertion in Map
+//            ProcessNewKeyFrame();
+
+//            // Check recent MapPoints
+//            double t_begin_mapPts = ros::Time::now().toSec();
+//            MapPointCulling();
+//            cout << "[time] LocalMapping run CullingPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
+
+//            // Triangulate new MapPoints
+//            t_begin_mapPts = ros::Time::now().toSec();
+//            CreateNewMapPoints();
+//            cout << "[time] LocalMapping run TriagNewPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
+
+//            // Find more matches in neighbor keyframes and fuse point duplications
+//            t_begin_mapPts = ros::Time::now().toSec();
+//            SearchInNeighbors();
+//            cout << "[time] LocalMapping run fusePtsDupl " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
+
+//            mbAbortBA = false;
+
+//            if(!CheckNewKeyFrames() && !stopRequested())
+//            {
+//                // Local BA
+//                double t_beginBA = ros::Time::now().toSec();
+//                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA);
+
+//                // Check redundant local Keyframes
+//                KeyFrameCulling();
+
+//                mpMap->SetFlagAfterBA();
+
+//                // Tracking will see Local Mapping idle
+//                if(!CheckNewKeyFrames())
+//                    SetAcceptKeyFrames(true);
+
+//                cout << "[time] LocalMapping run BA " << ros::Time::now() << " " << ros::Time::now().toSec() - t_beginBA << " secs" << endl;
+//            }
+
+//            mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+//            cout << "[time] LocalMapping run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
         }
 
         // Safe area to stop
@@ -178,7 +191,7 @@ void LocalMapping::ProcessNewKeyFrame()
             }
         }
     }  
-    cout << "[time] LocalMapping run BoW " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
+//    cout << "[time] LocalMapping run BoW " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
@@ -190,7 +203,7 @@ void LocalMapping::ProcessNewKeyFrame()
 void LocalMapping::MapPointCulling()
 {
     // Check Recent Added MapPoints
-    list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
+    vector<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
     const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
     while(lit!=mlpRecentAddedMapPoints.end())
     {
@@ -227,6 +240,10 @@ void LocalMapping::CreateNewMapPoints()
     // Take neighbor keyframes in covisibility graph
     vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(20);
 
+    if (/*mpCurrentKeyFrame->mnId == 1*/vpNeighKFs.size() == 0){
+        vpNeighKFs = mpMap->GetAllKeyFrames();
+        printf("[mapping] vpNeighKFs size: %d\n", vpNeighKFs.size());
+    }
     ORBmatcher matcher(0.6,false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
@@ -250,16 +267,21 @@ void LocalMapping::CreateNewMapPoints()
     for(size_t i=0; i<vpNeighKFs.size(); i++)
     {
         KeyFrame* pKF2 = vpNeighKFs[i];
+        if(pKF2->mnId == mpCurrentKeyFrame->mnId){
+            continue;
+        }
 
         // Check first that baseline is not too short
         // Small translation errors for short baseline keyframes make scale to diverge
         cv::Mat Ow2 = pKF2->GetCameraCenter();
         cv::Mat vBaseline = Ow2-Ow1;
         const float baseline = cv::norm(vBaseline);
-        const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-        const float ratioBaselineDepth = baseline/medianDepthKF2;
+//        const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+//        const float ratioBaselineDepth = baseline/medianDepthKF2;
 
-        if(ratioBaselineDepth<0.01)
+//        if(ratioBaselineDepth<0.01)
+//            continue;
+        if(baseline<0.02)
             continue;
 
         // Compute Fundamental Matrix
@@ -269,7 +291,8 @@ void LocalMapping::CreateNewMapPoints()
         vector<cv::KeyPoint> vMatchedKeysUn1;
         vector<cv::KeyPoint> vMatchedKeysUn2;
         vector<pair<size_t,size_t> > vMatchedIndices;
-        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
+        int nmatches = matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
+        cout << "[mapping:295] nmatches " << nmatches <<  endl;
 
         cv::Mat Rcw2 = pKF2->GetRotation();
         cv::Mat Rwc2 = Rcw2.t();
@@ -386,6 +409,9 @@ void LocalMapping::CreateNewMapPoints()
 
             mpMap->AddMapPoint(pMP);
             mlpRecentAddedMapPoints.push_back(pMP);
+
+            // TODO
+            mpCurrentKeyFrame->UpdateConnections();
         }
     }
 }
@@ -476,8 +502,10 @@ cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
     cv::Mat R2w = pKF2->GetRotation();
     cv::Mat t2w = pKF2->GetTranslation();
 
-    cv::Mat R12 = R1w*R2w.t();
-    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
+//    cv::Mat R12 = R1w*R2w.t();
+//    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
+    cv::Mat R12 = R1w.t()*R2w;
+    cv::Mat t12 = R12*t2w - t1w;
 
     cv::Mat t12x = SkewSymmetricMatrix(t12);
 
@@ -540,6 +568,11 @@ void LocalMapping::InterruptBA()
 {
     mbAbortBA = true;
 }
+
+/**
+ * @brief LocalMapping::KeyFrameCulling
+ * remove redundant keyframes from the map
+ */
 
 void LocalMapping::KeyFrameCulling()
 {
