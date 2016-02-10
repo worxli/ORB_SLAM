@@ -143,7 +143,8 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     tfT.setIdentity();
     mTfBr.sendTransform(tf::StampedTransform(tfT,ros::Time::now(), "/ORB_SLAM/World", "/ORB_SLAM/Camera"));
 
-    mPoseMat = cv::Mat::eye(4, 4, CV_32F);
+    mPoseMatCW = cv::Mat::eye(4, 4, CV_32F);
+    mPoseMatWC = cv::Mat::eye(4, 4, CV_32F);
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -209,7 +210,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     //register KF with current Pose
     {
         boost::mutex::scoped_lock lock(mMutexUpdatePose);
-        mPoseMat.copyTo(mCurrentFrame.mTcw);
+        mPoseMatCW.copyTo(mCurrentFrame.mTcw);
     }
 
     CreateNewKeyFrame();
@@ -219,12 +220,16 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     if(!mCurrentFrame.mTcw.empty())
     {
-        cv::Mat Rcw = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3);
-        cv::Mat tcw = mCurrentFrame.mTcw.rowRange(0,3).col(3);
-        tf::Matrix3x3 M(Rcw.at<float>(0,0),Rcw.at<float>(0,1),Rcw.at<float>(0,2),
-                        Rcw.at<float>(1,0),Rcw.at<float>(1,1),Rcw.at<float>(1,2),
-                        Rcw.at<float>(2,0),Rcw.at<float>(2,1),Rcw.at<float>(2,2));
-        tf::Vector3 V(tcw.at<float>(0), tcw.at<float>(1), tcw.at<float>(2));
+        cv::Mat Rwc, twc;
+        {
+            boost::mutex::scoped_lock lock(mMutexUpdatePose);
+            Rwc = mPoseMatWC.rowRange(0,3).colRange(0,3);
+            twc = mPoseMatWC.rowRange(0,3).col(3);
+        }
+        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
 
         tf::Transform tfTcw(M,V);
 
@@ -357,28 +362,39 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
 void Tracking::GrabPose(const geometry_msgs::Pose &msg)
 {
+    // Pose provided by VIO is the pose of the camera expressed
+    // relative to the world coordinates
+    // i.e., Given R and t ==> T = [R | t]
+    //                             [0 | 1],
+    // and for a point Pc (x y z 1)^T in camera frame, the same
+    // point given in world frame can be expressed as
+    // Pw = T*Pc = R*Pc + t
+
+    // c2w ==> camera frame expressed relative to world coordinates
+
     boost::mutex::scoped_lock lock(mMutexUpdatePose);
-//    cout << "[Tracking:GrabPose] befor: " << msg.position.x << " " << msg.position.y << " " << msg.position.z << endl;
     tf::Pose pose;
     tf::poseMsgToTF(msg, pose);
-    tf::Matrix3x3 rotation = pose.getBasis();
-    tf::Vector3   translation = pose.getOrigin();
+    tf::Matrix3x3 R = pose.getBasis();
+    tf::Vector3   t = pose.getOrigin();
 
-    mPoseMat.at<float>(0,0) = rotation.getRow(0).getX();
-    mPoseMat.at<float>(0,1) = rotation.getRow(0).getY();
-    mPoseMat.at<float>(0,2) = rotation.getRow(0).getZ();
+    mPoseMatWC.at<float>(0,0) = R.getRow(0).getX();
+    mPoseMatWC.at<float>(0,1) = R.getRow(0).getY();
+    mPoseMatWC.at<float>(0,2) = R.getRow(0).getZ();
 
-    mPoseMat.at<float>(1,0) = rotation.getRow(1).getX();
-    mPoseMat.at<float>(1,1) = rotation.getRow(1).getY();
-    mPoseMat.at<float>(1,2) = rotation.getRow(1).getZ();
+    mPoseMatWC.at<float>(1,0) = R.getRow(1).getX();
+    mPoseMatWC.at<float>(1,1) = R.getRow(1).getY();
+    mPoseMatWC.at<float>(1,2) = R.getRow(1).getZ();
 
-    mPoseMat.at<float>(2,0) = rotation.getRow(2).getX();
-    mPoseMat.at<float>(2,1) = rotation.getRow(2).getY();
-    mPoseMat.at<float>(2,2) = rotation.getRow(2).getZ();
+    mPoseMatWC.at<float>(2,0) = R.getRow(2).getX();
+    mPoseMatWC.at<float>(2,1) = R.getRow(2).getY();
+    mPoseMatWC.at<float>(2,2) = R.getRow(2).getZ();
 
-    mPoseMat.at<float>(0,3) = translation.getX();
-    mPoseMat.at<float>(1,3) = translation.getY();
-    mPoseMat.at<float>(2,3) = translation.getZ();
+    mPoseMatWC.at<float>(0,3) = t.getX();
+    mPoseMatWC.at<float>(1,3) = t.getY();
+    mPoseMatWC.at<float>(2,3) = t.getZ();
+
+    mPoseMatCW = mPoseMatWC.inv(); // mPoseMatCW*P3D ==> 3D landmark points expressed in camera frame
 
 //    cout << "[Tracking:GrabPose] after: " << translation.getX() << " " << translation.getY() << " " << translation.getZ() << endl;
 }

@@ -497,21 +497,19 @@ void LocalMapping::SearchInNeighbors()
 
 cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 {
+
     cv::Mat R1w = pKF1->GetRotation();
     cv::Mat t1w = pKF1->GetTranslation();
     cv::Mat R2w = pKF2->GetRotation();
     cv::Mat t2w = pKF2->GetTranslation();
 
-//    cv::Mat R12 = R1w*R2w.t();
-//    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
-    cv::Mat R12 = R1w.t()*R2w;
-    cv::Mat t12 = R12*t2w - t1w;
+    cv::Mat R12 = R1w*R2w.t();
+    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
 
     cv::Mat t12x = SkewSymmetricMatrix(t12);
 
     cv::Mat K1 = pKF1->GetCalibrationMatrix();
     cv::Mat K2 = pKF2->GetCalibrationMatrix();
-
 
     return K1.t().inv()*t12x*R12*K2.inv();
 }

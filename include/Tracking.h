@@ -185,7 +185,11 @@ protected:
     // Transfor broadcaster (for visualization in rviz)
     tf::TransformBroadcaster mTfBr;
 
-    cv::Mat mPoseMat;
+    //pose transformation matrix from world frame to camera frame
+    //i.e., mPoseMatCW*P3D ==> 3D landmark point (P3D is in world frame) expressed in camera frame
+    cv::Mat mPoseMatCW;
+    //pose transformation matrix from camera frame to world frame
+    cv::Mat mPoseMatWC;
 };
 
 } //namespace ORB_SLAM

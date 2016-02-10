@@ -196,11 +196,12 @@ void MapPublisher::PublishKeyFrames(const vector<KeyFrame*> &vpKFs)
     for(size_t i=0, iend=vpKFs.size() ;i<iend; i++)
     {
         cv::Mat Tcw = vpKFs[i]->GetPose();
-        cv::Mat ow = Tcw*o;
-        cv::Mat p1w = Tcw*p1;
-        cv::Mat p2w = Tcw*p2;
-        cv::Mat p3w = Tcw*p3;
-        cv::Mat p4w = Tcw*p4;
+        cv::Mat Twc = Tcw.inv();
+        cv::Mat ow = Twc*o;
+        cv::Mat p1w = Twc*p1;
+        cv::Mat p2w = Twc*p2;
+        cv::Mat p3w = Twc*p3;
+        cv::Mat p4w = Twc*p4;
 
         geometry_msgs::Point msgs_o,msgs_p1, msgs_p2, msgs_p3, msgs_p4;
         msgs_o.x=ow.at<float>(0);
@@ -303,11 +304,13 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw)
     cv::Mat p3 = (cv::Mat_<float>(4,1) << -d, -d*0.8, d*0.5, 1);
     cv::Mat p4 = (cv::Mat_<float>(4,1) << -d, d*0.8, d*0.5, 1);
 
-    cv::Mat ow = Tcw*o;
-    cv::Mat p1w = Tcw*p1;
-    cv::Mat p2w = Tcw*p2;
-    cv::Mat p3w = Tcw*p3;
-    cv::Mat p4w = Tcw*p4;
+    cv::Mat Twc = Tcw.inv();
+
+    cv::Mat ow = Twc*o;
+    cv::Mat p1w = Twc*p1;
+    cv::Mat p2w = Twc*p2;
+    cv::Mat p3w = Twc*p3;
+    cv::Mat p4w = Twc*p4;
 
     geometry_msgs::Point msgs_o,msgs_p1, msgs_p2, msgs_p3, msgs_p4;
     msgs_o.x=ow.at<float>(0);

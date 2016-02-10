@@ -70,16 +70,16 @@ void KeyFrame::SetPose(const cv::Mat &Rcw,const cv::Mat &tcw)
     Rcw.copyTo(Tcw.rowRange(0,3).colRange(0,3));
     tcw.copyTo(Tcw.col(3).rowRange(0,3));
 
-//    Ow=-Rcw.t()*tcw;
+    Ow=-Rcw.t()*tcw;
 }
 
 void KeyFrame::SetPose(const cv::Mat &Tcw_)
 {
     boost::mutex::scoped_lock lock(mMutexPose);
     Tcw_.copyTo(Tcw);
-//    cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
-//    cv::Mat tcw = Tcw.rowRange(0,3).col(3);
-//    Ow = -Rcw.t()*tcw;
+    cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
+    cv::Mat tcw = Tcw.rowRange(0,3).col(3);
+    Ow = -Rcw.t()*tcw;
 }
 
 cv::Mat KeyFrame::GetPose()
@@ -108,7 +108,7 @@ cv::Mat KeyFrame::GetProjectionMatrix()
 cv::Mat KeyFrame::GetCameraCenter()
 {
     boost::mutex::scoped_lock lock(mMutexPose);
-    return Tcw.rowRange(0,3).col(3);
+    return Ow.clone();
 }
 
 cv::Mat KeyFrame::GetRotation()
