@@ -47,6 +47,52 @@ void FramePublisher::SetMap(Map *pMap)
     mpMap = pMap;
 }
 
+void FramePublisher::DrawFeatureMatches(KeyFrame *pKF1, KeyFrame *pKF2, vector<cv::KeyPoint> vMatchedKeysUn1, vector<cv::KeyPoint> vMatchedKeysUn2, vector<pair<size_t, size_t> > vMatchedIndices)
+{
+    int imageWidth = pKF1->GetImage().size().width;
+    int imageHeight = pKF1->GetImage().size().height;
+
+    cv::Mat img1 = pKF1->GetImage().clone();
+    cv::Mat img2 = pKF2->GetImage().clone();
+    cv::Mat im; im.create(imageHeight, imageWidth*2, img1.type());
+
+    img1.copyTo(im.colRange(0, imageWidth).rowRange(0, imageHeight));
+    img2.copyTo(im.colRange(imageWidth, 2*imageWidth));
+    if(im.channels()<3)
+        cvtColor(im,im,CV_GRAY2BGR);
+
+    for(size_t ikp=0, iendkp=vMatchedKeysUn1.size(); ikp<iendkp; ikp++)
+    {
+        cv::KeyPoint kp1 = vMatchedKeysUn1[ikp];
+        cv::KeyPoint kp2 = vMatchedKeysUn2[ikp];
+        kp2.pt.x += imageWidth;
+
+        cv::circle(im,kp1.pt,2,cv::Scalar(0,255,0),-1);
+        cv::circle(im,kp2.pt,2,cv::Scalar(0,255,0),-1);
+
+        cv::line(im, kp1.pt, kp2.pt, cv::Scalar(0,0,255), 1);
+    }
+
+    vector<cv::KeyPoint> kp = pKF1->GetKeyPoints();
+    for(size_t i = 0 ; i < kp.size(); i++){
+        cv::circle(im,kp[i].pt,2,cv::Scalar(255,255,0),-1);
+    }
+
+    vector<cv::KeyPoint> kp2 = pKF2->GetKeyPoints();
+    for(size_t i = 0 ; i < kp2.size(); i++){
+        kp2[i].pt.x += imageWidth;
+        cv::circle(im,kp2[i].pt,2,cv::Scalar(255,255,0),-1);
+    }
+
+    cv_bridge::CvImage rosImage;
+    rosImage.image = im.clone();
+    rosImage.header.stamp = ros::Time::now();
+    rosImage.encoding = "bgr8";
+
+    mImagePub.publish(rosImage.toImageMsg());
+    ros::spinOnce();
+}
+
 void FramePublisher::Refresh()
 {
     if(mbUpdated)

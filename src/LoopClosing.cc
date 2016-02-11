@@ -328,7 +328,8 @@ bool LoopClosing::ComputeSim3()
                 const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10);
 
                 // If optimization is succesful stop ransacs and continue
-                if(nInliers>=20)
+                cout << "[LoopClosing:331] nInliers " << nInliers << endl;
+                if(nInliers>=10)
                 {
                     bMatch = true;
                     mpMatchedKF = pKF;
@@ -349,7 +350,7 @@ bool LoopClosing::ComputeSim3()
              mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
         cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
-
+        cout << "[LoopClosing:352] bMatch false" << endl;
         return false;
     }
 
@@ -387,7 +388,7 @@ bool LoopClosing::ComputeSim3()
     }
 
     cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
-
+    cout << "LoopClosing:390 nTotalMatches " << nTotalMatches << endl;
     if(nTotalMatches>=40)
     {
         for(int i=0; i<nInitialCandidates; i++)

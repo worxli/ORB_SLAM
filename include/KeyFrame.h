@@ -94,6 +94,7 @@ public:
     void ReplaceMapPointMatch(const size_t &idx, MapPoint* pMP);
     std::set<MapPoint*> GetMapPoints();
     std::vector<MapPoint*> GetMapPointMatches();
+    void SetMapPointMatches(std::vector<MapPoint*> mapPoints);
     int TrackedMapPoints();
     MapPoint* GetMapPoint(const size_t &idx);
 
@@ -198,7 +199,6 @@ protected:
     std::vector<cv::KeyPoint> mvKeysUn;
     cv::Mat mDescriptors;
     std::vector<MapPoint*> mvpMapPoints;
-
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;
     ORBVocabulary* mpORBvocabulary;

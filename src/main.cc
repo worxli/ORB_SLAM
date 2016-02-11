@@ -95,15 +95,15 @@ int main(int argc, char **argv)
     cout << endl << "Loading ORB Vocabulary. This could take a while." << endl;
     
     ORB_SLAM::ORBVocabulary Vocabulary;
-//    bool bVocLoad = Vocabulary.loadFromTextFile(strVocFile);
+    bool bVocLoad = Vocabulary.loadFromTextFile(strVocFile);
 
-//    if(!bVocLoad)
-//    {
-//        cerr << "Wrong path to vocabulary. Path must be absolut or relative to ORB_SLAM package directory." << endl;
-//        cerr << "Falied to open at: " << strVocFile << endl;
-//        ros::shutdown();
-//        return 1;
-//    }
+    if(!bVocLoad)
+    {
+        cerr << "Wrong path to vocabulary. Path must be absolut or relative to ORB_SLAM package directory." << endl;
+        cerr << "Falied to open at: " << strVocFile << endl;
+        ros::shutdown();
+        return 1;
+    }
 
     cout << "Vocabulary loaded!" << endl << endl;
 
@@ -127,6 +127,7 @@ int main(int argc, char **argv)
     //Initialize the Local Mapping Thread and launch
     ORB_SLAM::LocalMapping LocalMapper(&World);
     boost::thread localMappingThread(&ORB_SLAM::LocalMapping::Run,&LocalMapper);
+    LocalMapper.SetFramePublisher(&FramePub);
 
     //Initialize the Loop Closing Thread and launch
     ORB_SLAM::LoopClosing LoopCloser(&World, &Database, &Vocabulary);

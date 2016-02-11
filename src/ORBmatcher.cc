@@ -314,7 +314,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
  * @param pKF: matching frame, input
  * @param Scw
  * @param vpPoints: 3D map points, input
- * @param vpMatched
+ * @param vpMatched: map points in current KF
  * @param th
  * @return
  */
@@ -1019,6 +1019,7 @@ vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector
 
                     int currentIdx2 = vDistIndex[id].second;
                     cv::KeyPoint &kp2 = vKeysUn2[currentIdx2];
+
                     if(CheckDistEpipolarLine(kp1,kp2,F12,pKF2))
                     {
                         vbMatched2[currentIdx2]=true;

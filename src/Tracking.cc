@@ -236,7 +236,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
     }
 
-    mpFramePublisher->Update(this);
+//    mpFramePublisher->Update(this);
 
     //    cout << "[time] Tracking run feature " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
 

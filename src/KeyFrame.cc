@@ -282,6 +282,12 @@ vector<MapPoint*> KeyFrame::GetMapPointMatches()
     return mvpMapPoints;
 }
 
+void KeyFrame::SetMapPointMatches(std::vector<MapPoint *> mapPoints)
+{
+    boost::mutex::scoped_lock lock(mMutexFeatures);
+    mvpMapPoints = mapPoints;
+}
+
 MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
 {
     boost::mutex::scoped_lock lock(mMutexFeatures);

@@ -49,6 +49,8 @@ public:
 
     void SetMap(Map* pMap);
 
+    void DrawFeatureMatches(KeyFrame* pKF1, KeyFrame* pKF2, vector<cv::KeyPoint> vMatchedKeysUn1, vector<cv::KeyPoint> vMatchedKeysUn2, vector<pair<size_t,size_t> > vMatchedIndices);
+
 protected:
 
     cv::Mat DrawFrame();

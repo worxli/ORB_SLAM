@@ -52,64 +52,26 @@ void LocalMapping::Run()
         // Check if there are keyframes in the queue
         double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
-        {            
+        {
             // Tracking will see that Local Mapping is busy
             SetAcceptKeyFrames(false);
 
             ProcessNewKeyFrame();
 
-            SearchInNeighbors();
+            int nmatches = AssociateLocalMapPts2CurrentKF();
 
+            if (nmatches > 20){
+                cout << "[LocalMapping:64] nmatches "<< nmatches << endl;
+                mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+                continue;
+            }
             CreateNewMapPoints();
+
+            SearchInNeighbors();
 
             MapPointCulling();
 
-            if(!CheckNewKeyFrames())
-                SetAcceptKeyFrames(true);
-
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
-
-//            // BoW conversion and insertion in Map
-//            ProcessNewKeyFrame();
-
-//            // Check recent MapPoints
-//            double t_begin_mapPts = ros::Time::now().toSec();
-//            MapPointCulling();
-//            cout << "[time] LocalMapping run CullingPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-//            // Triangulate new MapPoints
-//            t_begin_mapPts = ros::Time::now().toSec();
-//            CreateNewMapPoints();
-//            cout << "[time] LocalMapping run TriagNewPts " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-//            // Find more matches in neighbor keyframes and fuse point duplications
-//            t_begin_mapPts = ros::Time::now().toSec();
-//            SearchInNeighbors();
-//            cout << "[time] LocalMapping run fusePtsDupl " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin_mapPts << " secs" << endl;
-
-//            mbAbortBA = false;
-
-//            if(!CheckNewKeyFrames() && !stopRequested())
-//            {
-//                // Local BA
-//                double t_beginBA = ros::Time::now().toSec();
-//                Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA);
-
-//                // Check redundant local Keyframes
-//                KeyFrameCulling();
-
-//                mpMap->SetFlagAfterBA();
-
-//                // Tracking will see Local Mapping idle
-//                if(!CheckNewKeyFrames())
-//                    SetAcceptKeyFrames(true);
-
-//                cout << "[time] LocalMapping run BA " << ros::Time::now() << " " << ros::Time::now().toSec() - t_beginBA << " secs" << endl;
-//            }
-
-//            mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
-
-//            cout << "[time] LocalMapping run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl << endl;
         }
 
         // Safe area to stop
@@ -157,12 +119,19 @@ void LocalMapping::ProcessNewKeyFrame()
 
     // Compute Bags of Words structures
     mpCurrentKeyFrame->ComputeBoW();
+}
 
-    if(mpCurrentKeyFrame->mnId==0)
-        return;
+int LocalMapping::AssociateLocalMapPts2CurrentKF()
+{
+    // Project recentAddedMapPoints to current frame, search for 3D-2D correspondence
+    ORBmatcher matcher(0.8);
+    vector<MapPoint*> vpMapPoints = mpCurrentKeyFrame->GetMapPointMatches();
+    matcher.SearchByProjection(mpCurrentKeyFrame, mpCurrentKeyFrame->GetPose(), mlpRecentAddedMapPoints, vpMapPoints, 10);
+    mpCurrentKeyFrame->SetMapPointMatches(vpMapPoints);
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
     vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+    int counter = 0;
     if(mpCurrentKeyFrame->mnId>1) //This operations are already done in the tracking for the first two keyframes
     {
         for(size_t i=0; i<vpMapPointMatches.size(); i++)
@@ -175,29 +144,18 @@ void LocalMapping::ProcessNewKeyFrame()
                     pMP->AddObservation(mpCurrentKeyFrame, i);
                     pMP->UpdateNormalAndDepth();
                     pMP->ComputeDistinctiveDescriptors();
+                    counter++;
                 }
             }
         }
+        cout<< endl << "[LocalMapping:191] current frame "<< mpCurrentKeyFrame->mnId << " has " << counter << " 3D-2D matches from map" << endl;
     }
-
-    if(mpCurrentKeyFrame->mnId==1)
-    {
-        for(size_t i=0; i<vpMapPointMatches.size(); i++)
-        {
-            MapPoint* pMP = vpMapPointMatches[i];
-            if(pMP)
-            {
-                mlpRecentAddedMapPoints.push_back(pMP);
-            }
-        }
-    }  
-//    cout << "[time] LocalMapping run BoW " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs" << endl;
-
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
+    return counter;
 }
 
 void LocalMapping::MapPointCulling()
@@ -238,12 +196,23 @@ void LocalMapping::MapPointCulling()
 void LocalMapping::CreateNewMapPoints()
 {
     // Take neighbor keyframes in covisibility graph
-    vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(20);
+    vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(2);
 
-    if (/*mpCurrentKeyFrame->mnId == 1*/vpNeighKFs.size() == 0){
-        vpNeighKFs = mpMap->GetAllKeyFrames();
-        printf("[mapping] vpNeighKFs size: %d\n", vpNeighKFs.size());
+    cout<<"[LocalMapping:238] current frame " << mpCurrentKeyFrame->mnId << " can view frames ";
+    for(vector<KeyFrame*>::iterator it = vpNeighKFs.begin(); it!=vpNeighKFs.end(); it++){
+        cout<< (*it)->mnId << " ";
     }
+    cout << endl;
+
+    if (mpMap->MapPointsInMap() == 0 || vpNeighKFs.size() == 0){
+        vector<KeyFrame*> tmpNeighKFs = mpMap->GetAllKeyFrames();
+        for(size_t i = 0; i < tmpNeighKFs.size(); i++){
+            if(mpCurrentKeyFrame->mnId - tmpNeighKFs[i]->mnId < 3){
+                vpNeighKFs.push_back(tmpNeighKFs[i]);
+            }
+        }
+    }
+
     ORBmatcher matcher(0.6,false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
@@ -276,11 +245,11 @@ void LocalMapping::CreateNewMapPoints()
         cv::Mat Ow2 = pKF2->GetCameraCenter();
         cv::Mat vBaseline = Ow2-Ow1;
         const float baseline = cv::norm(vBaseline);
-//        const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-//        const float ratioBaselineDepth = baseline/medianDepthKF2;
+        //        const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+        //        const float ratioBaselineDepth = baseline/medianDepthKF2;
 
-//        if(ratioBaselineDepth<0.01)
-//            continue;
+        //        if(ratioBaselineDepth<0.01)
+        //            continue;
         if(baseline<0.02)
             continue;
 
@@ -292,7 +261,8 @@ void LocalMapping::CreateNewMapPoints()
         vector<cv::KeyPoint> vMatchedKeysUn2;
         vector<pair<size_t,size_t> > vMatchedIndices;
         int nmatches = matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
-        cout << "[mapping:295] nmatches " << nmatches <<  endl;
+        cout << "[mapping:295] current frame " << mpCurrentKeyFrame->mnId << " has " << nmatches << " matches with frame " << pKF2->mnId <<  endl;
+        mpFramePub->DrawFeatureMatches(mpCurrentKeyFrame, pKF2, vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
 
         cv::Mat Rcw2 = pKF2->GetRotation();
         cv::Mat Rwc2 = Rcw2.t();
@@ -309,6 +279,7 @@ void LocalMapping::CreateNewMapPoints()
         const float invfy2 = 1.0f/fy2;
 
         // Triangulate each match
+        int counter = 0;
         for(size_t ikp=0, iendkp=vMatchedKeysUn1.size(); ikp<iendkp; ikp++)
         {
             const int idx1 = vMatchedIndices[ikp].first;
@@ -396,7 +367,7 @@ void LocalMapping::CreateNewMapPoints()
 
             // Triangulation is succesfull
             MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
-
+            counter++;
             pMP->AddObservation(pKF2,idx2);
             pMP->AddObservation(mpCurrentKeyFrame,idx1);
 
@@ -413,6 +384,7 @@ void LocalMapping::CreateNewMapPoints()
             // TODO
             mpCurrentKeyFrame->UpdateConnections();
         }
+        cout << "[LocalMapping:420] current frame " << mpCurrentKeyFrame->mnId << " triangulated " << counter << " new pts with frame " << pKF2->mnId<< endl;
     }
 }
 
@@ -441,7 +413,7 @@ void LocalMapping::SearchInNeighbors()
     }
 
 
-    // Search matches by projection from current KF in target KFs
+    // Search matches by projection from current KF to target KFs
     ORBmatcher matcher(0.6);
     vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
     for(vector<KeyFrame*>::iterator vit=vpTargetKFs.begin(), vend=vpTargetKFs.end(); vit!=vend; vit++)
@@ -451,7 +423,7 @@ void LocalMapping::SearchInNeighbors()
         matcher.Fuse(pKFi,vpMapPointMatches);
     }
 
-    // Search matches by projection from target KFs in current KF
+    // Search matches by projection from target KFs to current KF
     vector<MapPoint*> vpFuseCandidates;
     vpFuseCandidates.reserve(vpTargetKFs.size()*vpMapPointMatches.size());
 
@@ -497,6 +469,34 @@ void LocalMapping::SearchInNeighbors()
 
 cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 {
+    //    cv::Mat R1w = pKF1->GetRotation();
+    //    cv::Mat t1w = pKF1->GetTranslation();
+    //    cv::Mat R2w = pKF2->GetRotation();
+    //    cv::Mat t2w = pKF2->GetTranslation();
+
+    //    cv::Mat K1 = pKF1->GetCalibrationMatrix();
+    //    cv::Mat K2 = pKF2->GetCalibrationMatrix();
+
+    //    cv::Mat cam1_center = cv::Mat::eye(4,1,CV_32F);
+    //    pKF1->GetCameraCenter().copyTo(cam1_center.rowRange(0,3));
+    //    cam1_center.at<float>(3) = 1;
+
+    //    cv::Mat P1 = cv::Mat::eye(3,4,CV_32F);
+    //    cv::Mat P1_pinv(4,3,CV_32F);
+    //    R1w.copyTo(P1.rowRange(0,3).colRange(0,3));
+    //    t1w.copyTo(P1.rowRange(0,3).col(3));
+    //    P1 = K1*P1;
+    //    invert(P1, P1_pinv, cv::DECOMP_SVD);
+
+
+    //    cv::Mat P2 = cv::Mat::eye(3,4,CV_32F);
+    //    R2w.copyTo(P2.rowRange(0,3).colRange(0,3));
+    //    t2w.copyTo(P2.rowRange(0,3).col(3));
+    //    P2 = K2*P2;
+
+    //    cv::Mat e2x = SkewSymmetricMatrix(P2*cam1_center);
+
+    //    return e2x*P2*P1_pinv;
 
     cv::Mat R1w = pKF1->GetRotation();
     cv::Mat t1w = pKF1->GetTranslation();
@@ -510,6 +510,7 @@ cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 
     cv::Mat K1 = pKF1->GetCalibrationMatrix();
     cv::Mat K2 = pKF2->GetCalibrationMatrix();
+
 
     return K1.t().inv()*t12x*R12*K2.inv();
 }
@@ -631,8 +632,8 @@ void LocalMapping::KeyFrameCulling()
 cv::Mat LocalMapping::SkewSymmetricMatrix(const cv::Mat &v)
 {
     return (cv::Mat_<float>(3,3) <<             0, -v.at<float>(2), v.at<float>(1),
-                                  v.at<float>(2),               0,-v.at<float>(0),
-                                 -v.at<float>(1),  v.at<float>(0),              0);
+            v.at<float>(2),               0,-v.at<float>(0),
+            -v.at<float>(1),  v.at<float>(0),              0);
 }
 
 void LocalMapping::RequestReset()
@@ -646,9 +647,9 @@ void LocalMapping::RequestReset()
     while(ros::ok())
     {
         {
-        boost::mutex::scoped_lock lock2(mMutexReset);
-        if(!mbResetRequested)
-            break;
+            boost::mutex::scoped_lock lock2(mMutexReset);
+            if(!mbResetRequested)
+                break;
         }
         r.sleep();
     }

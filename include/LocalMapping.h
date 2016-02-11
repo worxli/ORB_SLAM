@@ -27,6 +27,7 @@
 #include "Tracking.h"
 #include <boost/thread.hpp>
 #include "KeyFrameDatabase.h"
+#include "FramePublisher.h"
 
 
 namespace ORB_SLAM
@@ -35,6 +36,7 @@ namespace ORB_SLAM
 class Tracking;
 class LoopClosing;
 class Map;
+class FramePublisher;
 
 class LocalMapping
 {
@@ -66,10 +68,15 @@ public:
 
     void InterruptBA();
 
+    void SetFramePublisher(FramePublisher* pFramePub){
+        mpFramePub = pFramePub;
+    }
+
 protected:
 
     bool CheckNewKeyFrames();
     void ProcessNewKeyFrame();
+    int  AssociateLocalMapPts2CurrentKF();
     void CreateNewMapPoints();
 
     void MapPointCulling();
@@ -108,6 +115,7 @@ protected:
 
     bool mbAcceptKeyFrames;
     boost::mutex mMutexAccept;
+    ORB_SLAM::FramePublisher* mpFramePub;
 };
 
 } //namespace ORB_SLAM
