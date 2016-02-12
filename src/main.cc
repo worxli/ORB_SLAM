@@ -142,6 +142,7 @@ int main(int argc, char **argv)
 
     LoopCloser.SetTracker(&Tracker);
     LoopCloser.SetLocalMapper(&LocalMapper);
+    LoopCloser.SetFramePublisher(&FramePub);
 
     //This "main" thread will show the current processed frame and publish the map
     float fps = fsSettings["Camera.fps"];

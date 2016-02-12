@@ -100,6 +100,7 @@ public:
 
     // KeyPoint functions
     cv::KeyPoint GetKeyPointUn(const size_t &idx) const;
+    cv::KeyPoint GetKeyPoint(const size_t &idx) const;
     cv::Mat GetDescriptor(const size_t &idx);
     int GetKeyPointScaleLevel(const size_t &idx) const;
     std::vector<cv::KeyPoint> GetKeyPoints() const;

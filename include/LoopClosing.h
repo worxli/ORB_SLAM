@@ -32,12 +32,15 @@
 
 #include "Thirdparty/g2o/g2o/types/sim3/types_seven_dof_expmap.h"
 
+#include "FramePublisher.h"
+
 namespace ORB_SLAM
 {
 
 class Tracking;
 class LocalMapping;
 class KeyFrameDatabase;
+class FramePublisher;
 
 
 class LoopClosing
@@ -61,6 +64,8 @@ public:
     void InsertKeyFrame(KeyFrame *pKF);
 
     void RequestReset();
+
+    void SetFramePublisher(FramePublisher* pFramePub);
 
 protected:
 
@@ -108,6 +113,7 @@ protected:
     double mScale_cw;
 
     long unsigned int mLastLoopKFid;
+    FramePublisher* mpFramePub;
 };
 
 } //namespace ORB_SLAM

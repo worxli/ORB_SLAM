@@ -238,7 +238,7 @@ void MapPublisher::PublishKeyFrames(const vector<KeyFrame*> &vpKFs)
         mKeyFrames.points.push_back(msgs_p1);
 
         // Covisibility Graph
-        vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
+        vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(15);
         if(!vCovKFs.empty())
         {
             for(vector<KeyFrame*>::iterator vit=vCovKFs.begin(), vend=vCovKFs.end(); vit!=vend; vit++)

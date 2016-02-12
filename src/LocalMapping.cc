@@ -61,7 +61,7 @@ void LocalMapping::Run()
             int nmatches = AssociateLocalMapPts2CurrentKF();
 
             if (nmatches > 20){
-                cout << "[LocalMapping:64] nmatches "<< nmatches << endl;
+//                cout << "[LocalMapping:64] nmatches "<< nmatches << endl;
                 mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
                 continue;
             }
@@ -148,13 +148,39 @@ int LocalMapping::AssociateLocalMapPts2CurrentKF()
                 }
             }
         }
-        cout<< endl << "[LocalMapping:191] current frame "<< mpCurrentKeyFrame->mnId << " has " << counter << " 3D-2D matches from map" << endl;
+//        cout<< endl << "[LocalMapping:191] current frame "<< mpCurrentKeyFrame->mnId << " has " << counter << " 3D-2D matches from map" << endl;
     }
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
 
     // Insert Keyframe in Map
     mpMap->AddKeyFrame(mpCurrentKeyFrame);
+
+//    // Draw 3D-2D feature matchings
+//    KeyFrame* pKF2;
+//    vector<KeyFrame*> vpAllKFs = mpMap->GetAllKeyFrames();
+//    for(int i = 0; i < vpAllKFs.size(); i++){
+//        if(vpAllKFs[i]->mnId == mpCurrentKeyFrame->mnId - 1){
+//            pKF2 = vpAllKFs[i];
+//            break;
+//        }
+//    }
+
+//    vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
+//    for(int i = 0; i < vpMapPoints.size(); i++){
+//            if(vpMapPoints[i]){
+//                if(vpMapPoints[i]->isBad()) continue;
+//                if(vpMapPoints[i]->IsInKeyFrame(pKF2)){
+//                    int idx2 = vpMapPoints[i]->GetIndexInKeyFrame(pKF2);
+//                    int idx1 = vpMapPoints[i]->GetIndexInKeyFrame(mpCurrentKeyFrame);
+//                    matchedKeyPt1.push_back(mpCurrentKeyFrame->GetKeyPoint(idx1));
+//                    matchedKeyPt2.push_back(pKF2->GetKeyPoint(idx2));
+//                }
+//            }
+//    }
+//    if(matchedKeyPt2.size() != 0){
+//        mpFramePub->DrawFeatureMatches(mpCurrentKeyFrame, pKF2, matchedKeyPt1, matchedKeyPt2);
+//    }
     return counter;
 }
 
@@ -198,11 +224,11 @@ void LocalMapping::CreateNewMapPoints()
     // Take neighbor keyframes in covisibility graph
     vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(2);
 
-    cout<<"[LocalMapping:238] current frame " << mpCurrentKeyFrame->mnId << " can view frames ";
-    for(vector<KeyFrame*>::iterator it = vpNeighKFs.begin(); it!=vpNeighKFs.end(); it++){
-        cout<< (*it)->mnId << " ";
-    }
-    cout << endl;
+//    cout<<"[LocalMapping:238] current frame " << mpCurrentKeyFrame->mnId << " can view frames ";
+//    for(vector<KeyFrame*>::iterator it = vpNeighKFs.begin(); it!=vpNeighKFs.end(); it++){
+//        cout<< (*it)->mnId << " ";
+//    }
+//    cout << endl;
 
     if (mpMap->MapPointsInMap() == 0 || vpNeighKFs.size() == 0){
         vector<KeyFrame*> tmpNeighKFs = mpMap->GetAllKeyFrames();
@@ -261,8 +287,8 @@ void LocalMapping::CreateNewMapPoints()
         vector<cv::KeyPoint> vMatchedKeysUn2;
         vector<pair<size_t,size_t> > vMatchedIndices;
         int nmatches = matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
-        cout << "[mapping:295] current frame " << mpCurrentKeyFrame->mnId << " has " << nmatches << " matches with frame " << pKF2->mnId <<  endl;
-        mpFramePub->DrawFeatureMatches(mpCurrentKeyFrame, pKF2, vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
+//        cout << "[mapping:295] current frame " << mpCurrentKeyFrame->mnId << " has " << nmatches << " matches with frame " << pKF2->mnId <<  endl;
+        //mpFramePub->DrawFeatureMatches(mpCurrentKeyFrame, pKF2, vMatchedKeysUn1,vMatchedKeysUn2);
 
         cv::Mat Rcw2 = pKF2->GetRotation();
         cv::Mat Rwc2 = Rcw2.t();
@@ -384,7 +410,7 @@ void LocalMapping::CreateNewMapPoints()
             // TODO
             mpCurrentKeyFrame->UpdateConnections();
         }
-        cout << "[LocalMapping:420] current frame " << mpCurrentKeyFrame->mnId << " triangulated " << counter << " new pts with frame " << pKF2->mnId<< endl;
+//        cout << "[LocalMapping:420] current frame " << mpCurrentKeyFrame->mnId << " triangulated " << counter << " new pts with frame " << pKF2->mnId<< endl;
     }
 }
 

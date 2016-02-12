@@ -61,7 +61,7 @@ void LoopClosing::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-        double t_begin = ros::Time::now().toSec();
+//        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
@@ -136,12 +136,20 @@ bool LoopClosing::DetectLoop()
     }
 
     // Query the database imposing the minimum score
+    cout << "[LoopClosure:139] minScore " << minScore << endl;
+
     vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
+
+    cout << "[LoopClosure:143] current KF " << mpCurrentKF->mnId << " has candidates ";
+    for(int i = 0; i < vpCandidateKFs.size(); i++){
+        cout << vpCandidateKFs[i]->mnId << " ";
+    }
+    cout << endl;
 
     // If there are no loop candidates, just add new keyframe and return false
     if(vpCandidateKFs.empty())
     {
-        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+//        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
 
         mpKeyFrameDB->add(mpCurrentKF);
         mvConsistentGroups.clear();
@@ -166,6 +174,7 @@ bool LoopClosing::DetectLoop()
 
         bool bEnoughConsistent = false;
         bool bConsistentForSomeGroup = false;
+
         for(size_t iG=0, iendG=mvConsistentGroups.size(); iG<iendG; iG++)
         {
             set<KeyFrame*> sPreviousGroup = mvConsistentGroups[iG].first;
@@ -265,7 +274,8 @@ bool LoopClosing::ComputeSim3()
 
         int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
 
-        if(nmatches<20)
+        cout << "[LoopClosure:277] nmatches " << nmatches << endl;
+        if(nmatches<10)
         {
             vbDiscarded[i] = true;
             continue;
@@ -281,6 +291,7 @@ bool LoopClosing::ComputeSim3()
     }
 
     bool bMatch = false;
+    cout << "[LoopClosure:287] nCandidates " << nCandidates << endl;
 
     // Perform alternatively RANSAC iterations for each candidate
     // until one is succesful or all fail
@@ -290,8 +301,31 @@ bool LoopClosing::ComputeSim3()
         {
             if(vbDiscarded[i])
                 continue;
-
             KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
+
+            Optimizer::LocalBundleAdjustment(mpCurrentKF);
+            Optimizer::LocalBundleAdjustment(pKF);
+
+            // DEBUG... Draw feature matching results
+                vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
+                vector<MapPoint*>vpMapPoints = vvpMapPointMatches[i];
+                cout<<"vpMapPoints size "<< vpMapPoints.size() <<endl;
+                for(int j = 0; j < vpMapPoints.size(); j++){
+                    if (vpMapPoints[j] == NULL) continue;
+                    int idx1 = j;
+                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
+                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
+                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
+
+                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; ";
+                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
+                }
+                cout<< endl;
+                if(matchedKeyPt2.size() != 0){
+                    mpFramePub->DrawFeatureMatches(mpCurrentKF, pKF, matchedKeyPt1, matchedKeyPt2);
+                }
+            //DO Local BA to optimize the map point locations for similarity transformation matrix computation
+
 
             // Perform 5 Ransac Iterations
             vector<bool> vbInliers;
@@ -603,6 +637,11 @@ void LoopClosing::RequestReset()
         }
         r.sleep();
     }
+}
+
+void LoopClosing::SetFramePublisher(FramePublisher *pFramePub)
+{
+        mpFramePub = pFramePub;
 }
 
 void LoopClosing::ResetIfRequested()

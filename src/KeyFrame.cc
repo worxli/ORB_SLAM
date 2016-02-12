@@ -299,6 +299,11 @@ cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx) const
     return mvKeysUn[idx];
 }
 
+cv::KeyPoint KeyFrame::GetKeyPoint(const size_t &idx) const
+{
+    return mvKeys[idx];
+}
+
 int KeyFrame::GetKeyPointScaleLevel(const size_t &idx) const
 {
     return mvKeysUn[idx].octave;

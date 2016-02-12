@@ -28,8 +28,10 @@
 
 #include <assert.h>
 #include <queue>
+#include <iostream>
 
 namespace g2o {
+  using namespace std;
 
   HyperGraph::Vertex::Vertex(int id) : _id(id)
   {
@@ -98,13 +100,22 @@ namespace g2o {
 
   bool HyperGraph::addEdge(Edge* e)
   {
+       cout<<"HyperGraph:addEdge:101"<<endl;
     std::pair<EdgeSet::iterator, bool> result = _edges.insert(e);
+          cout<<"HyperGraph:addEdge:103"<<endl;
     if (! result.second)
       return false;
+    cout<<"HyperGraph:addEdge:108"<<endl;
     for (std::vector<Vertex*>::iterator it = e->vertices().begin(); it != e->vertices().end(); ++it) {
       Vertex* v = *it;
+      cout<<"HyperGraph:addEdge:111"<<endl;
+      if(v==NULL){
+          cout<<"HyperGraph:addEdge:113"<<endl;
+      }
       v->edges().insert(e);
+      cout<<"HyperGraph:addEdge:116"<<endl;
     }
+    cout<<"HyperGraph:addEdge:118"<<endl;
     return true;
   }
 
