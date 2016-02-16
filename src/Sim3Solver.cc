@@ -66,7 +66,7 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
             MapPoint* pMP1 = vpKeyFrameMP1[i1];
             MapPoint* pMP2 = vpMatched12[i1];
 
-            if(!pMP1)
+            if(!pMP1 || !pMP2)
                 continue;
 
             if(pMP1->isBad() || pMP2->isBad())

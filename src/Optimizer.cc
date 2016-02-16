@@ -299,7 +299,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         if(!pKFi->isBad())
             lLocalKeyFrames.push_back(pKFi);
     }
-    cout << "[Optimizer:303] lLocalKeyFrames size: " << lLocalKeyFrames.size() << endl;
+//    cout << "[Optimizer:303] lLocalKeyFrames size: " << lLocalKeyFrames.size() << endl;
 
     // Local MapPoints seen in Local KeyFrames
     list<MapPoint*> lLocalMapPoints;
@@ -313,7 +313,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
             }
         }
     }
-    cout << "[Optimizer:316] lLocalMapPoints size " << lLocalMapPoints.size() << endl;
+//    cout << "[Optimizer:316] lLocalMapPoints size " << lLocalMapPoints.size() << endl;
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolverX::LinearSolverType * linearSolver;
@@ -367,16 +367,25 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
         int id = pMP->mnId+maxKFid+1;
         vPoint->setId(id);
-//        vPoint->setMarginalized(true);
+        vPoint->setMarginalized(false);
         optimizer.addVertex(vPoint);
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         //SET EDGES
-        cout<<pKF->mnId <<": " << id << " ";
+//        cout<<pKF->mnId <<": " << id << " ";
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
-            cout << pKFi->mnId << " ";
+//            cout << pKFi->mnId << " ";
+
+            bool bKFinLocalList = false;
+            for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++){
+                if (pKFi->mnId == (*lit)->mnId){
+                    bKFinLocalList= true;
+                    break;
+                }
+            }
+            if(!bKFinLocalList) continue;
 
             if(!pKFi->isBad())
             {
@@ -388,26 +397,26 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 if(optimizer.vertex(id)==NULL || optimizer.vertex(pKFi->mnId)==NULL ) continue;
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
-////                e->setMeasurement(obs);
-////                float sigma2 = pKFi->GetSigma2(kpUn.octave);
-////                float invSigma2 = pKFi->GetInvSigma2(kpUn.octave);
-////                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
-////                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-////                e->setRobustKernel(rk);
-////                rk->setDelta(thHuber);
+                e->setMeasurement(obs);
+                float sigma2 = pKFi->GetSigma2(kpUn.octave);
+                float invSigma2 = pKFi->GetInvSigma2(kpUn.octave);
+                e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
+                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                e->setRobustKernel(rk);
+                rk->setDelta(thHuber);
 
-////                e->fx = pKFi->fx;
-////                e->fy = pKFi->fy;
-////                e->cx = pKFi->cx;
-////                e->cy = pKFi->cy;
-//                optimizer.addEdge(e);
-//                vpEdges.push_back(e);
-//                vpEdgeKF.push_back(pKFi);
-//                vSigmas2.push_back(sigma2);
-//                vpMapPointEdge.push_back(pMP);
+                e->fx = pKFi->fx;
+                e->fy = pKFi->fy;
+                e->cx = pKFi->cx;
+                e->cy = pKFi->cy;
+                optimizer.addEdge(e);
+                vpEdges.push_back(e);
+                vpEdgeKF.push_back(pKFi);
+                vSigmas2.push_back(sigma2);
+                vpMapPointEdge.push_back(pMP);
             }
         }
-        cout<<endl;
+//        cout<<endl;
     }
     return;
     optimizer.initializeOptimization();
@@ -498,8 +507,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         pMP->UpdateNormalAndDepth();
     }
 }
-
-
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF, g2o::Sim3 &Scurw,
                                        LoopClosing::KeyFrameAndPose &NonCorrectedSim3,

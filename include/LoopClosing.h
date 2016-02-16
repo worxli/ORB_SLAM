@@ -75,6 +75,8 @@ protected:
 
     bool ComputeSim3();
 
+    void DoLocalTriangulations(KeyFrame* pKF, vector<bool>vbMatched);
+
     void SearchAndFuse(KeyFrameAndPose &CorrectedPosesMap);
 
     void CorrectLoop();

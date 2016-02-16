@@ -38,7 +38,7 @@ namespace ORB_SLAM
 {
 
 const int ORBmatcher::TH_HIGH = 100;
-const int ORBmatcher::TH_LOW = 50;
+const int ORBmatcher::TH_LOW = 60;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
 
@@ -973,11 +973,11 @@ vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector
             {
                 size_t idx1 = f1it->second[i1];
 
-                MapPoint* pMP1 = vpMapPoints1[idx1];
+//                MapPoint* pMP1 = vpMapPoints1[idx1];
 
-                // If there is already a MapPoint skip
-                if(pMP1)
-                    continue;
+//                // If there is already a MapPoint skip
+//                if(pMP1)
+//                    continue;
 
                 const cv::KeyPoint &kp1 = vKeysUn1[idx1];
 
@@ -989,11 +989,11 @@ vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector
                 {
                     size_t idx2 = f2it->second[i2];
 
-                    MapPoint* pMP2 = vpMapPoints2[idx2];
+//                    MapPoint* pMP2 = vpMapPoints2[idx2];
 
-                    // If we have already matched or there is a MapPoint skip
-                    if(vbMatched2[idx2] || pMP2)
-                        continue;
+//                    // If we have already matched or there is a MapPoint skip
+//                    if(vbMatched2[idx2] || pMP2)
+//                        continue;
 
                     cv::Mat d2 = Descriptors2.row(idx2);
 

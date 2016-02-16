@@ -50,7 +50,6 @@ void LocalMapping::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Tracking will see that Local Mapping is busy
@@ -58,19 +57,11 @@ void LocalMapping::Run()
 
             ProcessNewKeyFrame();
 
-            int nmatches = AssociateLocalMapPts2CurrentKF();
+            FindFeatureCorrespondences();
 
-            if (nmatches > 20){
-//                cout << "[LocalMapping:64] nmatches "<< nmatches << endl;
-                mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
-                continue;
-            }
-            CreateNewMapPoints();
+//            ErasePoorConnectedMapPts();
 
-            SearchInNeighbors();
-
-            MapPointCulling();
-
+            mpMap->AddKeyFrame(mpCurrentKeyFrame);
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
         }
 
@@ -110,7 +101,6 @@ bool LocalMapping::CheckNewKeyFrames()
 
 void LocalMapping::ProcessNewKeyFrame()
 {
-    double t_begin = ros::Time::now().toSec();
     {
         boost::mutex::scoped_lock lock(mMutexNewKFs);
         mpCurrentKeyFrame = mlNewKeyFrames.front();
@@ -152,9 +142,6 @@ int LocalMapping::AssociateLocalMapPts2CurrentKF()
     }
     // Update links in the Covisibility Graph
     mpCurrentKeyFrame->UpdateConnections();
-
-    // Insert Keyframe in Map
-    mpMap->AddKeyFrame(mpCurrentKeyFrame);
 
 //    // Draw 3D-2D feature matchings
 //    KeyFrame* pKF2;
@@ -222,23 +209,8 @@ void LocalMapping::MapPointCulling()
 void LocalMapping::CreateNewMapPoints()
 {
     // Take neighbor keyframes in covisibility graph
-    vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(2);
 
-//    cout<<"[LocalMapping:238] current frame " << mpCurrentKeyFrame->mnId << " can view frames ";
-//    for(vector<KeyFrame*>::iterator it = vpNeighKFs.begin(); it!=vpNeighKFs.end(); it++){
-//        cout<< (*it)->mnId << " ";
-//    }
-//    cout << endl;
-
-    if (mpMap->MapPointsInMap() == 0 || vpNeighKFs.size() == 0){
-        vector<KeyFrame*> tmpNeighKFs = mpMap->GetAllKeyFrames();
-        for(size_t i = 0; i < tmpNeighKFs.size(); i++){
-            if(mpCurrentKeyFrame->mnId - tmpNeighKFs[i]->mnId < 3){
-                vpNeighKFs.push_back(tmpNeighKFs[i]);
-            }
-        }
-    }
-
+    vector<KeyFrame*> vpNeighKFs = mpMap->GetAllKeyFrames();
     ORBmatcher matcher(0.6,false);
 
     cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
@@ -276,7 +248,7 @@ void LocalMapping::CreateNewMapPoints()
 
         //        if(ratioBaselineDepth<0.01)
         //            continue;
-        if(baseline<0.02)
+        if(baseline<0.4)
             continue;
 
         // Compute Fundamental Matrix
@@ -286,7 +258,7 @@ void LocalMapping::CreateNewMapPoints()
         vector<cv::KeyPoint> vMatchedKeysUn1;
         vector<cv::KeyPoint> vMatchedKeysUn2;
         vector<pair<size_t,size_t> > vMatchedIndices;
-        int nmatches = matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
+        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
 //        cout << "[mapping:295] current frame " << mpCurrentKeyFrame->mnId << " has " << nmatches << " matches with frame " << pKF2->mnId <<  endl;
         //mpFramePub->DrawFeatureMatches(mpCurrentKeyFrame, pKF2, vMatchedKeysUn1,vMatchedKeysUn2);
 
@@ -321,7 +293,7 @@ void LocalMapping::CreateNewMapPoints()
             cv::Mat ray2 = Rwc2*xn2;
             const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
 
-            if(cosParallaxRays<0 || cosParallaxRays>0.9998)
+            if(cosParallaxRays<0 || cosParallaxRays>0.98)
                 continue;
 
             // Linear Triangulation Method
@@ -411,6 +383,73 @@ void LocalMapping::CreateNewMapPoints()
             mpCurrentKeyFrame->UpdateConnections();
         }
 //        cout << "[LocalMapping:420] current frame " << mpCurrentKeyFrame->mnId << " triangulated " << counter << " new pts with frame " << pKF2->mnId<< endl;
+    }
+}
+
+void LocalMapping::FindFeatureCorrespondences()
+{
+    if(mpCurrentKeyFrame->mnId == 0){
+        mpLastKeyFrame = mpCurrentKeyFrame;
+        mlRecentKeyFrames.push_back(mpLastKeyFrame);
+        return;
+    }
+    //DO feature matching with previous frame;
+    ORBmatcher matcher(0.6,false);
+    cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, mpLastKeyFrame);
+    //--Search matches that fulfil epipolar constraint
+    vector<cv::KeyPoint> vMatchedKeysUn1;
+    vector<cv::KeyPoint> vMatchedKeysUn2;
+    vector<pair<size_t,size_t> > vMatchedIndices;
+    matcher.SearchForTriangulation(mpCurrentKeyFrame,mpLastKeyFrame,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
+
+    for(size_t ikp=0, iendkp=vMatchedKeysUn1.size(); ikp<iendkp; ikp++)
+    {
+        const int idx1 = vMatchedIndices[ikp].first;
+        const int idx2 = vMatchedIndices[ikp].second;
+        // if there is already a map point associated to matched feature, update it to observe current KF
+        MapPoint* pMP = mpLastKeyFrame->GetMapPoint(idx2);
+        if(pMP){
+//            cout << "Existing MP" << endl;
+            pMP->AddObservation(mpCurrentKeyFrame, idx1);
+            pMP->ComputeDistinctiveDescriptors();
+            mpCurrentKeyFrame->AddMapPoint(pMP, idx1);
+            mpCurrentKeyFrame->UpdateConnections();
+        }
+        else{
+            // if there is no map point corresponding to current feature match, add it
+            cv::Mat x3D = cv::Mat::eye(3,1,CV_32F);
+            x3D.at<float>(2) = 1.0;
+            MapPoint* pMPi = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
+            pMPi->AddObservation(mpCurrentKeyFrame, idx1);
+            pMPi->AddObservation(mpLastKeyFrame, idx2);
+            mpCurrentKeyFrame->AddMapPoint(pMPi,idx1);
+            mpLastKeyFrame->AddMapPoint(pMPi,idx2);
+            pMPi->ComputeDistinctiveDescriptors();
+            mpMap->AddMapPoint(pMPi);
+            mpCurrentKeyFrame->UpdateConnections();
+        }
+    }
+
+    //Update last keyframe
+    mpLastKeyFrame = mpCurrentKeyFrame;
+    mlRecentKeyFrames.push_back(mpLastKeyFrame);
+}
+
+void LocalMapping::ErasePoorConnectedMapPts()
+{
+    if(mpCurrentKeyFrame->mnId < 3) {
+        return;
+    }
+    KeyFrame* pKF = mlRecentKeyFrames.front();
+    mlRecentKeyFrames.pop_front();
+    set<MapPoint*> vpMapPoints = pKF->GetMapPoints();
+    for(set<MapPoint*>::iterator sit=vpMapPoints.begin(); sit!=vpMapPoints.end(); sit++){
+        if((*sit)->GetObservations().size() < 3){
+            //erase it
+            pKF->EraseMapPointMatch((*sit));
+            mpMap->EraseMapPoint((*sit));
+            (*sit)->SetBadFlag();
+        }
     }
 }
 

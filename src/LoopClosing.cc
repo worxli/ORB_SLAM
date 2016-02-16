@@ -61,7 +61,6 @@ void LoopClosing::Run()
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
-//        double t_begin = ros::Time::now().toSec();
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
@@ -74,7 +73,6 @@ void LoopClosing::Run()
                    CorrectLoop();
                }
             }
-//        cout << "[time] LoopClosing run total " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<< endl << endl;
         }
 
         ResetIfRequested();
@@ -98,7 +96,6 @@ bool LoopClosing::CheckNewKeyFrames()
 
 bool LoopClosing::DetectLoop()
 {
-    double t_begin = ros::Time::now().toSec();
     {
         boost::mutex::scoped_lock lock(mMutexLoopQueue);
         mpCurrentKF = mlpLoopKeyFrameQueue.front();
@@ -112,7 +109,6 @@ bool LoopClosing::DetectLoop()
     {
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
-//        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
         return false;
     }
 
@@ -136,21 +132,11 @@ bool LoopClosing::DetectLoop()
     }
 
     // Query the database imposing the minimum score
-    cout << "[LoopClosure:139] minScore " << minScore << endl;
-
     vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
-
-    cout << "[LoopClosure:143] current KF " << mpCurrentKF->mnId << " has candidates ";
-    for(int i = 0; i < vpCandidateKFs.size(); i++){
-        cout << vpCandidateKFs[i]->mnId << " ";
-    }
-    cout << endl;
 
     // If there are no loop candidates, just add new keyframe and return false
     if(vpCandidateKFs.empty())
     {
-//        cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
-
         mpKeyFrameDB->add(mpCurrentKF);
         mvConsistentGroups.clear();
         mpCurrentKF->SetErase();
@@ -218,7 +204,6 @@ bool LoopClosing::DetectLoop()
 
     // Update Covisibility Consistent Groups
     mvConsistentGroups = vCurrentConsistentGroups;
-//    cout << "[time] LoopClosing run LoopD " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
 
     // Add Current Keyframe to database
     mpKeyFrameDB->add(mpCurrentKF);
@@ -240,8 +225,6 @@ bool LoopClosing::DetectLoop()
 bool LoopClosing::ComputeSim3()
 {
     // For each consistent loop candidate we try to compute a Sim3
-    double t_begin = ros::Time::now().toSec();
-
     const int nInitialCandidates = mvpEnoughConsistentCandidates.size();
 
     // We compute first ORB matches for each candidate
@@ -273,9 +256,9 @@ bool LoopClosing::ComputeSim3()
         }
 
         int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-
         cout << "[LoopClosure:277] nmatches " << nmatches << endl;
-        if(nmatches<10)
+
+        if(nmatches<20)
         {
             vbDiscarded[i] = true;
             continue;
@@ -302,23 +285,44 @@ bool LoopClosing::ComputeSim3()
             if(vbDiscarded[i])
                 continue;
             KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
+            cout << "[LoopClosure:288] matched KF id: " << pKF->mnId << endl;
+            // Triangulate matched feature points only for efficiency
+            vector<bool> vbMatched1; vbMatched1.resize(mpCurrentKF->GetMapPointMatches().size(), false);
+            vector<bool> vbMatched2; vbMatched2.resize(pKF->GetMapPointMatches().size(), false);
+            vector<MapPoint*>vpMapPointMatches = vvpMapPointMatches[i];
+            for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
+                if(mpCurrentKF->GetMapPoint(j) == NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
+                if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
 
-            Optimizer::LocalBundleAdjustment(mpCurrentKF);
-            Optimizer::LocalBundleAdjustment(pKF);
+                int idx1 = j;
+                int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF);
+
+                vbMatched1[idx1] = true;
+                vbMatched2[idx2] = true;
+            }
+
+              DoLocalTriangulations(mpCurrentKF, vbMatched1);
+
+//            DoLocalTriangulations(pKF, vbMatched2);
+
+//            Optimizer::LocalBundleAdjustment(mpCurrentKF);
+//            Optimizer::LocalBundleAdjustment(pKF);
 
             // DEBUG... Draw feature matching results
                 vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
                 vector<MapPoint*>vpMapPoints = vvpMapPointMatches[i];
-                cout<<"vpMapPoints size "<< vpMapPoints.size() <<endl;
-                for(int j = 0; j < vpMapPoints.size(); j++){
-                    if (vpMapPoints[j] == NULL) continue;
-                    int idx1 = j;
-                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
-                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
-                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
 
-                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; ";
-                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
+                for(unsigned int j = 0; j < vpMapPoints.size(); j++){
+                    if(mpCurrentKF->GetMapPoint(j)==NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
+//                    if(vpMapPoints[j] == NULL || vpMapPoints[j]->isBad()) continue;
+
+                    int idx1 = j;
+//                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
+                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
+//                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
+
+                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; " << endl;
+//                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
                 }
                 cout<< endl;
                 if(matchedKeyPt2.size() != 0){
@@ -341,10 +345,12 @@ bool LoopClosing::ComputeSim3()
                 vbDiscarded[i]=true;
                 nCandidates--;
             }
-
+nCandidates--;
+continue;
             // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
             if(!Scm.empty())
             {
+                cout << "[LoopClosure:349] Scm is not empty"<<endl;
                 vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
                 for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
                 {
@@ -383,8 +389,6 @@ bool LoopClosing::ComputeSim3()
         for(int i=0; i<nInitialCandidates; i++)
              mvpEnoughConsistentCandidates[i]->SetErase();
         mpCurrentKF->SetErase();
-        cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
-        cout << "[LoopClosing:352] bMatch false" << endl;
         return false;
     }
 
@@ -421,8 +425,6 @@ bool LoopClosing::ComputeSim3()
             nTotalMatches++;
     }
 
-    cout << "[time] LoopClosing run SimComp " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
-    cout << "LoopClosing:390 nTotalMatches " << nTotalMatches << endl;
     if(nTotalMatches>=40)
     {
         for(int i=0; i<nInitialCandidates; i++)
@@ -438,6 +440,186 @@ bool LoopClosing::ComputeSim3()
         return false;
     }
 
+}
+
+void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
+{
+    //Triangulate only matched map points
+
+    const float fx = pKF->fx;
+    const float fy = pKF->fy;
+    const float cx = pKF->cx;
+    const float cy = pKF->cy;
+    const float invfx = 1.0f/fx;
+    const float invfy = 1.0f/fy;
+
+    vector<MapPoint*> vMapPoints = pKF->GetMapPointMatches();
+    for(size_t i = 0; i < vMapPoints.size(); i++){
+        MapPoint* pMP = vMapPoints[i];
+        if(!vbMatched[i]){
+            if(pMP!=NULL) pMP->SetBadFlag();
+            continue;
+        }
+
+        map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        // Do conversion for efficient computations
+        vector<KeyFrame*> vKeyFrames;
+        vector<size_t> vFeatureIndex;
+        for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        {
+            KeyFrame* pKFi = mit->first;
+            int idx = mit->second; // feature index in current keyFrame
+            vKeyFrames.push_back(pKFi);
+            vFeatureIndex.push_back(idx);
+        }
+        // Check the best parallax score and find the frames corresponding to the smallest parallax score
+        float minParallaxRays = 1.0;
+        int index_KF1, index_KF2, index_Feature1, index_Feature2;
+        for (size_t j = 0 ; j < vKeyFrames.size(); j++){
+            for(size_t k = j+1; k < vKeyFrames.size(); k++){
+                KeyFrame* pKF1 = vKeyFrames[j];
+                KeyFrame* pKF2 = vKeyFrames[k];
+                int idx1 = vFeatureIndex[j];
+                int idx2 = vFeatureIndex[k];
+
+                const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(idx1);
+                const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(idx2);
+
+                // Check parallax between rays
+                cv::Mat Rcw1 = pKF1->GetRotation();
+                cv::Mat Rwc1 = Rcw1.t();
+
+                cv::Mat Rcw2 = pKF2->GetRotation();
+                cv::Mat Rwc2 = Rcw2.t();
+
+                cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx)*invfx, (kp1.pt.y-cy)*invfy, 1.0 );
+                cv::Mat ray1 = Rwc1*xn1;
+                cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx)*invfx, (kp2.pt.y-cy)*invfy, 1.0 );
+                cv::Mat ray2 = Rwc2*xn2;
+                const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
+
+                if (cosParallaxRays < minParallaxRays){
+                    minParallaxRays = cosParallaxRays;
+                    index_KF1 = j;
+                    index_KF2 = k;
+                    index_Feature1 = idx1;
+                    index_Feature2 = idx2;
+                }
+            }
+        }
+        if (minParallaxRays > 0.9998) {
+            pMP->SetBadFlag();
+            continue;
+        }
+//        cout << "[LoopClosing:522] minParallaxRays " << minParallaxRays << endl;
+        // Do triangulation
+        KeyFrame* pKF1 = vKeyFrames[index_KF1];
+        KeyFrame* pKF2 = vKeyFrames[index_KF2];
+        const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(index_Feature1);
+        const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(index_Feature2);
+
+        cv::Mat Rcw1 = pKF1->GetRotation();
+        cv::Mat tcw1 = pKF1->GetTranslation();
+        cv::Mat Tcw1(3,4,CV_32F);
+        Rcw1.copyTo(Tcw1.colRange(0,3));
+        tcw1.copyTo(Tcw1.col(3));
+        cv::Mat Ow1 = pKF1->GetCameraCenter();
+        const float ratioFactor = 1.5f*pKF1->GetScaleFactor();
+
+        cv::Mat Rcw2 = pKF2->GetRotation();
+        cv::Mat tcw2 = pKF2->GetTranslation();
+        cv::Mat Tcw2(3,4,CV_32F);
+        Rcw2.copyTo(Tcw2.colRange(0,3));
+        tcw2.copyTo(Tcw2.col(3));
+        cv::Mat Ow2 = pKF2->GetCameraCenter();
+
+        cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx)*invfx, (kp1.pt.y-cy)*invfy, 1.0 );
+        cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx)*invfx, (kp2.pt.y-cy)*invfy, 1.0 );
+
+        // Linear Triangulation Method
+        cv::Mat A(4,4,CV_32F);
+        A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
+        A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
+        A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
+        A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
+
+        cv::Mat w,u,vt;
+        cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
+
+        cv::Mat x3D = vt.row(3).t();
+
+        if(x3D.at<float>(3)==0){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        // Euclidean coordinates
+        x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+        cv::Mat x3Dt = x3D.t();
+
+        //Check triangulation in front of cameras
+        float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
+        if(z1<=0){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        float z2 = Rcw2.row(2).dot(x3Dt)+tcw2.at<float>(2);
+        if(z2<=0){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        //Check reprojection error in first keyframe
+        float sigmaSquare1 = pKF1->GetSigma2(kp1.octave);
+        float x1 = Rcw1.row(0).dot(x3Dt)+tcw1.at<float>(0);
+        float y1 = Rcw1.row(1).dot(x3Dt)+tcw1.at<float>(1);
+        float invz1 = 1.0/z1;
+        float u1 = fx*x1*invz1+cx;
+        float v1 = fy*y1*invz1+cy;
+        float errX1 = u1 - kp1.pt.x;
+        float errY1 = v1 - kp1.pt.y;
+        if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        //Check reprojection error in second keyframe
+        float sigmaSquare2 = pKF2->GetSigma2(kp2.octave);
+        float x2 = Rcw2.row(0).dot(x3Dt)+tcw2.at<float>(0);
+        float y2 = Rcw2.row(1).dot(x3Dt)+tcw2.at<float>(1);
+        float invz2 = 1.0/z2;
+        float u2 = fx*x2*invz2+cx;
+        float v2 = fy*y2*invz2+cy;
+        float errX2 = u2 - kp2.pt.x;
+        float errY2 = v2 - kp2.pt.y;
+        if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2){
+            pMP->SetBadFlag();
+            continue;
+        }
+        //Check scale consistency
+        cv::Mat normal1 = x3D-Ow1;
+        float dist1 = cv::norm(normal1);
+
+        cv::Mat normal2 = x3D-Ow2;
+        float dist2 = cv::norm(normal2);
+
+        if(dist1==0 || dist2==0){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        float ratioDist = dist1/dist2;
+        float ratioOctave = pKF1->GetScaleFactor(kp1.octave)/pKF2->GetScaleFactor(kp2.octave);
+        if(ratioDist*ratioFactor<ratioOctave || ratioDist>ratioOctave*ratioFactor){
+            pMP->SetBadFlag();
+            continue;
+        }
+
+        // Triangulation is succesfull
+        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+        pMP->SetWorldPos(x3D);
+    }
 }
 
 void LoopClosing::CorrectLoop()

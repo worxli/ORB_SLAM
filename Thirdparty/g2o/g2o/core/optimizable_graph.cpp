@@ -263,31 +263,24 @@ namespace g2o {
 
   bool OptimizableGraph::addEdge(HyperGraph::Edge* e_)
   {
-      cout<<"optimizable_graph:addEdge "<<endl;
-
     OptimizableGraph::Edge* e = dynamic_cast<OptimizableGraph::Edge*>(e_);
     assert(e && "Edge does not inherit from OptimizableGraph::Edge");
     if (! e)
       return false;
-    cout<<"Optimizable_graph:addEdge:272" <<endl;
 
     bool eresult = HyperGraph::addEdge(e);
 
-    cout<<"Optimizable_graph:addEdge:276" <<endl;
     if (! eresult)
       return false;
-    cout<<"Optimizable_graph:addEdge:279" <<endl;
     e->_internalId = _nextEdgeId++;
     if (! e->resolveParameters()){
       cerr << __FUNCTION__ << ": FATAL, cannot resolve parameters for edge " << e << endl;
       return false;
     }
-    cout<<"Optimizable_graph:addEdge:285" <<endl;
     if (! e->resolveCaches()){
       cerr << __FUNCTION__ << ": FATAL, cannot resolve caches for edge " << e << endl;
       return false;
     } 
-    cout<<"Optimizable_graph:addEdge:290" <<endl;
     _jacobianWorkspace.updateSize(e);
 
     return true;

@@ -78,6 +78,8 @@ protected:
     void ProcessNewKeyFrame();
     int  AssociateLocalMapPts2CurrentKF();
     void CreateNewMapPoints();
+    void FindFeatureCorrespondences();
+    void ErasePoorConnectedMapPts();
 
     void MapPointCulling();
     void SearchInNeighbors();
@@ -100,8 +102,10 @@ protected:
     Tracking* mpTracker;
 
     std::list<KeyFrame*> mlNewKeyFrames;
+    std::list<KeyFrame*> mlRecentKeyFrames;
 
     KeyFrame* mpCurrentKeyFrame;
+    KeyFrame* mpLastKeyFrame;
 
     std::vector<MapPoint*> mlpRecentAddedMapPoints;
 

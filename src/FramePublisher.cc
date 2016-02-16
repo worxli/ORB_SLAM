@@ -73,16 +73,18 @@ void FramePublisher::DrawFeatureMatches(KeyFrame *pKF1, KeyFrame *pKF2, vector<c
         cv::line(im, kp1.pt, kp2.pt, cv::Scalar(0,0,255), 1);
     }
 
-//    vector<cv::KeyPoint> kp = pKF1->GetKeyPoints();
-//    for(size_t i = 0 ; i < kp.size(); i++){
-//        cv::circle(im,kp[i].pt,2,cv::Scalar(255,255,0),-1);
-//    }
+    vector<cv::KeyPoint> kp = pKF1->GetKeyPoints();
+    for(size_t i = 0 ; i < kp.size(); i++){
+        if(pKF1->GetMapPoint(i) == NULL || pKF1->GetMapPoint(i)->isBad()) continue;
+        cv::circle(im,kp[i].pt,2,cv::Scalar(255,255,0),-1);
+    }
 
-//    vector<cv::KeyPoint> kp2 = pKF2->GetKeyPoints();
-//    for(size_t i = 0 ; i < kp2.size(); i++){
-//        kp2[i].pt.x += imageWidth;
-//        cv::circle(im,kp2[i].pt,2,cv::Scalar(255,255,0),-1);
-//    }
+    vector<cv::KeyPoint> kp2 = pKF2->GetKeyPoints();
+    for(size_t i = 0 ; i < kp2.size(); i++){
+        if(pKF2->GetMapPoint(i) == NULL || pKF2->GetMapPoint(i)->isBad()) continue;
+        kp2[i].pt.x += imageWidth;
+        cv::circle(im,kp2[i].pt,2,cv::Scalar(255,255,0),-1);
+    }
 
     cv_bridge::CvImage rosImage;
     rosImage.image = im.clone();
