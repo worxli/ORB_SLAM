@@ -284,37 +284,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     return nInitialCorrespondences-nBad;
 }
 
-void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
+void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
 {    
-    // Local KeyFrames: First Breath Search from Current Keyframe
-    list<KeyFrame*> lLocalKeyFrames;
-
-    lLocalKeyFrames.push_back(pKF);
-    pKF->mnBALocalForKF = pKF->mnId;
-
-    vector<KeyFrame*> vNeighKFs = pKF->GetVectorCovisibleKeyFrames();
-    for(int i=0, iend=vNeighKFs.size(); i<iend; i++)
-    {
-        KeyFrame* pKFi = vNeighKFs[i];
-        if(!pKFi->isBad())
-            lLocalKeyFrames.push_back(pKFi);
-    }
-//    cout << "[Optimizer:303] lLocalKeyFrames size: " << lLocalKeyFrames.size() << endl;
-
-    // Local MapPoints seen in Local KeyFrames
-    list<MapPoint*> lLocalMapPoints;
-    vector<MapPoint*> vpMPs = pKF->GetMapPointMatches();
-    for(vector<MapPoint*>::iterator vit=vpMPs.begin(), vend=vpMPs.end(); vit!=vend; vit++)
-    {
-        MapPoint* pMP = *vit;
-        if(pMP){
-            if(!pMP->isBad()){
-                lLocalMapPoints.push_back(pMP);
-            }
-        }
-    }
-//    cout << "[Optimizer:316] lLocalMapPoints size " << lLocalMapPoints.size() << endl;
-    // Setup optimizer
+    //set up optimizer
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolverX::LinearSolverType * linearSolver;
 
@@ -325,10 +297,27 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
 
-    if(pbStopFlag)
-        optimizer.setForceStopFlag(pbStopFlag);
-
     long unsigned int maxKFid = 0;
+
+    // Get keyframes and map points
+    list<KeyFrame*> lLocalKeyFrames;
+    set<KeyFrame*>  sLocalKeyFrames;
+    list<MapPoint*> lLocalMapPoints;
+    vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
+    for(size_t i = 0; i < vpMapPoints.size(); i++){
+        if(!vbMathced[i]) continue;
+        lLocalMapPoints.push_back(vpMapPoints[i]);
+        MapPoint* pMP = vpMapPoints[i];
+        map<KeyFrame*,size_t> observations = pMP->GetObservations();
+
+        for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+        {
+            KeyFrame* pKFi = mit->first;
+            if (sLocalKeyFrames.count(pKFi)) continue;
+            sLocalKeyFrames.insert(pKFi);
+            lLocalKeyFrames.push_back(pKFi);
+        }
+    }
 
     // SET LOCAL KEYFRAME VERTICES
     for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
@@ -363,21 +352,18 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
     {
         MapPoint* pMP = *lit;
+
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
         int id = pMP->mnId+maxKFid+1;
         vPoint->setId(id);
-        vPoint->setMarginalized(false);
         optimizer.addVertex(vPoint);
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         //SET EDGES
-//        cout<<pKF->mnId <<": " << id << " ";
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
-//            cout << pKFi->mnId << " ";
-
             bool bKFinLocalList = false;
             for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++){
                 if (pKFi->mnId == (*lit)->mnId){
@@ -416,11 +402,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 vpMapPointEdge.push_back(pMP);
             }
         }
-//        cout<<endl;
     }
-    return;
     optimizer.initializeOptimization();
-    optimizer.optimize(5);
+    optimizer.optimize(10);
 
     // Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
@@ -458,7 +442,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-        pMP->UpdateNormalAndDepth();
     }
 
     // Optimize again without the outliers
@@ -504,7 +487,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-        pMP->UpdateNormalAndDepth();
     }
 }
 

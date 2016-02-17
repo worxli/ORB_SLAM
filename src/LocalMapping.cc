@@ -59,7 +59,7 @@ void LocalMapping::Run()
 
             FindFeatureCorrespondences();
 
-//            ErasePoorConnectedMapPts();
+            ErasePoorConnectedMapPts();
 
             mpMap->AddKeyFrame(mpCurrentKeyFrame);
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);

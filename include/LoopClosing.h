@@ -75,7 +75,7 @@ protected:
 
     bool ComputeSim3();
 
-    void DoLocalTriangulations(KeyFrame* pKF, vector<bool>vbMatched);
+    void DoLocalTriangulations(KeyFrame* pKF, vector<bool> &vbMatched);
 
     void SearchAndFuse(KeyFrameAndPose &CorrectedPosesMap);
 
@@ -94,6 +94,7 @@ protected:
     LocalMapping *mpLocalMapper;
 
     std::list<KeyFrame*> mlpLoopKeyFrameQueue;
+    std::set<pair<KeyFrame*, KeyFrame*> > msMatchedLoopPairs;//<KF, LoopCandidateKF>
 
     boost::mutex mMutexLoopQueue;
 

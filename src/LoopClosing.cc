@@ -64,15 +64,15 @@ void LoopClosing::Run()
         if(CheckNewKeyFrames())
         {
             // Detect loop candidates and check covisibility consistency
-            if(DetectLoop())
-            {
+            DetectLoop();
+
                // Compute similarity transformation [sR|t]
                if(ComputeSim3())
                {
                    // Perform loop fusion and pose graph optimization
                    CorrectLoop();
                }
-            }
+
         }
 
         ResetIfRequested();
@@ -227,222 +227,321 @@ bool LoopClosing::ComputeSim3()
     // For each consistent loop candidate we try to compute a Sim3
     const int nInitialCandidates = mvpEnoughConsistentCandidates.size();
 
-    // We compute first ORB matches for each candidate
-    // If enough matches are found, we setup a Sim3Solver
-    ORBmatcher matcher(0.75,true);
-
-    vector<Sim3Solver*> vpSim3Solvers;
-    vpSim3Solvers.resize(nInitialCandidates);
-
-    vector<vector<MapPoint*> > vvpMapPointMatches;
-    vvpMapPointMatches.resize(nInitialCandidates);
-
-    vector<bool> vbDiscarded;
-    vbDiscarded.resize(nInitialCandidates);
-
-    int nCandidates=0; //candidates with enough matches
-
-    for(int i=0; i<nInitialCandidates; i++)
-    {
-        KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
-
-        // avoid that local mapping erase it while it is being processed in this thread
-        pKF->SetNotErase();
-
-        if(pKF->isBad())
-        {
-            vbDiscarded[i] = true;
-            continue;
-        }
-
-        int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-        cout << "[LoopClosure:277] nmatches " << nmatches << endl;
-
-        if(nmatches<20)
-        {
-            vbDiscarded[i] = true;
-            continue;
-        }
-        else
-        {
-            Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-            pSolver->SetRansacParameters(0.99,20,300);
-            vpSim3Solvers[i] = pSolver;
-        }
-
-        nCandidates++;
+    for(int i = 0; i < nInitialCandidates; i++){
+        pair<KeyFrame*, KeyFrame*> pairs(mpCurrentKF, mvpEnoughConsistentCandidates[i]);
+        msMatchedLoopPairs.insert(pairs);
+        cout<<"[LoopClosure] insert new frame pairs" << mpCurrentKF->mnId << " " << mvpEnoughConsistentCandidates[i]->mnId << endl;
     }
+    mvpEnoughConsistentCandidates.clear();
 
-    bool bMatch = false;
-    cout << "[LoopClosure:287] nCandidates " << nCandidates << endl;
+    ORBmatcher matcher(0.75,true);
+    vector<pair<KeyFrame*, KeyFrame*> > vpMarkedDelete;
+    for(set<pair<KeyFrame*, KeyFrame*> >::iterator sit=msMatchedLoopPairs.begin(), send=msMatchedLoopPairs.end(); sit!=send; sit++){
+        pair<KeyFrame*, KeyFrame*> pairs = (*sit);
+        KeyFrame* pKF_delayedCurrent = pairs.first;
+        cout << "[LoopClosing:241] frame pair " << mpCurrentKF->mnId << " "<< pKF_delayedCurrent->mnId << endl;
+        if (mpCurrentKF->mnId - pKF_delayedCurrent->mnId < 5) continue;
+        // enough future KeyFrame accumulated, check the matching and computeSim3
+        KeyFrame* pKF_loopCandidate = pairs.second;
+        vpMarkedDelete.push_back(pairs); // delete it from the buffer
+        // do feature matching
+        vector<MapPoint*> vpMapPointMatches;
+        int nmatches = matcher.SearchByBoW(pKF_delayedCurrent,pKF_loopCandidate, vpMapPointMatches);
+        cout << "[LoopClosure:277] nmatches " << nmatches << endl;
+        if(nmatches<20) continue;
 
-    // Perform alternatively RANSAC iterations for each candidate
-    // until one is succesful or all fail
-    while(nCandidates>0 && !bMatch)
-    {
-        for(int i=0; i<nInitialCandidates; i++)
-        {
-            if(vbDiscarded[i])
-                continue;
-            KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
-            cout << "[LoopClosure:288] matched KF id: " << pKF->mnId << endl;
-            // Triangulate matched feature points only for efficiency
-            vector<bool> vbMatched1; vbMatched1.resize(mpCurrentKF->GetMapPointMatches().size(), false);
-            vector<bool> vbMatched2; vbMatched2.resize(pKF->GetMapPointMatches().size(), false);
-            vector<MapPoint*>vpMapPointMatches = vvpMapPointMatches[i];
+        // if have enough matches, do triangulations
+        // Triangulate matched feature points only for efficiency
+        vector<bool> vbMatched1; vbMatched1.resize(pKF_delayedCurrent->GetMapPointMatches().size(), false);
+        vector<bool> vbMatched2; vbMatched2.resize(pKF_loopCandidate->GetMapPointMatches().size(), false);
+        for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
+            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
+            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+
+            int idx1 = j;
+            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+
+            vbMatched1[idx1] = true;
+            vbMatched2[idx2] = true;
+            cout << idx2 << " ";
+        }
+        cout << endl;
+        for(unsigned int j = 0; j < vbMatched1.size(); j++){
+            if(vbMatched1[j]) cout << j << " ";
+        }
+        cout << endl;
+
+
+        DoLocalTriangulations(pKF_delayedCurrent, vbMatched1);
+        cout<< "[LoopClosure:269] 1st triangulation completed" << endl;
+        DoLocalTriangulations(pKF_loopCandidate, vbMatched2);
+        cout<< "[LoopClosure:271] 2nd triangulation completed" << endl;
+        // remove failed triangulated pts
+        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
+            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
+            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+
+            int idx1 = j;
+            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+
+            if(vbMatched1[idx1] && vbMatched2[idx2]) continue;
+            vbMatched1[idx1] = false;
+            vbMatched2[idx2] = false;
+        }
+        // Do local BA to refine the map points.
+        Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
+        Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
+
+        // DEBUG... Draw feature matching results
+            vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
             for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
-                if(mpCurrentKF->GetMapPoint(j) == NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
+                if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
                 if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
 
                 int idx1 = j;
-                int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF);
+                int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+                if (idx2==-1 || !(vbMatched1[idx1] && vbMatched2[idx2])) continue;
+                matchedKeyPt1.push_back(pKF_delayedCurrent->GetKeyPoint(idx1));
+                matchedKeyPt2.push_back(pKF_loopCandidate->GetKeyPoint(idx2));
 
-                vbMatched1[idx1] = true;
-                vbMatched2[idx2] = true;
+                cout << j << "th mapPoint " << pKF_delayedCurrent->GetMapPoint(idx1)->GetWorldPos() << "; ";
+                    cout << pKF_loopCandidate->GetMapPoint(idx2)->GetWorldPos() << endl;
             }
-
-              DoLocalTriangulations(mpCurrentKF, vbMatched1);
-
-//            DoLocalTriangulations(pKF, vbMatched2);
-
-//            Optimizer::LocalBundleAdjustment(mpCurrentKF);
-//            Optimizer::LocalBundleAdjustment(pKF);
-
-            // DEBUG... Draw feature matching results
-                vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
-                vector<MapPoint*>vpMapPoints = vvpMapPointMatches[i];
-
-                for(unsigned int j = 0; j < vpMapPoints.size(); j++){
-                    if(mpCurrentKF->GetMapPoint(j)==NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
-//                    if(vpMapPoints[j] == NULL || vpMapPoints[j]->isBad()) continue;
-
-                    int idx1 = j;
-//                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
-                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
-//                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
-
-                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; " << endl;
-//                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
-                }
-                cout<< endl;
-                if(matchedKeyPt2.size() != 0){
-                    mpFramePub->DrawFeatureMatches(mpCurrentKF, pKF, matchedKeyPt1, matchedKeyPt2);
-                }
-            //DO Local BA to optimize the map point locations for similarity transformation matrix computation
-
-
-            // Perform 5 Ransac Iterations
-            vector<bool> vbInliers;
-            int nInliers;
-            bool bNoMore;
-
-            Sim3Solver* pSolver = vpSim3Solvers[i];
-            cv::Mat Scm  = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
-
-            // If Ransac reachs max. iterations discard keyframe
-            if(bNoMore)
-            {
-                vbDiscarded[i]=true;
-                nCandidates--;
+            cout<< endl;
+            if(matchedKeyPt2.size() != 0){
+                mpFramePub->DrawFeatureMatches(pKF_delayedCurrent, pKF_loopCandidate, matchedKeyPt1, matchedKeyPt2);
             }
-nCandidates--;
-continue;
-            // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
-            if(!Scm.empty())
-            {
-                cout << "[LoopClosure:349] Scm is not empty"<<endl;
-                vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
-                for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
-                {
-                    if(vbInliers[j])
-                       vpMapPointMatches[j]=vvpMapPointMatches[i][j];
-                }
-
-                cv::Mat R = pSolver->GetEstimatedRotation();
-                cv::Mat t = pSolver->GetEstimatedTranslation();
-                const float s = pSolver->GetEstimatedScale();
-                matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
-
-
-                g2o::Sim3 gScm(Converter::toMatrix3d(R),Converter::toVector3d(t),s);
-                const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10);
-
-                // If optimization is succesful stop ransacs and continue
-                cout << "[LoopClosing:331] nInliers " << nInliers << endl;
-                if(nInliers>=10)
-                {
-                    bMatch = true;
-                    mpMatchedKF = pKF;
-                    g2o::Sim3 gSmw(Converter::toMatrix3d(pKF->GetRotation()),Converter::toVector3d(pKF->GetTranslation()),1.0);
-                    mg2oScw = gScm*gSmw;
-                    mScw = Converter::toCvMat(mg2oScw);
-
-                    mvpCurrentMatchedPoints = vpMapPointMatches;
-                    break;
-                }
-            }
-        }
     }
-
-    if(!bMatch)
-    {
-        for(int i=0; i<nInitialCandidates; i++)
-             mvpEnoughConsistentCandidates[i]->SetErase();
-        mpCurrentKF->SetErase();
-        return false;
+    for(size_t i = 0; i < vpMarkedDelete.size(); i++){
+        msMatchedLoopPairs.erase(vpMarkedDelete[i]);
     }
-
-    // Retrieve MapPoints seen in Loop Keyframe and neighbors
-    vector<KeyFrame*> vpLoopConnectedKFs = mpMatchedKF->GetVectorCovisibleKeyFrames();
-    vpLoopConnectedKFs.push_back(mpMatchedKF);
-    mvpLoopMapPoints.clear();
-    for(vector<KeyFrame*>::iterator vit=vpLoopConnectedKFs.begin(); vit!=vpLoopConnectedKFs.end(); vit++)
-    {
-        KeyFrame* pKF = *vit;
-        vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
-        for(size_t i=0, iend=vpMapPoints.size(); i<iend; i++)
-        {
-            MapPoint* pMP = vpMapPoints[i];
-            if(pMP)
-            {
-                if(!pMP->isBad() && pMP->mnLoopPointForKF!=mpCurrentKF->mnId)
-                {
-                    mvpLoopMapPoints.push_back(pMP);
-                    pMP->mnLoopPointForKF=mpCurrentKF->mnId;
-                }
-            }
-        }
-    }
-
-    // Find more matches projecting with the computed Sim3
-    matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints,10);
-
-    // If enough matches accept Loop
-    int nTotalMatches = 0;
-    for(size_t i=0; i<mvpCurrentMatchedPoints.size(); i++)
-    {
-        if(mvpCurrentMatchedPoints[i])
-            nTotalMatches++;
-    }
-
-    if(nTotalMatches>=40)
-    {
-        for(int i=0; i<nInitialCandidates; i++)
-            if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)
-                mvpEnoughConsistentCandidates[i]->SetErase();
-        return true;
-    }
-    else
-    {
-        for(int i=0; i<nInitialCandidates; i++)
-            mvpEnoughConsistentCandidates[i]->SetErase();
-        mpCurrentKF->SetErase();
-        return false;
-    }
-
+    return false;
 }
 
-void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
+
+
+
+
+
+
+
+
+//    // We compute first ORB matches for each candidate
+//    // If enough matches are found, we setup a Sim3Solver
+//    ORBmatcher matcher(0.75,true);
+
+//    vector<Sim3Solver*> vpSim3Solvers;
+//    vpSim3Solvers.resize(nInitialCandidates);
+
+//    vector<vector<MapPoint*> > vvpMapPointMatches;
+//    vvpMapPointMatches.resize(nInitialCandidates);
+
+//    vector<bool> vbDiscarded;
+//    vbDiscarded.resize(nInitialCandidates);
+
+//    int nCandidates=0; //candidates with enough matches
+
+//    for(int i=0; i<nInitialCandidates; i++)
+//    {
+//        KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
+
+//        // avoid that local mapping erase it while it is being processed in this thread
+//        pKF->SetNotErase();
+
+//        if(pKF->isBad())
+//        {
+//            vbDiscarded[i] = true;
+//            continue;
+//        }
+
+//        int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
+//        cout << "[LoopClosure:277] nmatches " << nmatches << endl;
+
+//        if(nmatches<20)
+//        {
+//            vbDiscarded[i] = true;
+//            continue;
+//        }
+//        else
+//        {
+//            Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i]);
+//            pSolver->SetRansacParameters(0.99,20,300);
+//            vpSim3Solvers[i] = pSolver;
+//        }
+
+//        nCandidates++;
+//    }
+
+//    bool bMatch = false;
+//    cout << "[LoopClosure:287] nCandidates " << nCandidates << endl;
+
+//    // Perform alternatively RANSAC iterations for each candidate
+//    // until one is succesful or all fail
+//    while(nCandidates>0 && !bMatch)
+//    {
+//        for(int i=0; i<nInitialCandidates; i++)
+//        {
+//            if(vbDiscarded[i])
+//                continue;
+//            KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
+//            cout << "[LoopClosure:288] matched KF id: " << pKF->mnId << endl;
+//            // Triangulate matched feature points only for efficiency
+//            vector<bool> vbMatched1; vbMatched1.resize(mpCurrentKF->GetMapPointMatches().size(), false);
+//            vector<bool> vbMatched2; vbMatched2.resize(pKF->GetMapPointMatches().size(), false);
+//            vector<MapPoint*>vpMapPointMatches = vvpMapPointMatches[i];
+//            for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
+//                if(mpCurrentKF->GetMapPoint(j) == NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
+//                if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+
+//                int idx1 = j;
+//                int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF);
+
+//                vbMatched1[idx1] = true;
+//                vbMatched2[idx2] = true;
+//            }
+
+//              DoLocalTriangulations(mpCurrentKF, vbMatched1);
+
+////            DoLocalTriangulations(pKF, vbMatched2);
+
+////            Optimizer::LocalBundleAdjustment(mpCurrentKF);
+////            Optimizer::LocalBundleAdjustment(pKF);
+
+//            // DEBUG... Draw feature matching results
+//                vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
+//                vector<MapPoint*>vpMapPoints = vvpMapPointMatches[i];
+
+//                for(unsigned int j = 0; j < vpMapPoints.size(); j++){
+//                    if(mpCurrentKF->GetMapPoint(j)==NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
+////                    if(vpMapPoints[j] == NULL || vpMapPoints[j]->isBad()) continue;
+
+//                    int idx1 = j;
+////                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
+//                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
+////                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
+
+//                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; " << endl;
+////                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
+//                }
+//                cout<< endl;
+//                if(matchedKeyPt2.size() != 0){
+//                    mpFramePub->DrawFeatureMatches(mpCurrentKF, pKF, matchedKeyPt1, matchedKeyPt2);
+//                }
+//            //DO Local BA to optimize the map point locations for similarity transformation matrix computation
+
+
+//            // Perform 5 Ransac Iterations
+//            vector<bool> vbInliers;
+//            int nInliers;
+//            bool bNoMore;
+
+//            Sim3Solver* pSolver = vpSim3Solvers[i];
+//            cv::Mat Scm  = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
+
+//            // If Ransac reachs max. iterations discard keyframe
+//            if(bNoMore)
+//            {
+//                vbDiscarded[i]=true;
+//                nCandidates--;
+//            }
+//nCandidates--;
+//continue;
+//            // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
+//            if(!Scm.empty())
+//            {
+//                cout << "[LoopClosure:349] Scm is not empty"<<endl;
+//                vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
+//                for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
+//                {
+//                    if(vbInliers[j])
+//                       vpMapPointMatches[j]=vvpMapPointMatches[i][j];
+//                }
+
+//                cv::Mat R = pSolver->GetEstimatedRotation();
+//                cv::Mat t = pSolver->GetEstimatedTranslation();
+//                const float s = pSolver->GetEstimatedScale();
+//                matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
+
+
+//                g2o::Sim3 gScm(Converter::toMatrix3d(R),Converter::toVector3d(t),s);
+//                const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10);
+
+//                // If optimization is succesful stop ransacs and continue
+//                cout << "[LoopClosing:331] nInliers " << nInliers << endl;
+//                if(nInliers>=10)
+//                {
+//                    bMatch = true;
+//                    mpMatchedKF = pKF;
+//                    g2o::Sim3 gSmw(Converter::toMatrix3d(pKF->GetRotation()),Converter::toVector3d(pKF->GetTranslation()),1.0);
+//                    mg2oScw = gScm*gSmw;
+//                    mScw = Converter::toCvMat(mg2oScw);
+
+//                    mvpCurrentMatchedPoints = vpMapPointMatches;
+//                    break;
+//                }
+//            }
+//        }
+//    }
+
+//    if(!bMatch)
+//    {
+//        for(int i=0; i<nInitialCandidates; i++)
+//             mvpEnoughConsistentCandidates[i]->SetErase();
+//        mpCurrentKF->SetErase();
+//        return false;
+//    }
+
+//    // Retrieve MapPoints seen in Loop Keyframe and neighbors
+//    vector<KeyFrame*> vpLoopConnectedKFs = mpMatchedKF->GetVectorCovisibleKeyFrames();
+//    vpLoopConnectedKFs.push_back(mpMatchedKF);
+//    mvpLoopMapPoints.clear();
+//    for(vector<KeyFrame*>::iterator vit=vpLoopConnectedKFs.begin(); vit!=vpLoopConnectedKFs.end(); vit++)
+//    {
+//        KeyFrame* pKF = *vit;
+//        vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
+//        for(size_t i=0, iend=vpMapPoints.size(); i<iend; i++)
+//        {
+//            MapPoint* pMP = vpMapPoints[i];
+//            if(pMP)
+//            {
+//                if(!pMP->isBad() && pMP->mnLoopPointForKF!=mpCurrentKF->mnId)
+//                {
+//                    mvpLoopMapPoints.push_back(pMP);
+//                    pMP->mnLoopPointForKF=mpCurrentKF->mnId;
+//                }
+//            }
+//        }
+//    }
+
+//    // Find more matches projecting with the computed Sim3
+//    matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints,10);
+
+//    // If enough matches accept Loop
+//    int nTotalMatches = 0;
+//    for(size_t i=0; i<mvpCurrentMatchedPoints.size(); i++)
+//    {
+//        if(mvpCurrentMatchedPoints[i])
+//            nTotalMatches++;
+//    }
+
+//    if(nTotalMatches>=40)
+//    {
+//        for(int i=0; i<nInitialCandidates; i++)
+//            if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)
+//                mvpEnoughConsistentCandidates[i]->SetErase();
+//        return true;
+//    }
+//    else
+//    {
+//        for(int i=0; i<nInitialCandidates; i++)
+//            mvpEnoughConsistentCandidates[i]->SetErase();
+//        mpCurrentKF->SetErase();
+//        return false;
+//    }
+
+//}
+
+void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
 {
     //Triangulate only matched map points
 
@@ -456,10 +555,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
     vector<MapPoint*> vMapPoints = pKF->GetMapPointMatches();
     for(size_t i = 0; i < vMapPoints.size(); i++){
         MapPoint* pMP = vMapPoints[i];
-        if(!vbMatched[i]){
-            if(pMP!=NULL) pMP->SetBadFlag();
-            continue;
-        }
+        if(!vbMatched[i]) continue;
 
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
         // Do conversion for efficient computations
@@ -508,7 +604,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
             }
         }
         if (minParallaxRays > 0.9998) {
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 //        cout << "[LoopClosing:522] minParallaxRays " << minParallaxRays << endl;
@@ -549,7 +645,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
         cv::Mat x3D = vt.row(3).t();
 
         if(x3D.at<float>(3)==0){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
@@ -560,13 +656,13 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
         //Check triangulation in front of cameras
         float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
         if(z1<=0){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
         float z2 = Rcw2.row(2).dot(x3Dt)+tcw2.at<float>(2);
         if(z2<=0){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
@@ -580,7 +676,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
         float errX1 = u1 - kp1.pt.x;
         float errY1 = v1 - kp1.pt.y;
         if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
@@ -594,7 +690,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
         float errX2 = u2 - kp2.pt.x;
         float errY2 = v2 - kp2.pt.y;
         if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
         //Check scale consistency
@@ -605,19 +701,19 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool>vbMatched)
         float dist2 = cv::norm(normal2);
 
         if(dist1==0 || dist2==0){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
         float ratioDist = dist1/dist2;
         float ratioOctave = pKF1->GetScaleFactor(kp1.octave)/pKF2->GetScaleFactor(kp2.octave);
         if(ratioDist*ratioFactor<ratioOctave || ratioDist>ratioOctave*ratioFactor){
-            pMP->SetBadFlag();
+            vbMatched[i] = false;
             continue;
         }
 
         // Triangulation is succesfull
-        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+//        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
         pMP->SetWorldPos(x3D);
     }
 }

@@ -992,8 +992,8 @@ vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector
 //                    MapPoint* pMP2 = vpMapPoints2[idx2];
 
 //                    // If we have already matched or there is a MapPoint skip
-//                    if(vbMatched2[idx2] || pMP2)
-//                        continue;
+                    if(vbMatched2[idx2])
+                        continue;
 
                     cv::Mat d2 = Descriptors2.row(idx2);
 
