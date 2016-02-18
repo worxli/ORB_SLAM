@@ -534,35 +534,6 @@ void LocalMapping::SearchInNeighbors()
 
 cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 {
-    //    cv::Mat R1w = pKF1->GetRotation();
-    //    cv::Mat t1w = pKF1->GetTranslation();
-    //    cv::Mat R2w = pKF2->GetRotation();
-    //    cv::Mat t2w = pKF2->GetTranslation();
-
-    //    cv::Mat K1 = pKF1->GetCalibrationMatrix();
-    //    cv::Mat K2 = pKF2->GetCalibrationMatrix();
-
-    //    cv::Mat cam1_center = cv::Mat::eye(4,1,CV_32F);
-    //    pKF1->GetCameraCenter().copyTo(cam1_center.rowRange(0,3));
-    //    cam1_center.at<float>(3) = 1;
-
-    //    cv::Mat P1 = cv::Mat::eye(3,4,CV_32F);
-    //    cv::Mat P1_pinv(4,3,CV_32F);
-    //    R1w.copyTo(P1.rowRange(0,3).colRange(0,3));
-    //    t1w.copyTo(P1.rowRange(0,3).col(3));
-    //    P1 = K1*P1;
-    //    invert(P1, P1_pinv, cv::DECOMP_SVD);
-
-
-    //    cv::Mat P2 = cv::Mat::eye(3,4,CV_32F);
-    //    R2w.copyTo(P2.rowRange(0,3).colRange(0,3));
-    //    t2w.copyTo(P2.rowRange(0,3).col(3));
-    //    P2 = K2*P2;
-
-    //    cv::Mat e2x = SkewSymmetricMatrix(P2*cam1_center);
-
-    //    return e2x*P2*P1_pinv;
-
     cv::Mat R1w = pKF1->GetRotation();
     cv::Mat t1w = pKF1->GetTranslation();
     cv::Mat R2w = pKF2->GetRotation();

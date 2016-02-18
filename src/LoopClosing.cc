@@ -611,8 +611,12 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
         // Do triangulation
         KeyFrame* pKF1 = vKeyFrames[index_KF1];
         KeyFrame* pKF2 = vKeyFrames[index_KF2];
-        const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(index_Feature1);
-        const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(index_Feature2);
+        cv::KeyPoint kp1 = pKF1->GetKeyPointUn(index_Feature1);
+        cv::KeyPoint kp2 = pKF2->GetKeyPointUn(index_Feature2);
+
+        cv::Mat E12 = ComputeE12(pKF1, pKF2);
+        cv::Mat K = pKF1->GetCalibrationMatrix();
+        RefineKP4EasyTriag(kp1, kp2, E12, K);
 
         cv::Mat Rcw1 = pKF1->GetRotation();
         cv::Mat tcw1 = pKF1->GetTranslation();
@@ -713,9 +717,87 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
         }
 
         // Triangulation is succesfull
-//        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
         pMP->SetWorldPos(x3D);
     }
+}
+
+void LoopClosing::RefineKP4EasyTriag(cv::KeyPoint& x1, cv::KeyPoint& x2, const cv::Mat &E12, const cv::Mat &K){
+    // Algorithm refer to "Triangulation Made Easy" CVPR 2010
+    // normalize x1 and x2
+    //TODO : Delete cout
+//    cout << "[LoopClosing:728] K = " << K << endl;
+    cv::Mat _x1 = cv::Mat::eye(3,1,CV_32F);
+    _x1.at<float>(0) = x1.pt.x;
+    _x1.at<float>(1) = x1.pt.y;
+    _x1.at<float>(2) = 1.0;
+//    cout << "[LoopClosing:733] _x1 = " << _x1 << endl;
+    _x1 = K.inv()*_x1;
+
+    cv::Mat _x2 = cv::Mat::eye(3,1,CV_32F);
+    _x2.at<float>(0) = x2.pt.x;
+    _x2.at<float>(1) = x2.pt.y;
+    _x2.at<float>(2) = 1.0;
+    _x2 = K.inv()*_x2;
+//    cout << "[Loopclosing:739] _x1 = " << _x1 << "; _x2 = " << _x2 << endl;
+    cv::Mat S = cv::Mat::eye(2,3,CV_32F);
+//    cout << "[LoopClosing:741] S = " << S << endl;
+    cv::Mat n = S*E12*_x2; // 2 x 1
+    cv::Mat E_delta = S*E12*S.t();
+    cv::Mat n_prime = S*E12.t()*_x1;
+    cv::Mat a_Mat = n.t()*E_delta*n_prime; float a = a_Mat.at<float>(0);
+    cv::Mat b_Mat = 0.5*(n.t()*n + n_prime.t()*n_prime); float b = b_Mat.at<float>(0);
+    cv::Mat c_Mat = _x1.t()*E12*_x2; float c = c_Mat.at<float>(0);
+    float d = sqrt(b*b-a*c);
+    float lamda = (c/(b+d));
+    cv::Mat delta_x1 = lamda*n;
+    cv::Mat delta_x2 = lamda*n_prime;
+//    cout << "[LoopClosing:752] delta_x12 " << delta_x1 << " " << delta_x2 << endl;
+    n = n - E_delta*delta_x2;
+    n_prime = n_prime - E_delta.t()*delta_x1;
+//    cout << "[LoopClosing:757] delta_x12 " << delta_x1 << " " << delta_x2 << endl;
+    cv::Mat coeff1_Mat = (delta_x1.t()*n)/(n.t()*n); float coeff1 = coeff1_Mat.at<float>(0);
+    delta_x1 = (coeff1)*n;
+
+    cv::Mat coeff2_Mat = (delta_x2.t()*n_prime)/(n_prime.t()*n_prime); float coeff2 = coeff2_Mat.at<float>(0);
+    delta_x2 = (coeff2)*n_prime;
+
+//    cout << "[LoopClosing:761] delta_x12 " << delta_x1 << " " << delta_x2 << endl;
+    _x1 -= S.t()*delta_x1;
+    _x2 -= S.t()*delta_x2;
+
+    _x1 = K*_x1;
+    _x2 = K*_x2;
+
+    x1.pt.x = _x1.at<float>(0);
+    x1.pt.y = _x1.at<float>(1);
+
+    x2.pt.x = _x2.at<float>(0);
+    x2.pt.y = _x2.at<float>(1);
+//    cout << "[LoopClosing:770] " << x1.pt << endl;
+//    cout << "[LoopClosing:771] " << x2.pt << endl;
+}
+
+cv::Mat LoopClosing::SkewSymmetricMatrix(const cv::Mat &v)
+{
+    return (cv::Mat_<float>(3,3) <<             0, -v.at<float>(2), v.at<float>(1),
+            v.at<float>(2),               0,-v.at<float>(0),
+            -v.at<float>(1),  v.at<float>(0),              0);
+}
+
+cv::Mat LoopClosing::ComputeE12(KeyFrame *&pKF1, KeyFrame *&pKF2)
+{
+    cv::Mat R1w = pKF1->GetRotation();
+    cv::Mat t1w = pKF1->GetTranslation();
+    cv::Mat R2w = pKF2->GetRotation();
+    cv::Mat t2w = pKF2->GetTranslation();
+
+    cv::Mat R12 = R1w*R2w.t();
+    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
+
+    cv::Mat t12x = SkewSymmetricMatrix(t12);
+
+    return t12x*R12;
 }
 
 void LoopClosing::CorrectLoop()

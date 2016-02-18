@@ -190,6 +190,44 @@ public:
   double fx, fy, cx, cy;
 };
 
+class G2O_TYPES_SBA_API EdgeProjectInverseDepth2SE3: public  BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>{
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  EdgeProjectInverseDepth2SE3();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    // convert inverse depth parameterization for 3D point location to Euclidean XYZ representation
+    Vector3d v2_inverseDepthParam = v2->estimate();
+    //in cam frame
+    Vector3d v2_XYZ(v2_inverseDepthParam[0]/v2_inverseDepthParam[2], v2_inverseDepthParam[1]/v2_inverseDepthParam[2], 1.0/v2_inverseDepthParam[2]);
+
+    Vector2d obs(_measurement);
+    _error = obs-cam_project(v1->estimate().map(v2_XYZ));
+  }
+
+  bool isDepthPositive() {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    Vector3d v2_inverseDepthParam = v2->estimate();
+    Vector3d v2_XYZ(v2_inverseDepthParam[0]/v2_inverseDepthParam[2], v2_inverseDepthParam[1]/v2_inverseDepthParam[2], 1.0/v2_inverseDepthParam[2]);
+
+    return (v1->estimate().map(v2_XYZ))(2)>0.0;
+  }
+
+
+//  virtual void linearizeOplus();
+
+  Vector2d cam_project(const Vector3d & trans_xyz) const;
+
+  double fx, fy, cx, cy;
+};
 
 class G2O_TYPES_SBA_API EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2d>
 {

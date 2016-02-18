@@ -286,6 +286,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
 {    
+    //set reference frame as pKF
+    cv::Mat R1 = pKF->GetRotation();
+    cv::Mat t1 = pKF->GetTranslation();
+    cv::Mat Tcw = pKF->GetPose();
+
     //set up optimizer
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolverX::LinearSolverType * linearSolver;
@@ -324,7 +329,18 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
     {
         KeyFrame* pKFi = *lit;
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
-        vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
+
+        cv::Mat RelativeTcw = cv::Mat::eye(4,4,CV_32F);
+        cv::Mat R2 = pKFi->GetRotation();
+        cv::Mat t2 = pKFi->GetTranslation();
+
+        cv::Mat R12 = R1*R2.t();
+        cv::Mat t12 = -R1*R2.t()*t2+t1;
+
+        R12.copyTo(RelativeTcw.rowRange(0,3).colRange(0,3));
+        t12.copyTo(RelativeTcw.rowRange(0,3).col(3));
+        // use pose relative to reference frame
+        vSE3->setEstimate(Converter::toSE3Quat(RelativeTcw));
         vSE3->setId(pKFi->mnId);
         vSE3->setFixed(true);
         optimizer.addVertex(vSE3);
@@ -335,7 +351,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
     // SET MAP POINT VERTICES
     const int nExpectedSize = lLocalKeyFrames.size()*lLocalMapPoints.size();
 
-    vector<g2o::EdgeSE3ProjectXYZ*> vpEdges;
+    vector<g2o::EdgeProjectInverseDepth2SE3*> vpEdges;
     vpEdges.reserve(nExpectedSize);
 
     vector<KeyFrame*> vpEdgeKF;
@@ -354,7 +370,23 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         MapPoint* pMP = *lit;
 
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
-        vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
+
+        int index = pMP->GetIndexInKeyFrame(pKF);
+        cv::KeyPoint kp = pKF->GetKeyPointUn(index);
+        cv::Mat K = pKF->GetCalibrationMatrix();
+        // convert to camera frame from image frame
+        cv::Mat xy = cv::Mat::eye(3,1,CV_32F);
+        xy.at<float>(0) = kp.pt.x;
+        xy.at<float>(1) = kp.pt.y;
+        xy.at<float>(2) = 1.0;
+        xy = K.inv()*xy;
+
+        cv::Mat Pos_inverseDepth = xy; // 3 x 1
+        cv::Mat worldPos = pMP->GetWorldPos();
+        cv::Mat posInCamFrame = pKF->GetRotation()*worldPos + pKF->GetTranslation();
+        Pos_inverseDepth.at<float>(2) = 1.0/cv::norm(posInCamFrame);
+
+        vPoint->setEstimate(Converter::toVector3d(Pos_inverseDepth));
         int id = pMP->mnId+maxKFid+1;
         vPoint->setId(id);
         optimizer.addVertex(vPoint);
@@ -379,7 +411,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
                 cv::KeyPoint kpUn = pKFi->GetKeyPointUn(mit->second);
                 obs << kpUn.pt.x, kpUn.pt.y;
 
-                g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
+                g2o::EdgeProjectInverseDepth2SE3* e = new g2o::EdgeProjectInverseDepth2SE3();
                 if(optimizer.vertex(id)==NULL || optimizer.vertex(pKFi->mnId)==NULL ) continue;
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
@@ -404,90 +436,102 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         }
     }
     optimizer.initializeOptimization();
-    optimizer.optimize(10);
+    optimizer.optimize(100);
 
     // Check inlier observations
-    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
-    {
-        g2o::EdgeSE3ProjectXYZ* e = vpEdges[i];
-        MapPoint* pMP = vpMapPointEdge[i];
+//    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
+//    {
+//        g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
+//        MapPoint* pMP = vpMapPointEdge[i];
 
-        if(pMP->isBad())
-            continue;
+//        if(pMP->isBad())
+//            continue;
 
-        if(e->chi2()>5.991 || !e->isDepthPositive())
-        {
-            KeyFrame* pKFi = vpEdgeKF[i];
-            pKFi->EraseMapPointMatch(pMP);
-            pMP->EraseObservation(pKFi);
+//        if(e->chi2()>5.991 || !e->isDepthPositive())
+//        {
+//            KeyFrame* pKFi = vpEdgeKF[i];
+//            pKFi->EraseMapPointMatch(pMP);
+//            pMP->EraseObservation(pKFi);
 
-            optimizer.removeEdge(e);
-            vpEdges[i]=NULL;
-        }
-    }
+//            optimizer.removeEdge(e);
+//            vpEdges[i]=NULL;
+//        }
+//    }
 
     // Recover optimized data
 
-    //Keyframes
-    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
-    {
-        KeyFrame* pKF = *lit;
-        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
-        g2o::SE3Quat SE3quat = vSE3->estimate();
-        pKF->SetPose(Converter::toCvMat(SE3quat));
-    }
+//    //Keyframes
+//    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+//    {
+//        KeyFrame* pKF = *lit;
+//        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
+//        g2o::SE3Quat SE3quat = vSE3->estimate();
+//        pKF->SetPose(Converter::toCvMat(SE3quat));
+//    }
     //Points
     for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
     {
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-        pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
+        // pos of map pts in inverseDepthParam in camera frame
+        cv::Mat inverseDepthParamXYZ = Converter::toCvMat(vPoint->estimate());
+        cv::Mat XYZ = cv::Mat::eye(3,1,CV_32F);
+        XYZ.at<float>(0) = inverseDepthParamXYZ.at<float>(0)/inverseDepthParamXYZ.at<float>(2);
+        XYZ.at<float>(1) = inverseDepthParamXYZ.at<float>(1)/inverseDepthParamXYZ.at<float>(2);
+        XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
+        pMP->SetWorldPos(Tcw.inv()*XYZ);
     }
 
-    // Optimize again without the outliers
+//    // Optimize again without the outliers
 
-    optimizer.initializeOptimization();
-    optimizer.optimize(10);
+//    optimizer.initializeOptimization();
+//    optimizer.optimize(100);
 
-    // Check inlier observations
-    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
-    {
-        g2o::EdgeSE3ProjectXYZ* e = vpEdges[i];
+//    // Check inlier observations
+//    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
+//    {
+//        g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
 
-        if(!e)
-            continue;
+//        if(!e)
+//            continue;
 
-        MapPoint* pMP = vpMapPointEdge[i];
+//        MapPoint* pMP = vpMapPointEdge[i];
 
-        if(pMP->isBad())
-            continue;
+//        if(pMP->isBad())
+//            continue;
 
-        if(e->chi2()>5.991 || !e->isDepthPositive())
-        {
-            KeyFrame* pKF = vpEdgeKF[i];
-            pKF->EraseMapPointMatch(pMP->GetIndexInKeyFrame(pKF));
-            pMP->EraseObservation(pKF);
-        }
-    }
+//        if(e->chi2()>5.991 || !e->isDepthPositive())
+//        {
+//            KeyFrame* pKF = vpEdgeKF[i];
+//            pKF->EraseMapPointMatch(pMP->GetIndexInKeyFrame(pKF));
+//            pMP->EraseObservation(pKF);
+//        }
+//    }
 
-    // Recover optimized data
+//    // Recover optimized data
 
-    //Keyframes
-    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
-    {
-        KeyFrame* pKF = *lit;
-        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
-        g2o::SE3Quat SE3quat = vSE3->estimate();
-        pKF->SetPose(Converter::toCvMat(SE3quat));
-    }
+////    //Keyframes
+////    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+////    {
+////        KeyFrame* pKF = *lit;
+////        g2o::VertexSE3Expmap* vSE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(pKF->mnId));
+////        g2o::SE3Quat SE3quat = vSE3->estimate();
+////        pKF->SetPose(Converter::toCvMat(SE3quat));
+////    }
 
-    //Points
-    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-    {
-        MapPoint* pMP = *lit;
-        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-        pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-    }
+//    //Points
+//    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
+//    {
+//        MapPoint* pMP = *lit;
+//        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
+//        // pos of map pts in inverseDepthParam in camera frame
+//        cv::Mat inverseDepthParamXYZ = Converter::toCvMat(vPoint->estimate());
+//        cv::Mat XYZ = cv::Mat::eye(3,1,CV_32F);
+//        XYZ.at<float>(0) = inverseDepthParamXYZ.at<float>(0)/inverseDepthParamXYZ.at<float>(2);
+//        XYZ.at<float>(1) = inverseDepthParamXYZ.at<float>(1)/inverseDepthParamXYZ.at<float>(2);
+//        XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
+//        pMP->SetWorldPos(Tcw.inv()*XYZ);
+//    }
 }
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF, g2o::Sim3 &Scurw,

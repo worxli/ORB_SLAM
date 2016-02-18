@@ -75,6 +75,12 @@ protected:
 
     bool ComputeSim3();
 
+    cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
+
+    cv::Mat ComputeE12(KeyFrame *&pKF1, KeyFrame *&pKF2);
+
+    void RefineKP4EasyTriag(cv::KeyPoint &x1, cv::KeyPoint &x2, const cv::Mat &E12, const cv::Mat &K);
+
     void DoLocalTriangulations(KeyFrame* pKF, vector<bool> &vbMatched);
 
     void SearchAndFuse(KeyFrameAndPose &CorrectedPosesMap);
