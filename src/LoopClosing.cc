@@ -230,7 +230,7 @@ bool LoopClosing::ComputeSim3()
     for(int i = 0; i < nInitialCandidates; i++){
         pair<KeyFrame*, KeyFrame*> pairs(mpCurrentKF, mvpEnoughConsistentCandidates[i]);
         msMatchedLoopPairs.insert(pairs);
-        cout<<"[LoopClosure] insert new frame pairs" << mpCurrentKF->mnId << " " << mvpEnoughConsistentCandidates[i]->mnId << endl;
+        cout<<"[LoopClosing:233] insert new frame pairs " << mpCurrentKF->mnId << " " << mvpEnoughConsistentCandidates[i]->mnId << endl;
     }
     mvpEnoughConsistentCandidates.clear();
 
@@ -239,8 +239,8 @@ bool LoopClosing::ComputeSim3()
     for(set<pair<KeyFrame*, KeyFrame*> >::iterator sit=msMatchedLoopPairs.begin(), send=msMatchedLoopPairs.end(); sit!=send; sit++){
         pair<KeyFrame*, KeyFrame*> pairs = (*sit);
         KeyFrame* pKF_delayedCurrent = pairs.first;
-        cout << "[LoopClosing:241] frame pair " << mpCurrentKF->mnId << " "<< pKF_delayedCurrent->mnId << endl;
-        if (mpCurrentKF->mnId - pKF_delayedCurrent->mnId < 5) continue;
+//        cout << "[LoopClosing:241] frame pair " << mpCurrentKF->mnId << " "<< pKF_delayedCurrent->mnId << endl;
+        if (mpCurrentKF->mnId - pKF_delayedCurrent->mnId < 10) continue;
         // enough future KeyFrame accumulated, check the matching and computeSim3
         KeyFrame* pKF_loopCandidate = pairs.second;
         vpMarkedDelete.push_back(pairs); // delete it from the buffer
@@ -248,7 +248,7 @@ bool LoopClosing::ComputeSim3()
         vector<MapPoint*> vpMapPointMatches;
         int nmatches = matcher.SearchByBoW(pKF_delayedCurrent,pKF_loopCandidate, vpMapPointMatches);
         cout << "[LoopClosure:277] nmatches " << nmatches << endl;
-        if(nmatches<20) continue;
+        if(nmatches<10) continue;
 
         // if have enough matches, do triangulations
         // Triangulate matched feature points only for efficiency
@@ -263,31 +263,31 @@ bool LoopClosing::ComputeSim3()
 
             vbMatched1[idx1] = true;
             vbMatched2[idx2] = true;
-            cout << idx2 << " ";
+//            cout << idx2 << " ";
         }
-        cout << endl;
-        for(unsigned int j = 0; j < vbMatched1.size(); j++){
-            if(vbMatched1[j]) cout << j << " ";
-        }
-        cout << endl;
+//        cout << endl;
+//        for(unsigned int j = 0; j < vbMatched1.size(); j++){
+//            if(vbMatched1[j]) cout << j << " ";
+//        }
+//        cout << endl;
 
 
-        DoLocalTriangulations(pKF_delayedCurrent, vbMatched1);
-        cout<< "[LoopClosure:269] 1st triangulation completed" << endl;
-        DoLocalTriangulations(pKF_loopCandidate, vbMatched2);
-        cout<< "[LoopClosure:271] 2nd triangulation completed" << endl;
-        // remove failed triangulated pts
-        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
-            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
-            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+//        DoLocalTriangulations(pKF_delayedCurrent, vbMatched1);
+////        cout<< "[LoopClosure:269] 1st triangulation completed" << endl;
+//        DoLocalTriangulations(pKF_loopCandidate, vbMatched2);
+////        cout<< "[LoopClosure:271] 2nd triangulation completed" << endl;
+//        // remove failed triangulated pts
+//        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
+//            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
+//            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
 
-            int idx1 = j;
-            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+//            int idx1 = j;
+//            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
 
-            if(vbMatched1[idx1] && vbMatched2[idx2]) continue;
-            vbMatched1[idx1] = false;
-            vbMatched2[idx2] = false;
-        }
+//            if(vbMatched1[idx1] && vbMatched2[idx2]) continue;
+//            vbMatched1[idx1] = false;
+//            vbMatched2[idx2] = false;
+//        }
         // Do local BA to refine the map points.
         Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
         Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
@@ -304,8 +304,9 @@ bool LoopClosing::ComputeSim3()
                 matchedKeyPt1.push_back(pKF_delayedCurrent->GetKeyPoint(idx1));
                 matchedKeyPt2.push_back(pKF_loopCandidate->GetKeyPoint(idx2));
 
-                cout << j << "th mapPoint " << pKF_delayedCurrent->GetMapPoint(idx1)->GetWorldPos() << "; ";
-                    cout << pKF_loopCandidate->GetMapPoint(idx2)->GetWorldPos() << endl;
+                cv::Mat pos1 = pKF_delayedCurrent->GetMapPoint(idx1)->GetWorldPos();
+                cv::Mat pos2 = pKF_loopCandidate->GetMapPoint(idx2)->GetWorldPos();
+                cout << j << "th mapPoint " << pos1 << "; " << pos2 << ";; " << cv::norm(pos1) << " " << cv::norm(pos2) << endl;
             }
             cout<< endl;
             if(matchedKeyPt2.size() != 0){
@@ -717,7 +718,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
         }
 
         // Triangulation is succesfull
-        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+//        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
         pMP->SetWorldPos(x3D);
     }
 }

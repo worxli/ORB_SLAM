@@ -457,44 +457,68 @@ bool EdgeProjectInverseDepth2SE3::write(std::ostream& os) const {
   return os.good();
 }
 
+void EdgeProjectInverseDepth2SE3::computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    // convert inverse depth parameterization for 3D point location to Euclidean XYZ representation
+    Vector3d v2_inverseDepthParam = v2->estimate();
+    //in cam frame
+    Vector3d v2_XYZ(v2_inverseDepthParam[0]/v2_inverseDepthParam[2], v2_inverseDepthParam[1]/v2_inverseDepthParam[2], 1.0/v2_inverseDepthParam[2]);
 
-//void EdgeProjectInverseDepth2SE3::linearizeOplus() {
-//  VertexSE3Expmap * vj = static_cast<VertexSE3Expmap *>(_vertices[1]);
-//  SE3Quat T(vj->estimate());
-//  VertexSBAPointXYZ* vi = static_cast<VertexSBAPointXYZ*>(_vertices[0]);
-//  Vector3d xyz = vi->estimate();
-//  Vector3d xyz_trans = T.map(xyz);
+    Vector2d obs(_measurement); // in camera frame
+    _error = (obs-cam_project(v1->estimate().map(v2_XYZ)));
+    std::cout << "[g2o:213] Edge " << this->id() << " compute Error: " << sqrt(_error[0]*_error[0] + _error[1]*_error[1]) << " chi2 " << this->chi2() << std::endl;
+//    std::cout << v2_inverseDepthParam << endl;
+}
 
-//  double x = xyz_trans[0];
-//  double y = xyz_trans[1];
-//  double z = xyz_trans[2];
-//  double z_2 = z*z;
 
-//  Matrix<double,2,3> tmp;
-//  tmp(0,0) = fx;
-//  tmp(0,1) = 0;
-//  tmp(0,2) = -x/z*fx;
+void EdgeProjectInverseDepth2SE3::linearizeOplus() {
+    VertexSE3Expmap * vj = static_cast<VertexSE3Expmap *>(_vertices[1]);
+    SE3Quat T(vj->estimate());
+    VertexSBAPointXYZ* vi = static_cast<VertexSBAPointXYZ*>(_vertices[0]);
+    Vector3d xyRou = vi->estimate(); //[x y rou]
 
-//  tmp(1,0) = 0;
-//  tmp(1,1) = fy;
-//  tmp(1,2) = -y/z*fy;
+    Matrix<double,3,3> R1 = T.rotation().toRotationMatrix();
+    Vector3d t1 = T.translation();
+    double r1, r2, r3, r4, r5, r6, r7, r8, r9;
+    r1 = R1(0,0); r2 = R1(0,1); r3 = R1(0,2);
+    r4 = R1(1,0); r5 = R1(1,1); r6 = R1(1,2);
+    r7 = R1(2,0); r8 = R1(2,1); r9 = R1(2,2);
 
-//  _jacobianOplusXi =  -1./z * tmp * T.rotation().toRotationMatrix();
+    double a1, b1, c1;
+    a1 = t1[0]; b1 = t1[1]; c1 = t1[2];
 
-//  _jacobianOplusXj(0,0) =  x*y/z_2 *fx;
-//  _jacobianOplusXj(0,1) = -(1+(x*x/z_2)) *fx;
-//  _jacobianOplusXj(0,2) = y/z *fx;
-//  _jacobianOplusXj(0,3) = -1./z *fx;
-//  _jacobianOplusXj(0,4) = 0;
-//  _jacobianOplusXj(0,5) = x/z_2 *fx;
+    double x, y, Rou;
+    x = xyRou[0]; y = xyRou[1]; Rou = xyRou[2];
 
-//  _jacobianOplusXj(1,0) = (1+y*y/z_2) *fy;
-//  _jacobianOplusXj(1,1) = -x*y/z_2 *fy;
-//  _jacobianOplusXj(1,2) = -x/z *fy;
-//  _jacobianOplusXj(1,3) = 0;
-//  _jacobianOplusXj(1,4) = -1./z *fy;
-//  _jacobianOplusXj(1,5) = y/z_2 *fy;
-//}
+    // assin value to functions
+    double g1 = r1*x + r2*y + r3 + a1*Rou;
+    double g2 = r4*x + r5*y + r6 + b1*Rou;
+    double g3 = r7*x + r8*y + r9 + c1*Rou;
+
+    double dg1dx = r1;
+    double dg1dy = r2;
+    double dg1dRou = a1;
+
+    double dg2dx = r4;
+    double dg2dy = r5;
+    double dg2dRou = b1;
+
+    double dg3dx = r7;
+    double dg3dy = r8;
+    double dg3dRou = c1;
+
+    double g32 = g3*g3;
+    // assigne value to jacobian matrix for VertexSBAPointXYZ only, since VertexSE3Expmap is fixed
+    _jacobianOplusXi(0,0) = (-1.0)*fx*(g3*dg1dx - g1*dg3dx)/g32;
+    _jacobianOplusXi(1,0) = (-1.0)*fy*(g3*dg2dx - g2*dg3dx)/g32;
+
+    _jacobianOplusXi(0,1) = (-1.0)*fx*(g3*dg1dy - g1*dg3dy)/g32;
+    _jacobianOplusXi(1,1) = (-1.0)*fy*(g3*dg2dy - g2*dg3dy)/g32;
+
+    _jacobianOplusXi(0,2) = (-1.0)*fx*(g3*dg1dRou - g1*dg3dRou)/g32;
+    _jacobianOplusXi(1,2) = (-1.0)*fy*(g3*dg2dRou - g2*dg3dRou)/g32;
+}
 
 Vector2d EdgeProjectInverseDepth2SE3::cam_project(const Vector3d & trans_xyz) const{
   Vector2d proj = project2d(trans_xyz);
