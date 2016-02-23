@@ -222,6 +222,7 @@ public:
   Vector2d cam_project(const Vector3d & trans_xyz) const;
 
   double fx, fy, cx, cy;
+  bool bRefinePose;
 };
 
 class G2O_TYPES_SBA_API EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2d>

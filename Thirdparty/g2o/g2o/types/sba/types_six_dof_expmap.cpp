@@ -429,6 +429,7 @@ Vector2d EdgeSE3ProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
 }
 
 EdgeProjectInverseDepth2SE3::EdgeProjectInverseDepth2SE3(): BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>() {
+    bRefinePose = false;
 }
 
 bool EdgeProjectInverseDepth2SE3::read(std::istream& is){
@@ -467,7 +468,7 @@ void EdgeProjectInverseDepth2SE3::computeError()  {
 
     Vector2d obs(_measurement); // in camera frame
     _error = (obs-cam_project(v1->estimate().map(v2_XYZ)));
-    std::cout << "[g2o:213] Edge " << this->id() << " compute Error: " << sqrt(_error[0]*_error[0] + _error[1]*_error[1]) << " chi2 " << this->chi2() << std::endl;
+//    std::cout << "[g2o:213] Edge " << this->id() << " compute Error: " << sqrt(_error[0]*_error[0] + _error[1]*_error[1]) << " chi2 " << this->chi2() << std::endl;
 //    std::cout << v2_inverseDepthParam << endl;
 }
 
@@ -518,6 +519,67 @@ void EdgeProjectInverseDepth2SE3::linearizeOplus() {
 
     _jacobianOplusXi(0,2) = (-1.0)*fx*(g3*dg1dRou - g1*dg3dRou)/g32;
     _jacobianOplusXi(1,2) = (-1.0)*fy*(g3*dg2dRou - g2*dg3dRou)/g32;
+
+    // jacobian of SE3 pose
+    double w1, w2, w3, t_1, t2, t3; w1 = w2 = w3 = t_1 = t2 = t3 = 0;
+    double P11 = r1 - w3*r4 + w2*r7;
+    double P12 = r2 - w3*r5 + w2*r8;
+    double P13 = r3 - w3*r6 + w2*r9;
+    double P14 = a1 - w3*b1 + w2*c1 + t_1;
+
+    double P21 = w3*r1 + r4 - w1*r7;
+    double P22 = w3*r2 + r5 - w1*r8;
+    double P23 = w3*r3 + r6 - w1*r9;
+    double P24 = w3*a1 + b1 - w1*c1 + t2;
+
+    double P31 = -w2*r1 + w1*r4 + r7;
+    double P32 = -w2*r2 + w1*r5 + r8;
+    double P33 = -w2*r3 + w1*r6 + r9;
+    double P34 = -w2*a1 + w1*b1 + c1 + t3;
+
+    double g_1 = P11*x + P12*y + P13 + Rou*P14;
+    double g_2 = P21*x + P22*y + P23 + Rou*P24;
+    double g_3 = P31*x + P32*y + P33 + Rou*P34;
+
+    double g_33 = g_3*g_3;
+
+    double dg1dw1 = 0;
+    double dg1dw2 = r7*x + r8*y + r9 + c1*Rou;
+    double dg1dw3 = -r4*x - r5*y - r6 - b1*Rou;
+    double dg1dt1 = Rou;
+    double dg1dt2 = 0;
+    double dg1dt3 = 0;
+
+    double dg2dw1 = -r7*x - r8*y - r9 - c1*Rou;
+    double dg2dw2 = 0;
+    double dg2dw3 = r1*x + r2*y + r3 + a1*Rou;
+    double dg2dt1 = 0;
+    double dg2dt2 = Rou;
+    double dg2dt3 = 0;
+
+    double dg3dw1 = r4*x + r5*y + r6 + b1*Rou;
+    double dg3dw2 = -r1*x - r2*y - r3 - a1*Rou;
+    double dg3dw3 = 0;
+    double dg3dt1 = 0;
+    double dg3dt2 = 0;
+    double dg3dt3 = Rou;
+
+    if(bRefinePose){
+        _jacobianOplusXj(0,0) = (-1.0)*fx*((g_3*dg1dw1 - g_1*dg3dw1)/g_33);
+        _jacobianOplusXj(0,1) = (-1.0)*fx*((g_3*dg1dw2 - g_1*dg3dw2)/g_33);
+        _jacobianOplusXj(0,2) = (-1.0)*fx*((g_3*dg1dw3 - g_1*dg3dw3)/g_33);
+        _jacobianOplusXj(0,3) = (-1.0)*fx*((g_3*dg1dt1 - g_1*dg3dt1)/g_33);
+        _jacobianOplusXj(0,4) = (-1.0)*fx*((g_3*dg1dt2 - g_1*dg3dt2)/g_33);
+        _jacobianOplusXj(0,5) = (-1.0)*fx*((g_3*dg1dt3 - g_1*dg3dt3)/g_33);
+
+        _jacobianOplusXj(1,0) = (-1.0)*fy*((g_3*dg2dw1 - g_2*dg3dw1)/g_33);
+        _jacobianOplusXj(1,1) = (-1.0)*fy*((g_3*dg2dw2 - g_2*dg3dw2)/g_33);
+        _jacobianOplusXj(1,2) = (-1.0)*fy*((g_3*dg2dw3 - g_2*dg3dw3)/g_33);
+        _jacobianOplusXj(1,3) = (-1.0)*fy*((g_3*dg2dt1 - g_2*dg3dt1)/g_33);
+        _jacobianOplusXj(1,4) = (-1.0)*fy*((g_3*dg2dt2 - g_2*dg3dt2)/g_33);
+        _jacobianOplusXj(1,5) = (-1.0)*fy*((g_3*dg2dt3 - g_2*dg3dt3)/g_33);
+    }
+
 }
 
 Vector2d EdgeProjectInverseDepth2SE3::cam_project(const Vector3d & trans_xyz) const{
