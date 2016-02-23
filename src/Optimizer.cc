@@ -342,14 +342,13 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         R12.copyTo(RelativeTcw.rowRange(0,3).colRange(0,3));
         t12.copyTo(RelativeTcw.rowRange(0,3).col(3));
 
-//        cout << "[Optimizer:342] FrameID " << pKFi->mnId << " Ref_KF "<< pKF->mnId << endl;
-//        cout << R12 << endl;
-//        cout << -R12.inv()*t12 << endl << endl;
-
         // use pose relative to reference frame
         vSE3->setEstimate(Converter::toSE3Quat(RelativeTcw));
         vSE3->setId(pKFi->mnId);
-        vSE3->setFixed(true);
+        if(pKFi->mnId == pKF->mnId) vSE3->setFixed(true);
+        else{
+            vSE3->setFixed(false);
+        }
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
@@ -395,10 +394,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         xy = K.inv()*xy; // convert to camera frame
 
         cv::Mat Pos_inverseDepth = xy; // 3 x 1
-        Pos_inverseDepth.at<float>(2) = (rand()%10 + 1)*0.05/*min(1.0/posInCamFrame.at<float>(2), 0.5)*/;
-
-//        cout << "[Optimizer:400] kp.pt " << kp.pt << endl;
-//        cout << "[Optimizer:401] Pos_inverseDepth " << Pos_inverseDepth << endl;
+        cv::Mat posInCamFrame;
+        cv::Mat camPose = pKF->GetPose();
+        cv::Mat p3d = cv::Mat::eye(4,1,CV_32F);
+        pMP->GetWorldPos().copyTo(p3d.rowRange(0,3)); p3d.at<float>(3) = 1.0;
+        posInCamFrame = camPose*p3d;
+        Pos_inverseDepth.at<float>(2) = 1.0/cv::norm(posInCamFrame.rowRange(0,3));
+        cout << "[Optimizer::402] cam frame pos " << posInCamFrame.rowRange(0,3).t() << endl;
+        cout << "[Optimizer::403] Pos_inverseDepth " << Pos_inverseDepth << " " << pMP->mnId << endl;
 
         vPoint->setEstimate(Converter::toVector3d(Pos_inverseDepth));
         int id = pMP->mnId+maxKFid+1;
@@ -427,7 +430,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
 
                 g2o::EdgeProjectInverseDepth2SE3* e = new g2o::EdgeProjectInverseDepth2SE3();
                 if(optimizer.vertex(id)==NULL || optimizer.vertex(pKFi->mnId)==NULL ) continue;
-                e->setId(id*pKFi->mnId);
+                e->setId(id*2 + pKFi->mnId*2);
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                 e->setMeasurement(obs);
@@ -449,96 +452,67 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
             }
         }
     }
-    optimizer.initializeOptimization();
-    optimizer.optimize(5);
 
-////     Check inlier observations
-//    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
-//    {
-//        g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
-//        MapPoint* pMP = vpMapPointEdge[i];
-
-//        if(pMP->isBad())
-//            continue;
-
-//        if(e->chi2() > 5.991 || !e->isDepthPositive())
-//        {
-//            KeyFrame* pKFi = vpEdgeKF[i];
-//            pKFi->EraseMapPointMatch(pMP);
-//            pMP->EraseObservation(pKFi);
-
-//            optimizer.removeEdge(e);
-//            vpEdges[i]=NULL;
-//        }
-//    }
-
-    // Recover optimized data
-
-//    //Points
-//    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-//    {
-//        MapPoint* pMP = *lit;
-//        if(pMP->isBad()) continue;
-//        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-//        // pos of map pts in inverseDepthParam in camera frame
-//        cv::Mat inverseDepthParamXYZ = Converter::toCvMat(vPoint->estimate());
-////        cout << "[Optimizer:497] inverDepthParamXYZ " << inverseDepthParamXYZ << endl;
-//        cv::Mat XYZ = cv::Mat::eye(4,1,CV_32F);
-//        XYZ.at<float>(0) = inverseDepthParamXYZ.at<float>(0)/inverseDepthParamXYZ.at<float>(2);
-//        XYZ.at<float>(1) = inverseDepthParamXYZ.at<float>(1)/inverseDepthParamXYZ.at<float>(2);
-//        XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
-//        XYZ.at<float>(3) = 1.0;
-////        cout << "[Optimizer:499] XYZ cam frame: " << XYZ << " distance = " << cv::norm(XYZ.rowRange(0,3)) << endl;
-////        XYZ = Tcw.inv()*XYZ;
-//        pMP->SetWorldPos(XYZ.rowRange(0,3));
-//    }
-
-//    // Optimize again without the outliers
-
-//    optimizer.initializeOptimization();
-//    optimizer.optimize(20);
-
-//    // Check inlier observations
-//    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
-//    {
-//        g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
-
-//        if(!e)
-//            continue;
-
-//        MapPoint* pMP = vpMapPointEdge[i];
-
-//        if(pMP->isBad())
-//            continue;
-
-//        if(e->chi2() > 5.991 || !e->isDepthPositive())
-//        {
-//            KeyFrame* pKF = vpEdgeKF[i];
-//            pKF->EraseMapPointMatch(pMP->GetIndexInKeyFrame(pKF));
-//            pMP->EraseObservation(pKF);
-//        }
-//    }
-
-    // Recover optimized data
-
-        //Points
-        for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
-        {
-            MapPoint* pMP = *lit;
-            if(pMP->isBad()) continue;
-            g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-            // pos of map pts in inverseDepthParam in camera frame
-            cv::Mat inverseDepthParamXYZ = Converter::toCvMat(vPoint->estimate());
-    //        cout << "[Optimizer:497] inverDepthParamXYZ " << inverseDepthParamXYZ << endl;
-            cv::Mat XYZ = cv::Mat::eye(4,1,CV_32F);
-            XYZ.at<float>(0) = inverseDepthParamXYZ.at<float>(0)/inverseDepthParamXYZ.at<float>(2);
-            XYZ.at<float>(1) = inverseDepthParamXYZ.at<float>(1)/inverseDepthParamXYZ.at<float>(2);
-            XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
-            XYZ.at<float>(3) = 1.0;
-    //        cout << "[Optimizer:499] XYZ cam frame: " << XYZ << " distance = " << cv::norm(XYZ.rowRange(0,3)) << endl;
-//            XYZ = Tcw.inv()*XYZ;
-            pMP->SetWorldPos(XYZ.rowRange(0,3));
+    for(size_t i = 0; i < vpEdges.size(); i++){
+        if(vpEdges[i]){
+            vpEdges[i]->bRefinePose = true;
         }
+    }
+
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+
+    //Check inlier observations
+    for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
+    {
+        g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
+        MapPoint* pMP = vpMapPointEdge[i];
+
+        if(pMP->isBad())
+            continue;
+
+        if(e->reProjectionError() > 5 && !e->isDepthPositive())
+        {
+            KeyFrame* pKFi = vpEdgeKF[i];
+            pKFi->EraseMapPointMatch(pMP);
+            pMP->EraseObservation(pKFi);
+
+            optimizer.removeEdge(e);
+            vpEdges[i]=NULL;
+        }
+    }
+
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+
+//    for(size_t i = 0; i < vpEdges.size(); i++){
+//        if(vpEdges[i]){
+//            g2o::EdgeProjectInverseDepth2SE3* e = vpEdges[i];
+//            cout << "[Optimizer:461] Edge between " << e->vertex(0)->id() << " and " << e->vertex(1)->id() << endl;
+
+//            cout << vpEdges[i]->error() << endl << endl;
+
+//        }
+//    }
+
+    //Points
+    for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
+    {
+        MapPoint* pMP = *lit;
+        if(pMP->isBad()) continue;
+        g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
+        // pos of map pts in inverseDepthParam in camera frame
+        cv::Mat inverseDepthParamXYZ = Converter::toCvMat(vPoint->estimate());
+        //        cout << "[Optimizer:497] inverDepthParamXYZ " << inverseDepthParamXYZ << endl;
+        cv::Mat XYZ = cv::Mat::eye(4,1,CV_32F);
+        XYZ.at<float>(0) = inverseDepthParamXYZ.at<float>(0)/inverseDepthParamXYZ.at<float>(2);
+        XYZ.at<float>(1) = inverseDepthParamXYZ.at<float>(1)/inverseDepthParamXYZ.at<float>(2);
+        XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
+        XYZ.at<float>(3) = 1.0;
+//        cout << "[Optimizer:499] XYZ cam frame: " << XYZ << " distance = " << cv::norm(XYZ.rowRange(0,3)) << endl;
+//        XYZ = Tcw.inv()*XYZ;
+        pMP->SetWorldPos(XYZ.rowRange(0,3));
+    }
 }
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF, g2o::Sim3 &Scurw,

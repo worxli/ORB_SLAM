@@ -42,6 +42,7 @@ class LocalMapping;
 class KeyFrameDatabase;
 class FramePublisher;
 
+typedef Eigen::Matrix<double, 3, 4> Matrix3x4d;
 
 class LoopClosing
 {
@@ -87,6 +88,8 @@ protected:
 
     void CorrectLoop();
 
+    Eigen::Vector3d TriangulateMultiViewPoint(const std::vector<Matrix3x4d> &proj_matrices, const std::vector<Eigen::Vector2d> &points);
+
     void ResetIfRequested();
     bool mbResetRequested;
     boost::mutex mMutexReset;
@@ -123,6 +126,7 @@ protected:
 
     long unsigned int mLastLoopKFid;
     FramePublisher* mpFramePub;
+
 };
 
 } //namespace ORB_SLAM
