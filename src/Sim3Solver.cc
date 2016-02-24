@@ -179,7 +179,7 @@ cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInli
         computeT(P3Dc1i,P3Dc2i);
 
         CheckInliers();
-
+        cout << "DEBUG [Sim3Solver:182] mnInliersi " << mnInliersi << " " << mRansacMaxIts << endl;
         if(mnInliersi>=mnBestInliers)
         {
             mvbBestInliers = mvbInliersi;

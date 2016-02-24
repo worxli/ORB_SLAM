@@ -437,7 +437,7 @@ void LocalMapping::FindFeatureCorrespondences()
 
 void LocalMapping::ErasePoorConnectedMapPts()
 {
-    int minimumObs = 5;
+    int minimumObs = 3;
     if(mpCurrentKeyFrame->mnId < minimumObs) {
         return;
     }

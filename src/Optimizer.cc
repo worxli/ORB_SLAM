@@ -325,6 +325,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
             lLocalKeyFrames.push_back(pKFi);
         }
     }
+    if (lLocalKeyFrames.size() == 0 || lLocalMapPoints.size() == 0) return;
 
     // SET LOCAL KEYFRAME VERTICES
     for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
@@ -371,15 +372,15 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
 
     const float thHuber = sqrt(5.991);
 
-    int counter = 0;
+//    int counter = 0;
     for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
     {
         MapPoint* pMP = *lit;
-        if (counter > 0){
-            pMP->SetBadFlag();
-            continue;
-        }
-        counter++;
+//        if (counter > 0){
+//            pMP->SetBadFlag();
+//            continue;
+//        }
+//        counter++;
 
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
 
@@ -399,9 +400,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         cv::Mat p3d = cv::Mat::eye(4,1,CV_32F);
         pMP->GetWorldPos().copyTo(p3d.rowRange(0,3)); p3d.at<float>(3) = 1.0;
         posInCamFrame = camPose*p3d;
-        Pos_inverseDepth.at<float>(2) = 1.0/cv::norm(posInCamFrame.rowRange(0,3));
-        cout << "[Optimizer::402] cam frame pos " << posInCamFrame.rowRange(0,3).t() << endl;
-        cout << "[Optimizer::403] Pos_inverseDepth " << Pos_inverseDepth << " " << pMP->mnId << endl;
+        Pos_inverseDepth.at<float>(2) = min(1.0/cv::norm(posInCamFrame.rowRange(0,3)), 0.5);
+//        cout << "[Optimizer::402] cam frame pos " << posInCamFrame.rowRange(0,3).t() << endl;
+//        cout << "[Optimizer::403] Pos_inverseDepth " << Pos_inverseDepth << " " << pMP->mnId << endl;
 
         vPoint->setEstimate(Converter::toVector3d(Pos_inverseDepth));
         int id = pMP->mnId+maxKFid+1;
@@ -460,7 +461,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
     }
 
     optimizer.initializeOptimization();
-    optimizer.optimize(10);
+    optimizer.optimize(50);
 
     //Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
@@ -482,8 +483,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         }
     }
 
-    optimizer.initializeOptimization();
-    optimizer.optimize(10);
 
 //    for(size_t i = 0; i < vpEdges.size(); i++){
 //        if(vpEdges[i]){
@@ -510,7 +509,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, vector<bool> vbMathced)
         XYZ.at<float>(2) = 1.0/inverseDepthParamXYZ.at<float>(2);
         XYZ.at<float>(3) = 1.0;
 //        cout << "[Optimizer:499] XYZ cam frame: " << XYZ << " distance = " << cv::norm(XYZ.rowRange(0,3)) << endl;
-//        XYZ = Tcw.inv()*XYZ;
+        XYZ = Tcw.inv()*XYZ;
         pMP->SetWorldPos(XYZ.rowRange(0,3));
     }
 }

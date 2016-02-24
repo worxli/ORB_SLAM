@@ -235,6 +235,7 @@ bool LoopClosing::ComputeSim3()
     mvpEnoughConsistentCandidates.clear();
 
     ORBmatcher matcher(0.75,true);
+    bool bMatched = false;
     vector<pair<KeyFrame*, KeyFrame*> > vpMarkedDelete;
     for(set<pair<KeyFrame*, KeyFrame*> >::iterator sit=msMatchedLoopPairs.begin(), send=msMatchedLoopPairs.end(); sit!=send; sit++){
         pair<KeyFrame*, KeyFrame*> pairs = (*sit);
@@ -268,22 +269,32 @@ bool LoopClosing::ComputeSim3()
         DoLocalTriangulations(pKF_delayedCurrent, vbMatched1);
         DoLocalTriangulations(pKF_loopCandidate, vbMatched2);
 
-//        // remove failed triangulated pts
-//        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
-//            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
-//            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+        // remove failed triangulated pts
+        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
+            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
+            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
 
-//            int idx1 = j;
-//            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+            int idx1 = j;
+            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
 
-//            if(vbMatched1[idx1] && vbMatched2[idx2]) continue;
-//            vbMatched1[idx1] = false;
-//            vbMatched2[idx2] = false;
-//        }
+            if(vbMatched1[idx1] && vbMatched2[idx2]) continue;
+            vbMatched1[idx1] = false;
+            vbMatched2[idx2] = false;
+        }
         // Do local BA to refine the map points.
-//        Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
-//        Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
+        Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
+        Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
 
+        int count_goodPts4Sim3 = 0;
+        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
+            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
+            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
+            if (idx2==-1 || !(vbMatched1[j] && vbMatched2[idx2])) {
+                vpMapPointMatches[j]->SetBadFlag();
+                continue;
+            }
+            count_goodPts4Sim3++;
+        }
         // DEBUG... Draw feature matching results
         vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
         for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
@@ -304,123 +315,58 @@ bool LoopClosing::ComputeSim3()
         if(matchedKeyPt2.size() != 0){
             mpFramePub->DrawFeatureMatches(pKF_delayedCurrent, pKF_loopCandidate, matchedKeyPt1, matchedKeyPt2);
         }
+        //
+        // compute relative transformation
+        if(count_goodPts4Sim3 < 6) continue;
+        Sim3Solver* pSolver = new Sim3Solver(pKF_delayedCurrent,pKF_loopCandidate,vpMapPointMatches);
+        pSolver->SetRansacParameters(0.5,3,300);
+        // Perform 5 Ransac Iterations
+        vector<bool> vbInliers;
+        int nInliers;
+        bool bNoMore;
+        cv::Mat Scm  = pSolver->iterate(100,bNoMore,vbInliers,nInliers);
+        if(bNoMore) continue;
+        // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
+        if(!Scm.empty()){
+             cout << "[LoopClosure:349] Scm is not empty"<<endl;
+        //                vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
+//             for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
+//             {
+//                 if(!vbInliers[j])
+//                     if(vpMapPointMatches[j])
+//                         vpMapPointMatches[j]->SetBadFlag();
+//             }
+
+             cv::Mat R = pSolver->GetEstimatedRotation();
+             cv::Mat t = pSolver->GetEstimatedTranslation();
+             const float s = pSolver->GetEstimatedScale();
+             //                        matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
+
+
+             g2o::Sim3 gScm(Converter::toMatrix3d(R),Converter::toVector3d(t),s);
+//             const int nInliers = Optimizer::OptimizeSim3(pKF_delayedCurrent, pKF_loopCandidate, vpMapPointMatches, gScm, 10);
+
+             // If optimization is succesful stop ransacs and continue
+//             cout << "[LoopClosing:331] nInliers " << nInliers << endl;
+//             if(nInliers>=3)
+//             {
+                 bMatched = true;
+                 mpMatchedKF = pKF_loopCandidate;
+                 g2o::Sim3 gSmw(Converter::toMatrix3d(pKF_loopCandidate->GetRotation()),Converter::toVector3d(pKF_loopCandidate->GetTranslation()),1.0);
+                 mg2oScw = gScm*gSmw;
+                 mScw = Converter::toCvMat(mg2oScw);
+cout << mScw << endl;
+//                 mvpCurrentMatchedPoints = vpMapPointMatches;
+                 break;
+//             }
+         }
+
     }
     for(size_t i = 0; i < vpMarkedDelete.size(); i++){
         msMatchedLoopPairs.erase(vpMarkedDelete[i]);
     }
-    return false;
+    return bMatched;
 }
-
-
-
-
-
-
-
-
-
-//    // We compute first ORB matches for each candidate
-//    // If enough matches are found, we setup a Sim3Solver
-//    ORBmatcher matcher(0.75,true);
-
-//    vector<Sim3Solver*> vpSim3Solvers;
-//    vpSim3Solvers.resize(nInitialCandidates);
-
-//    vector<vector<MapPoint*> > vvpMapPointMatches;
-//    vvpMapPointMatches.resize(nInitialCandidates);
-
-//    vector<bool> vbDiscarded;
-//    vbDiscarded.resize(nInitialCandidates);
-
-//    int nCandidates=0; //candidates with enough matches
-
-//    for(int i=0; i<nInitialCandidates; i++)
-//    {
-//        KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
-
-//        // avoid that local mapping erase it while it is being processed in this thread
-//        pKF->SetNotErase();
-
-//        if(pKF->isBad())
-//        {
-//            vbDiscarded[i] = true;
-//            continue;
-//        }
-
-//        int nmatches = matcher.SearchByBoW(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-//        cout << "[LoopClosure:277] nmatches " << nmatches << endl;
-
-//        if(nmatches<20)
-//        {
-//            vbDiscarded[i] = true;
-//            continue;
-//        }
-//        else
-//        {
-//            Sim3Solver* pSolver = new Sim3Solver(mpCurrentKF,pKF,vvpMapPointMatches[i]);
-//            pSolver->SetRansacParameters(0.99,20,300);
-//            vpSim3Solvers[i] = pSolver;
-//        }
-
-//        nCandidates++;
-//    }
-
-//    bool bMatch = false;
-//    cout << "[LoopClosure:287] nCandidates " << nCandidates << endl;
-
-//    // Perform alternatively RANSAC iterations for each candidate
-//    // until one is succesful or all fail
-//    while(nCandidates>0 && !bMatch)
-//    {
-//        for(int i=0; i<nInitialCandidates; i++)
-//        {
-//            if(vbDiscarded[i])
-//                continue;
-//            KeyFrame* pKF = mvpEnoughConsistentCandidates[i];
-//            cout << "[LoopClosure:288] matched KF id: " << pKF->mnId << endl;
-//            // Triangulate matched feature points only for efficiency
-//            vector<bool> vbMatched1; vbMatched1.resize(mpCurrentKF->GetMapPointMatches().size(), false);
-//            vector<bool> vbMatched2; vbMatched2.resize(pKF->GetMapPointMatches().size(), false);
-//            vector<MapPoint*>vpMapPointMatches = vvpMapPointMatches[i];
-//            for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
-//                if(mpCurrentKF->GetMapPoint(j) == NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
-//                if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
-
-//                int idx1 = j;
-//                int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF);
-
-//                vbMatched1[idx1] = true;
-//                vbMatched2[idx2] = true;
-//            }
-
-//              DoLocalTriangulations(mpCurrentKF, vbMatched1);
-
-////            DoLocalTriangulations(pKF, vbMatched2);
-
-////            Optimizer::LocalBundleAdjustment(mpCurrentKF);
-////            Optimizer::LocalBundleAdjustment(pKF);
-
-//            // DEBUG... Draw feature matching results
-//                vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
-//                vector<MapPoint*>vpMapPoints = vvpMapPointMatches[i];
-
-//                for(unsigned int j = 0; j < vpMapPoints.size(); j++){
-//                    if(mpCurrentKF->GetMapPoint(j)==NULL || mpCurrentKF->GetMapPoint(j)->isBad()) continue;
-////                    if(vpMapPoints[j] == NULL || vpMapPoints[j]->isBad()) continue;
-
-//                    int idx1 = j;
-////                    int idx2 = vpMapPoints[j]->GetIndexInKeyFrame(pKF);
-//                    matchedKeyPt1.push_back(mpCurrentKF->GetKeyPoint(idx1));
-////                    matchedKeyPt2.push_back(pKF->GetKeyPoint(idx2));
-
-//                    cout << j << "th mapPoint " << mpCurrentKF->GetMapPoint(idx1)->GetWorldPos() << "; " << endl;
-////                    cout << pKF->GetMapPoint(idx2)->GetWorldPos() << endl;
-//                }
-//                cout<< endl;
-//                if(matchedKeyPt2.size() != 0){
-//                    mpFramePub->DrawFeatureMatches(mpCurrentKF, pKF, matchedKeyPt1, matchedKeyPt2);
-//                }
-//            //DO Local BA to optimize the map point locations for similarity transformation matrix computation
 
 
 //            // Perform 5 Ransac Iterations
@@ -537,77 +483,158 @@ bool LoopClosing::ComputeSim3()
 void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
 {
     //Triangulate only matched map points
+    const float fx = pKF->fx;
+    const float fy = pKF->fy;
+    const float cx = pKF->cx;
+    const float cy = pKF->cy;
+    const float invfx = 1.0f/fx;
+    const float invfy = 1.0f/fy;
 
-    cv::Mat K = pKF->GetCalibrationMatrix();
-int counter = 0;
     vector<MapPoint*> vMapPoints = pKF->GetMapPointMatches();
     for(size_t i = 0; i < vMapPoints.size(); i++){
         MapPoint* pMP = vMapPoints[i];
         if(!vbMatched[i]) continue;
-if (counter > 0){
-    vbMatched[i] = false;
-    continue;
-}
-counter++;
+
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
-
-        std::vector<Matrix3x4d> proj_matrices;
-        std::vector<Eigen::Vector2d> points;
-
-        //DEBUG
-        std::vector<Matrix3x4d> proj_matrix_relative;
-        cv::Mat R_ref(3,3,CV_32F); R_ref = pKF->GetRotation();
-        cv::Mat t_ref(3,1,CV_32F); t_ref = pKF->GetTranslation();
-
+        // Do conversion for efficient computations
+        vector<KeyFrame*> vKeyFrames;
+        vector<size_t> vFeatureIndex;
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
             int idx = mit->second; // feature index in current keyFrame
-            cv::KeyPoint kp = pKFi->GetKeyPointUn(idx);
-            // normalize the kp
-            cv::Mat xy(3,1,CV_32F);
-            xy.at<float>(0,0) = kp.pt.x;
-            xy.at<float>(1,0) = 240 - kp.pt.y;
-            xy.at<float>(2,0) = 1.0;
-            xy = K.inv()*xy; // convert to camera frame
-
-//            cout << "DEBUG [LoopCosing:563] xy " << endl << xy << endl;
-
-            Eigen::Vector2d pt_v2d; pt_v2d << xy.at<float>(0), xy.at<float>(1);
-            points.push_back(pt_v2d);
-            //
-            cv::Mat R = pKFi->GetRotation();
-            cv::Mat t = pKFi->GetTranslation();
-
-            Eigen::Matrix<double, 3, 3> R_eigen = Converter::toMatrix3d(R);
-            Eigen::Matrix<double, 3, 1> t_eigen = Converter::toVector3d(t);
-            Matrix3x4d proj;
-            proj << R_eigen, t_eigen;
-            proj_matrices.push_back(proj);
-//            cout << "DEBUG [LoopClosing:588] proj " << endl << proj << endl;
-
-            //DEBUG
-            cv::Mat R12 = R*R_ref.inv();
-            cv::Mat t12 = -R12*(-R_ref*R.t()*t+t_ref);
-            Matrix3x4d proj_relative;
-            proj_relative << Converter::toMatrix3d(R12), Converter::toMatrix3d(t12);
-            proj_matrix_relative.push_back(proj_relative);
-            //DEBUG
-//            cout << "DEBUG [LoopClosing:597] R12 " << endl << R12 << endl;
-//            cout << "DEBUG [LoopClosing:598] t12 " << endl << t12.t() << endl;
-//            cout << "DEBUG [LoopClosing:575] proj_relative " << endl << proj_relative << endl;
+            vKeyFrames.push_back(pKFi);
+            vFeatureIndex.push_back(idx);
         }
-        Eigen::Vector3d x3D = TriangulateMultiViewPoint(proj_matrices, points);
+        // Check the best parallax score and find the frames corresponding to the smallest parallax score
+        float minParallaxRays = 1.0;
+        int index_KF1, index_KF2, index_Feature1, index_Feature2;
+        for (size_t j = 0 ; j < vKeyFrames.size(); j++){
+            for(size_t k = j+1; k < vKeyFrames.size(); k++){
+                KeyFrame* pKF1 = vKeyFrames[j];
+                KeyFrame* pKF2 = vKeyFrames[k];
+                int idx1 = vFeatureIndex[j];
+                int idx2 = vFeatureIndex[k];
 
-        cv::Mat x3DMat(4,1,CV_32F); x3DMat.at<float>(3) = 1.0;
-        Converter::toCvMat(x3D).copyTo(x3DMat.rowRange(0,3));
-        cv::Mat poseMat = pKF->GetPose()*x3DMat;
-        cout << "DEBUG [LoopClosing:584] x3D " << endl << poseMat.rowRange(0,3) << " " << cv::norm(poseMat.rowRange(0,3)) <<endl;
+                const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(idx1);
+                const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(idx2);
 
-        Eigen::Vector3d x3D_cam1Frame = TriangulateMultiViewPoint(proj_matrix_relative, points);
-        cv::Mat poseRelativeMat = Converter::toCvMat(x3D_cam1Frame);
-        cout << "DEBUG [LoopClosing:604] x3D_cam1Frame: "<< endl << poseRelativeMat.t() << " " << cv::norm(poseRelativeMat) << endl << endl;
-        pMP->SetWorldPos(Converter::toCvMat(x3D));
+                // Check parallax between rays
+                cv::Mat Rcw1 = pKF1->GetRotation();
+                cv::Mat Rwc1 = Rcw1.t();
+
+                cv::Mat Rcw2 = pKF2->GetRotation();
+                cv::Mat Rwc2 = Rcw2.t();
+
+                cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx)*invfx, (kp1.pt.y-cy)*invfy, 1.0 );
+                cv::Mat ray1 = Rwc1*xn1;
+                cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx)*invfx, (kp2.pt.y-cy)*invfy, 1.0 );
+                cv::Mat ray2 = Rwc2*xn2;
+                const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
+//cout << "DEBUG [LoopClosing:588] cosParallaxRays " << cosParallaxRays << endl;
+                if (cosParallaxRays < minParallaxRays){
+                    minParallaxRays = cosParallaxRays;
+                    index_KF1 = j;
+                    index_KF2 = k;
+                    index_Feature1 = idx1;
+                    index_Feature2 = idx2;
+                }
+            }
+        }
+        if (minParallaxRays > 0.999) {
+            vbMatched[i] = false;
+            continue;
+        }
+                cout << "[LoopClosing:522] minParallaxRays " << minParallaxRays << endl;
+        // Do triangulation
+        KeyFrame* pKF1 = vKeyFrames[index_KF1];
+        KeyFrame* pKF2 = vKeyFrames[index_KF2];
+        cv::KeyPoint kp1 = pKF1->GetKeyPointUn(index_Feature1);
+        cv::KeyPoint kp2 = pKF2->GetKeyPointUn(index_Feature2);
+
+        // use absolute pose instead of relative pose for triangulation
+//        cv::Mat E12 = ComputeE12(pKF1, pKF2);
+//        cv::Mat K = pKF1->GetCalibrationMatrix();
+//        RefineKP4EasyTriag(kp1, kp2, E12, K);
+
+        cv::Mat Rcw1 = pKF1->GetRotation();
+        cv::Mat tcw1 = pKF1->GetTranslation();
+        cv::Mat Tcw1(3,4,CV_32F);
+        Rcw1.copyTo(Tcw1.colRange(0,3));
+        tcw1.copyTo(Tcw1.col(3));
+
+        cv::Mat Rcw2 = pKF2->GetRotation();
+        cv::Mat tcw2 = pKF2->GetTranslation();
+        cv::Mat Tcw2(3,4,CV_32F);
+        Rcw2.copyTo(Tcw2.colRange(0,3));
+        tcw2.copyTo(Tcw2.col(3));
+
+        // use relative pose instead of absolute pose for triangulation, define KF1 as reference frame
+//        cv::Mat Rcw1 = pKF1->GetRotation();
+//        cv::Mat tcw1 = pKF1->GetTranslation();
+//        cv::Mat Rcw2 = pKF2->GetRotation();
+//        cv::Mat tcw2 = pKF2->GetTranslation();
+
+//        cv::Mat R12 = Rcw2*Rcw1.inv();
+//        cv::Mat t12 = -R12*(-Rcw1*Rcw2.t()*tcw2+tcw1);
+
+//        cv::Mat Tcw1 = cv::Mat::eye(3,4,CV_32F);
+//        cv::Mat Tcw2(3,4,CV_32F);
+//        R12.copyTo(Tcw2.colRange(0,3));
+//        t12.copyTo(Tcw2.col(3));
+        // Triangulation...
+
+        cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx)*invfx, (240.0-kp1.pt.y-cy)*invfy, 1.0 );
+        cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx)*invfx, (240.0-kp2.pt.y-cy)*invfy, 1.0 );
+
+        // Linear Triangulation Method
+        cv::Mat A(6,4,CV_32F);
+        A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
+        A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
+        A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
+        A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
+        A.row(4) = xn1.at<float>(0)*Tcw1.row(1)-xn1.at<float>(1)*Tcw1.row(0);
+        A.row(5) = xn2.at<float>(0)*Tcw2.row(1)-xn2.at<float>(1)*Tcw2.row(0);
+
+        cv::Mat w,u,vt;
+        cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
+
+//        cout << "DEBUG [LoopClosing:654] SVD u " << w << endl;
+        cv::Mat x3D = vt.row(3).t();
+
+        if(abs(x3D.at<float>(3)) < 0.0001 ){
+            vbMatched[i] = false;
+            continue;
+        }
+
+        // Euclidean coordinates
+        x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+
+        //// convert reconstructed 3D landmark back to absolute world frame from KF1 cam frame;
+
+//        cout << " DEBUG [LoopClosing:661] x3D " << x3D << endl << endl;
+//        x3D = pKF1->GetPose().inv()*x3D;
+//        x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+        ////
+
+        cv::Mat x3Dt = x3D.t();
+
+        //Check triangulation in front of cameras
+        float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
+        if(z1<=0){
+            vbMatched[i] = false;
+            continue;
+        }
+
+        float z2 = Rcw2.row(2).dot(x3Dt)+tcw2.at<float>(2);
+        if(z2<=0){
+            vbMatched[i] = false;
+            continue;
+        }
+
+        // Triangulation is succesfull
+                cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+        pMP->SetWorldPos(x3D);
     }
 }
 
@@ -700,8 +727,8 @@ cv::Mat LoopClosing::ComputeE12(KeyFrame *&pKF1, KeyFrame *&pKF2)
     cv::Mat R2w = pKF2->GetRotation();
     cv::Mat t2w = pKF2->GetTranslation();
 
-    cv::Mat R12 = R1w*R2w.t();
-    cv::Mat t12 = -R1w*R2w.t()*t2w+t1w;
+    cv::Mat R12 = R2w*R1w.t();
+    cv::Mat t12 = -R12*(-R1w*R2w.t()*t2w+t1w);
 
     cv::Mat t12x = SkewSymmetricMatrix(t12);
 
