@@ -267,6 +267,7 @@ bool LoopClosing::ComputeSim3()
 
         DoLocalTriangulations(pKF_delayedCurrent, vbMatched1);
         DoLocalTriangulations(pKF_loopCandidate, vbMatched2);
+
 //        // remove failed triangulated pts
 //        for(size_t j = 0; j < vpMapPointMatches.size(); j++){
 //            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
@@ -280,8 +281,8 @@ bool LoopClosing::ComputeSim3()
 //            vbMatched2[idx2] = false;
 //        }
         // Do local BA to refine the map points.
-        Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
-        Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
+//        Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
+//        Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
 
         // DEBUG... Draw feature matching results
         vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
@@ -538,16 +539,26 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
     //Triangulate only matched map points
 
     cv::Mat K = pKF->GetCalibrationMatrix();
-
+int counter = 0;
     vector<MapPoint*> vMapPoints = pKF->GetMapPointMatches();
     for(size_t i = 0; i < vMapPoints.size(); i++){
         MapPoint* pMP = vMapPoints[i];
         if(!vbMatched[i]) continue;
-
+if (counter > 0){
+    vbMatched[i] = false;
+    continue;
+}
+counter++;
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
 
         std::vector<Matrix3x4d> proj_matrices;
         std::vector<Eigen::Vector2d> points;
+
+        //DEBUG
+        std::vector<Matrix3x4d> proj_matrix_relative;
+        cv::Mat R_ref(3,3,CV_32F); R_ref = pKF->GetRotation();
+        cv::Mat t_ref(3,1,CV_32F); t_ref = pKF->GetTranslation();
+
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
@@ -560,8 +571,11 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
             xy.at<float>(2,0) = 1.0;
             xy = K.inv()*xy; // convert to camera frame
 
-            Eigen::Vector2d pt_v2d; pt_v2d << xy.at<float>(0), xy.at<float>(1);
+//            cout << "DEBUG [LoopCosing:563] xy " << endl << xy << endl;
 
+            Eigen::Vector2d pt_v2d; pt_v2d << xy.at<float>(0), xy.at<float>(1);
+            points.push_back(pt_v2d);
+            //
             cv::Mat R = pKFi->GetRotation();
             cv::Mat t = pKFi->GetTranslation();
 
@@ -569,13 +583,30 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
             Eigen::Matrix<double, 3, 1> t_eigen = Converter::toVector3d(t);
             Matrix3x4d proj;
             proj << R_eigen, t_eigen;
-
-            cout << pMP->mnId << " map point "<< xy.rowRange(0,2).t() << endl;
-
             proj_matrices.push_back(proj);
-            points.push_back(pt_v2d);
+//            cout << "DEBUG [LoopClosing:588] proj " << endl << proj << endl;
+
+            //DEBUG
+            cv::Mat R12 = R*R_ref.inv();
+            cv::Mat t12 = -R12*(-R_ref*R.t()*t+t_ref);
+            Matrix3x4d proj_relative;
+            proj_relative << Converter::toMatrix3d(R12), Converter::toMatrix3d(t12);
+            proj_matrix_relative.push_back(proj_relative);
+            //DEBUG
+//            cout << "DEBUG [LoopClosing:597] R12 " << endl << R12 << endl;
+//            cout << "DEBUG [LoopClosing:598] t12 " << endl << t12.t() << endl;
+//            cout << "DEBUG [LoopClosing:575] proj_relative " << endl << proj_relative << endl;
         }
         Eigen::Vector3d x3D = TriangulateMultiViewPoint(proj_matrices, points);
+
+        cv::Mat x3DMat(4,1,CV_32F); x3DMat.at<float>(3) = 1.0;
+        Converter::toCvMat(x3D).copyTo(x3DMat.rowRange(0,3));
+        cv::Mat poseMat = pKF->GetPose()*x3DMat;
+        cout << "DEBUG [LoopClosing:584] x3D " << endl << poseMat.rowRange(0,3) << " " << cv::norm(poseMat.rowRange(0,3)) <<endl;
+
+        Eigen::Vector3d x3D_cam1Frame = TriangulateMultiViewPoint(proj_matrix_relative, points);
+        cv::Mat poseRelativeMat = Converter::toCvMat(x3D_cam1Frame);
+        cout << "DEBUG [LoopClosing:604] x3D_cam1Frame: "<< endl << poseRelativeMat.t() << " " << cv::norm(poseRelativeMat) << endl << endl;
         pMP->SetWorldPos(Converter::toCvMat(x3D));
     }
 }

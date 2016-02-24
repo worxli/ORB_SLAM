@@ -437,14 +437,15 @@ void LocalMapping::FindFeatureCorrespondences()
 
 void LocalMapping::ErasePoorConnectedMapPts()
 {
-    if(mpCurrentKeyFrame->mnId < 3) {
+    int minimumObs = 5;
+    if(mpCurrentKeyFrame->mnId < minimumObs) {
         return;
     }
     KeyFrame* pKF = mlRecentKeyFrames.front();
     mlRecentKeyFrames.pop_front();
     set<MapPoint*> vpMapPoints = pKF->GetMapPoints();
     for(set<MapPoint*>::iterator sit=vpMapPoints.begin(); sit!=vpMapPoints.end(); sit++){
-        if((*sit)->GetObservations().size() < 3){
+        if((*sit)->GetObservations().size() < minimumObs){
             //erase it
             pKF->EraseMapPointMatch((*sit));
             mpMap->EraseMapPoint((*sit));
