@@ -392,7 +392,7 @@ void KeyFrame::UpdateConnections()
     //In case no keyframe counter is over threshold add the one with maximum counter
     int nmax=0;
     KeyFrame* pKFmax=NULL;
-    int th = 15;
+    int th = 5;
 
     vector<pair<int,KeyFrame*> > vPairs;
     vPairs.reserve(KFcounter.size());

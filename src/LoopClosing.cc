@@ -284,7 +284,7 @@ bool LoopClosing::ComputeSim3()
         // Do local BA to refine the map points.
         Optimizer::LocalBundleAdjustment(pKF_delayedCurrent, vbMatched1);
         Optimizer::LocalBundleAdjustment(pKF_loopCandidate, vbMatched2);
-
+////////////////////////////////////////////////////////////////////////////////////////////
         int count_goodPts4Sim3 = 0;
         for(size_t j = 0; j < vpMapPointMatches.size(); j++){
             if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
@@ -295,70 +295,45 @@ bool LoopClosing::ComputeSim3()
             }
             count_goodPts4Sim3++;
         }
-        // DEBUG... Draw feature matching results
-        vector<cv::KeyPoint> matchedKeyPt1, matchedKeyPt2;
-        for(unsigned int j = 0; j < vpMapPointMatches.size(); j++){
-            if(pKF_delayedCurrent->GetMapPoint(j) == NULL || pKF_delayedCurrent->GetMapPoint(j)->isBad()) continue;
-            if(vpMapPointMatches[j] == NULL || vpMapPointMatches[j]->isBad()) continue;
-
-            int idx1 = j;
-            int idx2 = vpMapPointMatches[j]->GetIndexInKeyFrame(pKF_loopCandidate);
-            if (idx2==-1 || !(vbMatched1[idx1] && vbMatched2[idx2])) continue;
-            matchedKeyPt1.push_back(pKF_delayedCurrent->GetKeyPoint(idx1));
-            matchedKeyPt2.push_back(pKF_loopCandidate->GetKeyPoint(idx2));
-
-            cv::Mat pos1 = pKF_delayedCurrent->GetMapPoint(idx1)->GetWorldPos();
-            cv::Mat pos2 = pKF_loopCandidate->GetMapPoint(idx2)->GetWorldPos();
-            cout << j << "th mapPoint " << pos1 << "; " << pos2 << ";; " << cv::norm(pos1) << " " << cv::norm(pos2) << endl;
-        }
-        cout<< endl;
-        if(matchedKeyPt2.size() != 0){
-            mpFramePub->DrawFeatureMatches(pKF_delayedCurrent, pKF_loopCandidate, matchedKeyPt1, matchedKeyPt2);
-        }
         //
         // compute relative transformation
-        if(count_goodPts4Sim3 < 6) continue;
+        if(count_goodPts4Sim3 < 20) continue;
+
         Sim3Solver* pSolver = new Sim3Solver(pKF_delayedCurrent,pKF_loopCandidate,vpMapPointMatches);
-        pSolver->SetRansacParameters(0.5,3,300);
+        pSolver->SetRansacParameters(0.5,6,300);
         // Perform 5 Ransac Iterations
         vector<bool> vbInliers;
         int nInliers;
         bool bNoMore;
-        cv::Mat Scm  = pSolver->iterate(100,bNoMore,vbInliers,nInliers);
+        cv::Mat Scm  = pSolver->iterate(100,bNoMore,vbInliers,nInliers); // in camera frame
         if(bNoMore) continue;
         // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
         if(!Scm.empty()){
              cout << "[LoopClosure:349] Scm is not empty"<<endl;
-        //                vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
-//             for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
-//             {
-//                 if(!vbInliers[j])
-//                     if(vpMapPointMatches[j])
-//                         vpMapPointMatches[j]->SetBadFlag();
-//             }
 
              cv::Mat R = pSolver->GetEstimatedRotation();
              cv::Mat t = pSolver->GetEstimatedTranslation();
-             const float s = pSolver->GetEstimatedScale();
-             //                        matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
+             float s = pSolver->GetEstimatedScale();
 
-
+             t = t/s;
+             s = 1.0;
+//             cout << R << endl << "t:" << endl << t << endl << s << endl;
              g2o::Sim3 gScm(Converter::toMatrix3d(R),Converter::toVector3d(t),s);
-//             const int nInliers = Optimizer::OptimizeSim3(pKF_delayedCurrent, pKF_loopCandidate, vpMapPointMatches, gScm, 10);
 
              // If optimization is succesful stop ransacs and continue
-//             cout << "[LoopClosing:331] nInliers " << nInliers << endl;
-//             if(nInliers>=3)
-//             {
-                 bMatched = true;
-                 mpMatchedKF = pKF_loopCandidate;
-                 g2o::Sim3 gSmw(Converter::toMatrix3d(pKF_loopCandidate->GetRotation()),Converter::toVector3d(pKF_loopCandidate->GetTranslation()),1.0);
-                 mg2oScw = gScm*gSmw;
-                 mScw = Converter::toCvMat(mg2oScw);
-cout << mScw << endl;
-//                 mvpCurrentMatchedPoints = vpMapPointMatches;
-                 break;
-//             }
+             bMatched = true;
+             mpMatchedKF = pKF_loopCandidate;
+             g2o::Sim3 gSmw(Converter::toMatrix3d(pKF_loopCandidate->GetRotation()),Converter::toVector3d(pKF_loopCandidate->GetTranslation()),1.0);
+
+             mg2oScw = gSmw*gScm;
+             mScw = Converter::toCvMat(mg2oScw);
+
+             mpDelayedCurrentKF = pKF_delayedCurrent;
+             mpMatchedKF = pKF_loopCandidate;
+             mvpMatchedMPs = vpMapPointMatches;
+             mvbMatched1 = vbMatched1;
+             mvbMatched2 = vbMatched2;
+             break;
          }
 
     }
@@ -367,118 +342,6 @@ cout << mScw << endl;
     }
     return bMatched;
 }
-
-
-//            // Perform 5 Ransac Iterations
-//            vector<bool> vbInliers;
-//            int nInliers;
-//            bool bNoMore;
-
-//            Sim3Solver* pSolver = vpSim3Solvers[i];
-//            cv::Mat Scm  = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
-
-//            // If Ransac reachs max. iterations discard keyframe
-//            if(bNoMore)
-//            {
-//                vbDiscarded[i]=true;
-//                nCandidates--;
-//            }
-//nCandidates--;
-//continue;
-//            // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
-//            if(!Scm.empty())
-//            {
-//                cout << "[LoopClosure:349] Scm is not empty"<<endl;
-//                vector<MapPoint*> vpMapPointMatches(vvpMapPointMatches[i].size(), static_cast<MapPoint*>(NULL));
-//                for(size_t j=0, jend=vbInliers.size(); j<jend; j++)
-//                {
-//                    if(vbInliers[j])
-//                       vpMapPointMatches[j]=vvpMapPointMatches[i][j];
-//                }
-
-//                cv::Mat R = pSolver->GetEstimatedRotation();
-//                cv::Mat t = pSolver->GetEstimatedTranslation();
-//                const float s = pSolver->GetEstimatedScale();
-//                matcher.SearchBySim3(mpCurrentKF,pKF,vpMapPointMatches,s,R,t,7.5);
-
-
-//                g2o::Sim3 gScm(Converter::toMatrix3d(R),Converter::toVector3d(t),s);
-//                const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10);
-
-//                // If optimization is succesful stop ransacs and continue
-//                cout << "[LoopClosing:331] nInliers " << nInliers << endl;
-//                if(nInliers>=10)
-//                {
-//                    bMatch = true;
-//                    mpMatchedKF = pKF;
-//                    g2o::Sim3 gSmw(Converter::toMatrix3d(pKF->GetRotation()),Converter::toVector3d(pKF->GetTranslation()),1.0);
-//                    mg2oScw = gScm*gSmw;
-//                    mScw = Converter::toCvMat(mg2oScw);
-
-//                    mvpCurrentMatchedPoints = vpMapPointMatches;
-//                    break;
-//                }
-//            }
-//        }
-//    }
-
-//    if(!bMatch)
-//    {
-//        for(int i=0; i<nInitialCandidates; i++)
-//             mvpEnoughConsistentCandidates[i]->SetErase();
-//        mpCurrentKF->SetErase();
-//        return false;
-//    }
-
-//    // Retrieve MapPoints seen in Loop Keyframe and neighbors
-//    vector<KeyFrame*> vpLoopConnectedKFs = mpMatchedKF->GetVectorCovisibleKeyFrames();
-//    vpLoopConnectedKFs.push_back(mpMatchedKF);
-//    mvpLoopMapPoints.clear();
-//    for(vector<KeyFrame*>::iterator vit=vpLoopConnectedKFs.begin(); vit!=vpLoopConnectedKFs.end(); vit++)
-//    {
-//        KeyFrame* pKF = *vit;
-//        vector<MapPoint*> vpMapPoints = pKF->GetMapPointMatches();
-//        for(size_t i=0, iend=vpMapPoints.size(); i<iend; i++)
-//        {
-//            MapPoint* pMP = vpMapPoints[i];
-//            if(pMP)
-//            {
-//                if(!pMP->isBad() && pMP->mnLoopPointForKF!=mpCurrentKF->mnId)
-//                {
-//                    mvpLoopMapPoints.push_back(pMP);
-//                    pMP->mnLoopPointForKF=mpCurrentKF->mnId;
-//                }
-//            }
-//        }
-//    }
-
-//    // Find more matches projecting with the computed Sim3
-//    matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints,10);
-
-//    // If enough matches accept Loop
-//    int nTotalMatches = 0;
-//    for(size_t i=0; i<mvpCurrentMatchedPoints.size(); i++)
-//    {
-//        if(mvpCurrentMatchedPoints[i])
-//            nTotalMatches++;
-//    }
-
-//    if(nTotalMatches>=40)
-//    {
-//        for(int i=0; i<nInitialCandidates; i++)
-//            if(mvpEnoughConsistentCandidates[i]!=mpMatchedKF)
-//                mvpEnoughConsistentCandidates[i]->SetErase();
-//        return true;
-//    }
-//    else
-//    {
-//        for(int i=0; i<nInitialCandidates; i++)
-//            mvpEnoughConsistentCandidates[i]->SetErase();
-//        mpCurrentKF->SetErase();
-//        return false;
-//    }
-
-//}
 
 void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
 {
@@ -492,8 +355,8 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
 
     vector<MapPoint*> vMapPoints = pKF->GetMapPointMatches();
     for(size_t i = 0; i < vMapPoints.size(); i++){
-        MapPoint* pMP = vMapPoints[i];
         if(!vbMatched[i]) continue;
+        MapPoint* pMP = vMapPoints[i];
 
         map<KeyFrame*,size_t> observations = pMP->GetObservations();
         // Do conversion for efficient computations
@@ -545,7 +408,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
             vbMatched[i] = false;
             continue;
         }
-                cout << "[LoopClosing:522] minParallaxRays " << minParallaxRays << endl;
+//        cout << "[LoopClosing:522] minParallaxRays " << minParallaxRays << endl;
         // Do triangulation
         KeyFrame* pKF1 = vKeyFrames[index_KF1];
         KeyFrame* pKF2 = vKeyFrames[index_KF2];
@@ -569,53 +432,32 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
         Rcw2.copyTo(Tcw2.colRange(0,3));
         tcw2.copyTo(Tcw2.col(3));
 
-        // use relative pose instead of absolute pose for triangulation, define KF1 as reference frame
-//        cv::Mat Rcw1 = pKF1->GetRotation();
-//        cv::Mat tcw1 = pKF1->GetTranslation();
-//        cv::Mat Rcw2 = pKF2->GetRotation();
-//        cv::Mat tcw2 = pKF2->GetTranslation();
-
-//        cv::Mat R12 = Rcw2*Rcw1.inv();
-//        cv::Mat t12 = -R12*(-Rcw1*Rcw2.t()*tcw2+tcw1);
-
-//        cv::Mat Tcw1 = cv::Mat::eye(3,4,CV_32F);
-//        cv::Mat Tcw2(3,4,CV_32F);
-//        R12.copyTo(Tcw2.colRange(0,3));
-//        t12.copyTo(Tcw2.col(3));
         // Triangulation...
 
         cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx)*invfx, (240.0-kp1.pt.y-cy)*invfy, 1.0 );
         cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx)*invfx, (240.0-kp2.pt.y-cy)*invfy, 1.0 );
 
         // Linear Triangulation Method
-        cv::Mat A(6,4,CV_32F);
+        cv::Mat A(4,4,CV_32F);
         A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
         A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
         A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
         A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
-        A.row(4) = xn1.at<float>(0)*Tcw1.row(1)-xn1.at<float>(1)*Tcw1.row(0);
-        A.row(5) = xn2.at<float>(0)*Tcw2.row(1)-xn2.at<float>(1)*Tcw2.row(0);
+//        A.row(4) = xn1.at<float>(0)*Tcw1.row(1)-xn1.at<float>(1)*Tcw1.row(0);
+//        A.row(5) = xn2.at<float>(0)*Tcw2.row(1)-xn2.at<float>(1)*Tcw2.row(0);
 
         cv::Mat w,u,vt;
         cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
 
-//        cout << "DEBUG [LoopClosing:654] SVD u " << w << endl;
         cv::Mat x3D = vt.row(3).t();
 
-        if(abs(x3D.at<float>(3)) < 0.0001 ){
+        if(fabs(x3D.at<float>(3)) < 0.0001 ){
             vbMatched[i] = false;
             continue;
         }
 
         // Euclidean coordinates
         x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-
-        //// convert reconstructed 3D landmark back to absolute world frame from KF1 cam frame;
-
-//        cout << " DEBUG [LoopClosing:661] x3D " << x3D << endl << endl;
-//        x3D = pKF1->GetPose().inv()*x3D;
-//        x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-        ////
 
         cv::Mat x3Dt = x3D.t();
 
@@ -633,7 +475,7 @@ void LoopClosing::DoLocalTriangulations(KeyFrame *pKF, vector<bool> &vbMatched)
         }
 
         // Triangulation is succesfull
-                cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
+//        cout << "[LoopClosing:634] "<< i << "th pts, x3D: " << x3D << endl;
         pMP->SetWorldPos(x3D);
     }
 }
@@ -737,7 +579,6 @@ cv::Mat LoopClosing::ComputeE12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 
 void LoopClosing::CorrectLoop()
 {
-    double t_begin = ros::Time::now().toSec();
     // Send a stop signal to Local Mapping
     // Avoid new keyframes are inserted while correcting the loop
     mpLocalMapper->RequestStop();
@@ -750,15 +591,15 @@ void LoopClosing::CorrectLoop()
     }
 
     // Ensure current keyframe is updated
-    mpCurrentKF->UpdateConnections();
+    mpDelayedCurrentKF->UpdateConnections();
 
     // Retrive keyframes connected to the current keyframe and compute corrected Sim3 pose by propagation
-    mvpCurrentConnectedKFs = mpCurrentKF->GetVectorCovisibleKeyFrames();
-    mvpCurrentConnectedKFs.push_back(mpCurrentKF);
+    mvpCurrentConnectedKFs = mpDelayedCurrentKF->GetVectorCovisibleKeyFrames();
+    mvpCurrentConnectedKFs.push_back(mpDelayedCurrentKF);
 
     KeyFrameAndPose CorrectedSim3, NonCorrectedSim3;
-    CorrectedSim3[mpCurrentKF]=mg2oScw;
-    cv::Mat Twc = mpCurrentKF->GetPoseInverse();
+    CorrectedSim3[mpDelayedCurrentKF]=mg2oScw;
+    cv::Mat Twc = mpDelayedCurrentKF->GetPoseInverse();
 
 
     for(vector<KeyFrame*>::iterator vit=mvpCurrentConnectedKFs.begin(), vend=mvpCurrentConnectedKFs.end(); vit!=vend; vit++)
@@ -794,27 +635,29 @@ void LoopClosing::CorrectLoop()
 
         g2o::Sim3 g2oSiw =NonCorrectedSim3[pKFi];
 
-        vector<MapPoint*> vpMPsi = pKFi->GetMapPointMatches();
-        for(size_t iMP=0, endMPi = vpMPsi.size(); iMP<endMPi; iMP++)
-        {
-            MapPoint* pMPi = vpMPsi[iMP];
-            if(!pMPi)
-                continue;
-            if(pMPi->isBad())
-                continue;
-            if(pMPi->mnCorrectedByKF==mpCurrentKF->mnId)
-                continue;
+        if(pKFi->mnId == mpDelayedCurrentKF->mnId){
+            vector<MapPoint*> vpMPsi = pKFi->GetMapPointMatches();
+            for(size_t iMP=0, endMPi = vpMPsi.size(); iMP<endMPi; iMP++)
+            {
+                MapPoint* pMPi = vpMPsi[iMP];
+                if(!pMPi)
+                    continue;
+                if(pMPi->isBad())
+                    continue;
+                if(pMPi->mnCorrectedByKF==mpDelayedCurrentKF->mnId)
+                    continue;
 
-            // Project with non-corrected pose and project back with corrected pose
-            cv::Mat P3Dw = pMPi->GetWorldPos();
-            Eigen::Matrix<double,3,1> eigP3Dw = Converter::toVector3d(P3Dw);
-            Eigen::Matrix<double,3,1> eigCorrectedP3Dw = g2oCorrectedSwi.map(g2oSiw.map(eigP3Dw));
+                // Project with non-corrected pose and project back with corrected pose
+                cv::Mat P3Dw = pMPi->GetWorldPos();
+                Eigen::Matrix<double,3,1> eigP3Dw = Converter::toVector3d(P3Dw);
+                Eigen::Matrix<double,3,1> eigCorrectedP3Dw = g2oCorrectedSwi.map(g2oSiw.map(eigP3Dw));
 
-            cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
-            pMPi->SetWorldPos(cvCorrectedP3Dw);
-            pMPi->mnCorrectedByKF = mpCurrentKF->mnId;
-            pMPi->mnCorrectedReference = pKFi->mnId;
-            pMPi->UpdateNormalAndDepth();
+                cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
+                pMPi->SetWorldPos(cvCorrectedP3Dw);
+                pMPi->mnCorrectedByKF = mpDelayedCurrentKF->mnId;
+                pMPi->mnCorrectedReference = pKFi->mnId;
+                pMPi->UpdateNormalAndDepth();
+            }
         }
 
         // Update keyframe pose with corrected Sim3. First transform Sim3 to SE3 (scale translation)
@@ -830,31 +673,29 @@ void LoopClosing::CorrectLoop()
 
         // Make sure connections are updated
         pKFi->UpdateConnections();
-    }    
-
-    // Start Loop Fusion
-    // Update matched map points and replace if duplicated
-    for(size_t i=0; i<mvpCurrentMatchedPoints.size(); i++)
-    {
-        if(mvpCurrentMatchedPoints[i])
-        {
-            MapPoint* pLoopMP = mvpCurrentMatchedPoints[i];
-            MapPoint* pCurMP = mpCurrentKF->GetMapPoint(i);
-            if(pCurMP)
-                pCurMP->Replace(pLoopMP);
-            else
-            {
-                mpCurrentKF->AddMapPoint(pLoopMP,i);
-                pLoopMP->AddObservation(mpCurrentKF,i);
-                pLoopMP->ComputeDistinctiveDescriptors();
-            }
-        }
     }
 
-    // Project MapPoints observed in the neighborhood of the loop keyframe
-    // into the current keyframe and neighbors using corrected poses.
-    // Fuse duplications.
-    SearchAndFuse(CorrectedSim3);
+    for(size_t j = 0; j < mvpMatchedMPs.size(); j++){
+        if(mvpMatchedMPs[j] == NULL || mvpMatchedMPs[j]->isBad()) continue;
+        int idx2 = mvpMatchedMPs[j]->GetIndexInKeyFrame(mpMatchedKF);
+        if (idx2==-1 || !(mvbMatched1[j] && mvbMatched2[idx2])) {
+            continue;
+        }
+
+        // Start Loop Fusion for loop corrections
+        // Update matched map points and replace if duplicated
+        MapPoint* pLoopMP = mvpMatchedMPs[j];
+        MapPoint* pCurMP = mpDelayedCurrentKF->GetMapPoint(j);
+        if(pCurMP){
+            pCurMP->Replace(pLoopMP);
+        }
+        else
+        {
+            mpDelayedCurrentKF->AddMapPoint(pLoopMP,j);
+            pLoopMP->AddObservation(mpDelayedCurrentKF,j);
+            pLoopMP->ComputeDistinctiveDescriptors();
+        }
+    }
 
 
     // After the MapPoint fusion, new links in the covisibility graph will appear attaching both sides of the loop
@@ -878,15 +719,15 @@ void LoopClosing::CorrectLoop()
         }
     }
 
-    mpTracker->ForceRelocalisation();
+//    mpTracker->ForceRelocalisation();
 
-    Optimizer::OptimizeEssentialGraph(mpMap, mpMatchedKF, mpCurrentKF,  mg2oScw, NonCorrectedSim3, CorrectedSim3, LoopConnections);
+    Optimizer::OptimizeEssentialGraph(mpMap, mpMatchedKF, mpDelayedCurrentKF,  mg2oScw, NonCorrectedSim3, CorrectedSim3, LoopConnections);
 
     //Add edge
-    mpMatchedKF->AddLoopEdge(mpCurrentKF);
-    mpCurrentKF->AddLoopEdge(mpMatchedKF);
+    mpMatchedKF->AddLoopEdge(mpDelayedCurrentKF);
+    mpDelayedCurrentKF->AddLoopEdge(mpMatchedKF);
 
-    cout << "[time] LoopClosing run closeLoop " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
+//    cout << "[time] LoopClosing run closeLoop " << ros::Time::now() << " " << ros::Time::now().toSec() - t_begin << " secs"<<endl;
 
 
     ROS_INFO("Loop Closed!");
@@ -896,7 +737,7 @@ void LoopClosing::CorrectLoop()
 
     mpMap->SetFlagAfterBA();
 
-    mLastLoopKFid = mpCurrentKF->mnId;
+    mLastLoopKFid = mpDelayedCurrentKF->mnId;
 }
 
 void LoopClosing::SearchAndFuse(KeyFrameAndPose &CorrectedPosesMap)
