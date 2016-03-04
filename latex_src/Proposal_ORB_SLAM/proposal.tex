@@ -1,0 +1,112 @@
+% ETH Zurich  - 3D Vision 2016
+% http://www.cvg.ethz.ch/teaching/3dphoto/
+% Template for project proposals
+
+\documentclass[11pt,a4paper,oneside,onecolumn]{IEEEtran}
+\usepackage{graphicx}
+% Enter the project title and your project supervisor here
+\newcommand{\ProjectTitle}{ORB-SLAM with a Generalized Camera}
+\newcommand{\ProjectSupervisor}{Peidong Liu and Dominik Honegger}
+\newcommand{\DateOfReport}{March 14, 2016}
+
+% Enter the team members' names and path to their photos. Comment / uncomment related definitions if the number of members are different than 2.
+% Including photographs are optional. Photos are there to help us to evaluate your group more effectively. If you wish not to include your photos, please comment the following line.
+\newcommand{\PutPhotos}{}
+% Please include a clear photo of each member. (use pdf or png files for Latex to embed them in the document well)
+\newcommand{\memberone}{Lukas Bischofberger}
+\newcommand{\memberonepicture}{LukasBischofberger.jpg}
+\newcommand{\membertwo}{Marius Grimm}
+\newcommand{\membertwopicture}{MariusGrimm.png}
+\newcommand{\memberthree}{Leonard Schai}
+\newcommand{\memberthreepicture}{LeonardSchai.jpeg}
+\newcommand{\memberfour}{Tobias Ulrich}
+\newcommand{\memberfourpicture}{TobiasUlrich.png}
+
+
+%%%% DO NOT EDIT THE PART BELOW %%%%
+\title{\ProjectTitle}
+\author{3D Vision Project Proposal\\Supervised by: \ProjectSupervisor\\ \DateOfReport}
+\begin{document}
+\maketitle
+\vspace{-1.5cm}\section*{Group Members}\vspace{0.3cm}
+\begin{center}\begin{minipage}{\linewidth}\begin{center}
+\begin{minipage}{3.5 cm}\begin{center}\memberone\ifdefined\PutPhotos\\\vspace{0.2cm}\includegraphics[height=3cm]{\memberonepicture}\fi\end{center}\end{minipage}
+\ifdefined\membertwo\begin{minipage}{3.5 cm}\begin{center}\membertwo\ifdefined\PutPhotos\\\vspace{0.2cm}\includegraphics[height=3cm]{\membertwopicture}\fi\end{center}\end{minipage}\fi
+\ifdefined\memberthree\begin{minipage}{3.5
+cm}\begin{center}\memberthree\ifdefined\PutPhotos\\\vspace{0.2cm}\includegraphics[height=3cm]{\memberthreepicture}\fi\end{center}\end{minipage}\fi
+\ifdefined\memberthree\begin{minipage}{3.5 cm}\begin{center}\memberfour\ifdefined\PutPhotos\\\vspace{0.2cm}\includegraphics[height=3cm]{\memberfourpicture}\fi\end{center}\end{minipage}\fi
+\end{center}\end{minipage}\end{center}\vspace{0.3cm}
+%%%% END OF PROTECTED LINES %%%%
+
+
+%%%% BEGIN WRITING THE DOCUMENT HERE %%%%
+
+\section{Description of the project}
+
+ORB-SLAM \cite{7219438} is one of the state-of-the-art feature based simultaneous localization and mapping (SLAM) algorithms. It currently supports monocular and stereo configurations. However, due to the limited field of view (FoV) of the cameras, it would be beneficial for environment perceptions if we can have 360-degrees FoV. \\
+The idea for this project is to extend the current ORB-SLAM algorithm to support a generalized camera \cite{787622}. A sensor board with up to eight synchronized global-shutter cameras will be provided as a generalized camera to provide 360-degress FoV.
+
+\section{Work packages and timeline}
+
+\begin{enumerate}
+\item 2D-2D motion estimation with generalized camera model (4/8 cameras) (\cite{1211520}, \cite{4587545}, \cite{787622})
+\item 3D-2D NPnP (non-perspective n points) pose estimation (\cite{1211520}, \cite{4587545}, \cite{6631107})
+\item ORB-SLAM: (\cite{1211520}, \cite{4587545}, \cite{7219438})
+
+\begin{enumerate}
+
+\item Tracking part
+\begin{enumerate}
+\item Replace current monocular 2D-2D motion estimation for initialization with 1)
+\item Replace 3D-2D pose estimation for re-localization with 2)
+\end{enumerate}
+
+\item Mapping part
+\begin{enumerate}
+\item Modify current monocular triangulation method to support generalized camera
+\end{enumerate}
+
+\item Other common technical issues
+\begin{enumerate}
+\item Modify Frame, KeyFrame, Map classes etc. to support generalized camera
+\item Modify Bundle-Adjustment cost function to support new feature position parametrization with Plucker line
+\item etc.
+\end{enumerate}
+\end{enumerate}
+\end{enumerate}
+
+The minimum requirement for the system to work are 3.1.1 (with 1.), 3.2 and 3.3. After those parts are working 3.1.2 (with 2.) is going to be implemented next. Since the different work packages are all interlinked it is difficult to divide the responsibilities. Yet, Tobias and Marius are going to start working on the Tracking part while Lukas and Leonard work on the Mapping part. After those work packages are completed the group will collectively modify other common technical issues.
+Those minimum requirements are planned to be working by the end of April. \\
+After that the replacement of the 3D-2D pose estimation for re-localization is going to be implemented. \\
+
+
+The monocular SLAM algorithm is provided and implemented in C++ and ROS and the operating system of our choice is Linux. For the modifications towards a generalized SLAM algorithm the library OpenGV is going to be used.
+
+%Detailed descriptions of work packages you planned, their outcomes, the responsible group member and estimated timeline. Specify the challenges that will be tackled and considered solutions with possible alternatives, citing related documents if applicable. Mention the platform (Android, PC etc.) and the language (C++ etc.) you plan to use.
+
+\section{Outcomes and Demonstration}
+
+As offline presentation we have ros bags available with recorded data of a monocular camera and multiple cameras. We will present our algorithm offline with the image data from multiple cameras. Additionally, we will demonstrate our modified algorithms online with a 8-camera-system.   
+
+%Give detailed information on the expected outcome of your project and the experiments you plan to test your implementation. If applicable, describe the online or offline demo you plan to present at the end of the semester.
+
+
+
+
+%\vspace{1cm}
+%\textbf{Instructions:}
+%
+%\begin{itemize}
+%\item The document should not exceed two pages including the references.
+%\item Please name the document \textbf{3DPhoto\_Proposal\_Surname1\_Surname2.pdf} and send it to Ya\u{g}{\i}z in an email titled \textbf{[3DPhoto] Project Proposal - Surname1 Surname2}, filling in your surnames.
+%\end{itemize}
+
+{%\singlespace
+{\small
+\bibliography{refs}
+\bibliographystyle{plain}}}
+
+
+
+
+\end{document}
