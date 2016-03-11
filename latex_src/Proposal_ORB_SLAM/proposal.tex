@@ -48,10 +48,10 @@ Therefore the idea for this project is to extend the current ORB-SLAM algorithm 
 
 \section{Work packages and timeline}
 
-As a preparation and get familiar task we will need to change the implemented camera model to fit our data. As we're given image sequences taken with a fish-eye lense, we must adapt the undistorion methods in ORB-SLAM to use the corresponding camera model and its specific intrinsics.
+As a preparation task and to get familiar we will need to change the implemented camera model to fit our data. As we're given image sequences taken with a fish-eye lense, we have to adapt the undistortion methods in ORB-SLAM to use the corresponding camera model and its specific intrinsics.
 
 \begin{enumerate}
-\item[0)] Change current camera distortion model to fisheye cameras and convert fisheye data
+\item[0)] Adapt current camera distortion model to fisheye cameras and convert fisheye data
 \item 2D-2D motion estimation with generalized camera model (4/8 cameras) (\cite{1211520}, \cite{4587545}, \cite{787622})
 \item 3D-2D NPnP (non-perspective n points) pose estimation (\cite{1211520}, \cite{4587545}, \cite{6631107})
 \item ORB-SLAM: (\cite{1211520}, \cite{4587545}, \cite{7219438})
@@ -79,8 +79,8 @@ As a preparation and get familiar task we will need to change the implemented ca
 \end{enumerate}
 
 
-At the very beginning we first have to adjust the camera distortion model of the SLAM-algorithm since currently pinhole-cameras are assumed. However, we only have fisheye data at our disposal. \\ 
-The minimum requirements for the system to work are modifications of the current monocular SLAM under part 3) but also the implementation of the 2D-2D motion estimation with a generalized camera under 1). \\
+At the beginning we have to adjust the camera distortion model of the SLAM-algorithm from pinhole-cameras to the fisheye data. \\ 
+The minimum requirements for the system to work are modifications of the given monocular SLAM under part 3) but also the implementation of the 2D-2D motion estimation with a generalized camera under 1). \\
 After those parts are working the replacement of the 3D-2D pose estimation for re-localization under 3a) (with 2.) is going to be implemented next. \\ 
 Since the different work packages are all interlinked it is difficult to divide the responsibilities. Yet, Tobias and Marius are going to start working on the Tracking part while Lukas and Leonard work on the Mapping part. After those work packages are completed the group will collectively modify other common technical issues.
 Those minimum requirements are planned to be working by the end of April. \\
