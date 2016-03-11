@@ -45,6 +45,7 @@ class Frame
 public:
     Frame();
     Frame(const Frame &frame);
+    //Frame(vector<cv::Mat> &imgs, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
     Frame(cv::Mat &im, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
 
     ORBVocabulary* mpORBvocabulary;
