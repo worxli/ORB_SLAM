@@ -200,10 +200,10 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     int width = im.cols/2;
     int height = im.rows/2;
 
-    cv::Mat img1 = Mat::Mat(im, cv::Rect(0,0, width, height));
-    cv::Mat img2 = Mat::Mat(im, cv::Rect(0, height, width, height));
-    cv::Mat img3 = Mat::Mat(im, cv::Rect(width, 0, width, height));
-    cv::Mat img4 = Mat::Mat(im, cv::Rect(width, height, width, height));
+    cv::Mat img1 = cv::Mat(im, cv::Rect(0,0, width, height));
+    cv::Mat img2 = cv::Mat(im, cv::Rect(0, height, width, height));
+    cv::Mat img3 = cv::Mat(im, cv::Rect(width, 0, width, height));
+    cv::Mat img4 = cv::Mat(im, cv::Rect(width, height, width, height));
 
     vector<cv::Mat> imgs;
     imgs.push_back(img1);
