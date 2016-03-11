@@ -48,6 +48,8 @@ The idea for this project is to extend the current ORB-SLAM algorithm to support
 
 \section{Work packages and timeline}
 
+As a preparation and get familiar task we will need to change the implemented camera model to fit our data. As we're given image sequences taken with a fish-eye lense, we must adapt the undistorion methods in ORB-SLAM to use the corresponding camera model and its specific intrinsics.
+
 \begin{enumerate}
 \item 2D-2D motion estimation with generalized camera model (4/8 cameras) (\cite{1211520}, \cite{4587545}, \cite{787622})
 \item 3D-2D NPnP (non-perspective n points) pose estimation (\cite{1211520}, \cite{4587545}, \cite{6631107})
@@ -86,7 +88,7 @@ The monocular SLAM algorithm is provided and implemented in C++ and ROS and the 
 
 \section{Outcomes and Demonstration}
 
-As offline presentation we have ros bags available with recorded data of a monocular camera and multiple cameras. We will present our algorithm offline with the image data from multiple cameras. Additionally, we will demonstrate our modified algorithms online with a 8-camera-system.   
+As offline presentation we have ros bags available with recorded data of a monocular camera and multiple cameras. We will present our algorithm offline with the image data from multiple cameras. Additionally, we will demonstrate our modified algorithms online with a 8-camera-system if up to that point the system is ready and given to us.   
 
 %Give detailed information on the expected outcome of your project and the experiments you plan to test your implementation. If applicable, describe the online or offline demo you plan to present at the end of the semester.
 
