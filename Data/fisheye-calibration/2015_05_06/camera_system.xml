@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sensors>
+   <camera sensor-id="mono_camera_0" date="07.5.2015" camera-model="christopher-mei">
+      <supplier>CamOdoCal v2.1</supplier>
+      <model>TBD</model>
+      <description>mono_front</description>
+      <general-parameters>
+         <width>1280</width>
+         <height>800</height>
+      </general-parameters>
+      <intrinsic-parameters>
+         <fx>1317.6832521970</fx>
+         <fy>1320.9026877873</fy>
+         <cx>653.3090402495</cx>
+         <cy>389.3993672808</cy>
+         <alpha>0.0</alpha>
+         <xi>2.1437173372</xi>
+         <k1>-0.0983572954</k1>
+         <k2>0.6222576314</k2>
+         <p1>-0.0004561998</p1>
+         <p2>-0.0003479857</p2>
+      </intrinsic-parameters>
+      <extrinsic-parameters>
+         <translation>3.3776433400 0.0008253945 0.5671647332</translation>
+         <rotation>0.0022664591 0.0305354976 0.9995311133
+                   -0.9999389819 0.0108760213 0.0019351234
+                   -0.0108118317 -0.9994745097 0.0305582845</rotation>
+      </extrinsic-parameters>
+   </camera>
+   <camera sensor-id="mono_camera_1" date="07.5.2015" camera-model="christopher-mei">
+      <supplier>CamOdoCal v2.1</supplier>
+      <model>TBD</model>
+      <description>mono_left</description>
+      <general-parameters>
+         <width>1280</width>
+         <height>800</height>
+      </general-parameters>
+      <intrinsic-parameters>
+         <fx>1328.7460559697</fx>
+         <fy>1326.9429604627</fy>
+         <cx>632.5740266690</cx>
+         <cy>392.4881541720</cy>
+         <alpha>0.0</alpha>
+         <xi>2.1577216766</xi>
+         <k1>-0.1109153796</k1>
+         <k2>0.7087976794</k2>
+         <p1>-0.0000147284</p1>
+         <p2>0.0007911582</p2>
+      </intrinsic-parameters>
+      <extrinsic-parameters>
+         <translation>1.8651242380 0.9906747045 0.9264310151</translation>
+         <rotation>0.9979975076 -0.0062065220 0.0629480256
+                   -0.0508137360 -0.6713169182 0.7394265072
+                   0.0376688077 -0.7411444356 -0.6702879877</rotation>
+      </extrinsic-parameters>
+   </camera>
+   <camera sensor-id="mono_camera_2" date="07.5.2015" camera-model="christopher-mei">
+      <supplier>CamOdoCal v2.1</supplier>
+      <model>TBD</model>
+      <description>mono_rear</description>
+      <general-parameters>
+         <width>1280</width>
+         <height>800</height>
+      </general-parameters>
+      <intrinsic-parameters>
+         <fx>1521.5266797745</fx>
+         <fy>1524.3175437695</fy>
+         <cx>651.7597183688</cx>
+         <cy>390.6027147110</cy>
+         <alpha>0.0</alpha>
+         <xi>2.6202203150</xi>
+         <k1>0.0698183745</k1>
+         <k2>2.4179356964</k2>
+         <p1>-0.0001346781</p1>
+         <p2>0.0001111211</p2>
+      </intrinsic-parameters>
+      <extrinsic-parameters>
+         <translation>-0.6981675937 0.0064424272 0.8533999449</translation>
+         <rotation>-0.0005030555 -0.0932410598 -0.9956434360
+                   0.9999753365 0.0069278197 -0.0011540280
+                   0.0070052410 -0.9956194605 0.0932352751</rotation>
+      </extrinsic-parameters>
+   </camera>
+   <camera sensor-id="mono_camera_3" date="07.5.2015" camera-model="christopher-mei">
+      <supplier>CamOdoCal v2.1</supplier>
+      <model>TBD</model>
+      <description>mono_right</description>
+      <general-parameters>
+         <width>1280</width>
+         <height>800</height>
+      </general-parameters>
+      <intrinsic-parameters>
+         <fx>1364.1468404987</fx>
+         <fy>1363.1063945944</fy>
+         <cx>635.6406307044</cx>
+         <cy>387.9694895666</cy>
+         <alpha>0.0</alpha>
+         <xi>2.2408625093</xi>
+         <k1>-0.1023964131</k1>
+         <k2>1.0034340146</k2>
+         <p1>-0.0015472358</p1>
+         <p2>-0.0008637899</p2>
+      </intrinsic-parameters>
+      <extrinsic-parameters>
+         <translation>1.8615763779 -0.9963280402 0.9155332765</translation>
+         <rotation>-0.9962553696 -0.0608213347 0.0614491961
+                   -0.0862453455 0.6491084479 -0.7557909521
+                   0.0060810222 -0.7582605015 -0.6519233337</rotation>
+      </extrinsic-parameters>
+   </camera>
+</sensors>
