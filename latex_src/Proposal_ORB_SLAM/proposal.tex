@@ -48,6 +48,8 @@ The idea for this project is to extend the current ORB-SLAM algorithm to support
 
 \section{Work packages and timeline}
 
+As a preparation and get familiar task we will need to change the implemented camera model to fit our data. As we're given image sequences taken with a fish-eye lense, we must adapt the undistorion methods in ORB-SLAM to use the corresponding camera model and its specific intrinsics.
+
 \begin{enumerate}
 \item[a)] Change current camera distortion model to fisheye cameras and convert fisheye data
 \item 2D-2D motion estimation with generalized camera model (4/8 cameras) (\cite{1211520}, \cite{4587545}, \cite{787622})
@@ -94,7 +96,6 @@ The outcome of the project is planned to be a real-time running algorithm which 
 
 As offline presentation we have rosbags available with recorded data of a monocular camera. For the fisheye cameras we first have to record the data in rosbags ourselves.\\
 We will present our algorithm offline with the image data from multiple fisheye cameras. If already available at this point in time, also the 8-camera-system could be demonstrated offline or even online.
-
 
 %Give detailed information on the expected outcome of your project and the experiments you plan to test your implementation. If applicable, describe the online or offline demo you plan to present at the end of the semester.
 
