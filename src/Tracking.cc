@@ -160,7 +160,7 @@ void Tracking::SetKeyFrameDatabase(KeyFrameDatabase *pKFDB)
 void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
-    ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &Tracking::GrabImage, this);
+    ros::Subscriber sub = nodeHandler.subscribe("/sensor_msgs/imageraw", 1, &Tracking::GrabImage, this);
 
     ros::spin();
 }
@@ -212,9 +212,9 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img4);
 
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
     else
-        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
 
     // Depending on the state of the Tracker we perform different tasks
 
