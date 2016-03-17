@@ -1,0 +1,17 @@
+%YAML:1.0
+model_type: MEI
+camera_name: mono_front
+image_width: 1280
+image_height: 800
+mirror_parameters:
+   xi: 2.3575651732707792e+00
+distortion_parameters:
+   k1: -3.7756132335956052e-02
+   k2: 1.3082294911341918e+00
+   p1: -6.3781016908488969e-04
+   p2: -6.1552658106545262e-05
+projection_parameters:
+   gamma1: 1.4087635631701332e+03
+   gamma2: 1.4082906649995764e+03
+   u0: 6.5326047726985223e+02
+   v0: 3.8901804636036530e+02

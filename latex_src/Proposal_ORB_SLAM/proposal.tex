@@ -43,12 +43,15 @@ cm}\begin{center}\memberthree\ifdefined\PutPhotos\\\vspace{0.2cm}\includegraphic
 
 \section{Description of the project}
 
-ORB-SLAM \cite{7219438} is one of the state-of-the-art feature based simultaneous localization and mapping (SLAM) algorithms. It currently supports monocular and stereo configurations. However, due to the limited field of view (FoV) of the cameras, it would be beneficial for environment perceptions if we can have 360-degrees FoV. \\
-The idea for this project is to extend the current ORB-SLAM algorithm to support a generalized camera \cite{787622}. A sensor board with up to eight synchronized global-shutter cameras will be provided as a generalized camera to provide 360-degress FoV.
+ORB-SLAM \cite{7219438} is one of the state-of-the-art feature based simultaneous localization and mapping (SLAM) algorithms. It currently supports monocular and stereo camera configurations. One problem is the limited field of view (FoV) of the cameras, whereas for extensive perception of the environment, it were beneficial to have 360-degrees FoV. \\
+Therefore the idea for this project is to extend the current ORB-SLAM algorithm to support a generalized camera model\cite{787622}. A sensor board with up to eight synchronized global-shutter cameras is currently under construction and is expected to be ready by the end of the semester. It is intended to provide 360-degrees FoV data for the generalized camera model of our modified ORB-SLAM. Until then, there is data from the V-charge car project with 4 fisheye cameras available.
 
 \section{Work packages and timeline}
 
+As a preparation task and to get familiar we will need to change the implemented camera model to fit our data. As we're given image sequences taken with a fish-eye lense, we have to adapt the undistortion methods in ORB-SLAM to use the corresponding camera model and its specific intrinsics.
+
 \begin{enumerate}
+\item[0)] Adapt current camera distortion model to fisheye cameras and convert fisheye data
 \item 2D-2D motion estimation with generalized camera model (4/8 cameras) (\cite{1211520}, \cite{4587545}, \cite{787622})
 \item 3D-2D NPnP (non-perspective n points) pose estimation (\cite{1211520}, \cite{4587545}, \cite{6631107})
 \item ORB-SLAM: (\cite{1211520}, \cite{4587545}, \cite{7219438})
@@ -75,9 +78,12 @@ The idea for this project is to extend the current ORB-SLAM algorithm to support
 \end{enumerate}
 \end{enumerate}
 
-The minimum requirement for the system to work are 3.1.1 (with 1.), 3.2 and 3.3. After those parts are working 3.1.2 (with 2.) is going to be implemented next. Since the different work packages are all interlinked it is difficult to divide the responsibilities. Yet, Tobias and Marius are going to start working on the Tracking part while Lukas and Leonard work on the Mapping part. After those work packages are completed the group will collectively modify other common technical issues.
+
+At the beginning we have to adjust the camera distortion model of the SLAM-algorithm from pinhole-cameras to the fisheye data. \\ 
+The minimum requirements for the system to work are modifications of the given monocular SLAM under part 3) but also the implementation of the 2D-2D motion estimation with a generalized camera under 1). \\
+After those parts are working the replacement of the 3D-2D pose estimation for re-localization under 3a) (with 2.) is going to be implemented next. \\ 
+Since the different work packages are all interlinked it is difficult to divide the responsibilities. Yet, Tobias and Marius are going to start working on the Tracking part while Lukas and Leonard work on the Mapping part. After those work packages are completed the group will collectively modify other common technical issues.
 Those minimum requirements are planned to be working by the end of April. \\
-After that the replacement of the 3D-2D pose estimation for re-localization is going to be implemented. \\
 
 
 The monocular SLAM algorithm is provided and implemented in C++ and ROS and the operating system of our choice is Linux. For the modifications towards a generalized SLAM algorithm the library OpenGV is going to be used.
@@ -86,7 +92,10 @@ The monocular SLAM algorithm is provided and implemented in C++ and ROS and the 
 
 \section{Outcomes and Demonstration}
 
-As offline presentation we have ros bags available with recorded data of a monocular camera and multiple cameras. We will present our algorithm offline with the image data from multiple cameras. Additionally, we will demonstrate our modified algorithms online with a 8-camera-system.   
+The outcome of the project is planned to be a real-time running algorithm which is able to localize, track and map more stable and with higher precision than the monocular algorithm. \\
+
+As offline presentation we have rosbags available with recorded data of a monocular camera. For the fisheye cameras we first have to record the data in rosbags ourselves.\\
+We will present our algorithm offline with the image data from multiple fisheye cameras. If already available at this point in time, also the 8-camera-system could be demonstrated offline or even online.
 
 %Give detailed information on the expected outcome of your project and the experiments you plan to test your implementation. If applicable, describe the online or offline demo you plan to present at the end of the semester.
 
