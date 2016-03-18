@@ -33,8 +33,6 @@
 
 namespace ORB_SLAM
 {
-#define FRAME_GRID_ROWS 48
-#define FRAME_GRID_COLS 64
 
     class tracking;
     class MapPoint;
@@ -52,6 +50,17 @@ namespace ORB_SLAM
         ORBextractor* mpORBextractor;
 
         DBoW2::BowVector mBowVec;
+	DBoW2::FeatureVector mFeatVec;
+
+    	// Vector of keypoints (original for visualization) and undistorted (actually used by the system)
+   	std::vector<cv::KeyPoint> mvKeys;
+    	std::vector<cv::KeyPoint> mvKeysUn;
+
+	// ORB descriptor, each row associated to a keypoint
+    	cv::Mat mDescriptors;
+
+	// Number of KeyPoints
+    	int N;
 
         // Camera
         vector<CameraFrame> cameraFrames;
@@ -78,7 +87,20 @@ namespace ORB_SLAM
         vector<float> mvLevelSigma2;
         vector<float> mvInvLevelSigma2;
 
-        static bool mbInitialComputations;
+	// proxy to cameraFrames
+     	bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
+	vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+
+        // MapPoints associated to keypoints, NULL pointer if not association
+        std::vector<MapPoint*> mvpMapPoints;
+
+        // Flag to identify outlier associations
+        std::vector<bool> mvbOutlier;
+
+        // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
+        float mfGridElementWidthInv;
+        float mfGridElementHeightInv;
+        std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
     private:
 

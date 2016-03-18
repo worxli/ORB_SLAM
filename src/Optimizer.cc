@@ -115,10 +115,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             e->setRobustKernel(rk);
             rk->setDelta(thHuber);
 
-            e->fx = pKF->fx;
-            e->fy = pKF->fy;
-            e->cx = pKF->cx;
-            e->cy = pKF->cy;
+            // TODO
+            e->fx = pKF->cameraFrames[0].fx;
+            e->fy = pKF->cameraFrames[0].fy;
+            e->cx = pKF->cameraFrames[0].cx;
+            e->cy = pKF->cameraFrames[0].cy;
 
             optimizer.addEdge(e);
         }
@@ -220,10 +221,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             e->setRobustKernel(rk);
             rk->setDelta(delta);
 
-            e->fx = pFrame->fx;
-            e->fy = pFrame->fy;
-            e->cx = pFrame->cx;
-            e->cy = pFrame->cy;
+            // TODO
+            e->fx = pFrame->cameraFrames[0].fx;
+            e->fy = pFrame->cameraFrames[0].fy;
+            e->cx = pFrame->cameraFrames[0].cx;
+            e->cy = pFrame->cameraFrames[0].cy;
 
             e->setLevel(0);
 
@@ -432,10 +434,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuber);
 
-                e->fx = pKFi->fx;
-                e->fy = pKFi->fy;
-                e->cx = pKFi->cx;
-                e->cy = pKFi->cy;
+                // TODO
+                e->fx = pKFi->cameraFrames[0].fx;
+                e->fy = pKFi->cameraFrames[0].fy;
+                e->cx = pKFi->cameraFrames[0].cx;
+                e->cy = pKFi->cameraFrames[0].cy;
 
                 optimizer.addEdge(e);
                 vpEdges.push_back(e);

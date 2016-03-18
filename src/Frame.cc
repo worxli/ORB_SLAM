@@ -43,7 +43,7 @@ Frame::Frame(const Frame &frame)
 
 
 Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc)
-    :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(camFrame),mTimeStamp(timeStamp)
+    :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(cameraFrames),mTimeStamp(timeStamp)
 {
     mnId=nNextId++;
 }
@@ -55,6 +55,17 @@ void Frame::UpdatePoseMatrices()
     mOw = -mRcw.t()*mtcw;
 }
 
+bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
+{
+    for(int i = 0; i<cameraFrames.size(); i++)
+    {
+	if(cameraFrames[i].isInFrustum(pMP, viewingCosLimit)) 
+	    return true;
+	return false;
+    }
+	
+}
+
 void Frame::ComputeBoW()
 {
     if(mBowVec.empty())
@@ -64,6 +75,18 @@ void Frame::ComputeBoW()
         mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
          */
     }
+}
+
+vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
+{
+    vector<size_t> vIndices;
+    for(int i = 0; i<cameraFrames.size(); i++)
+    {
+	//vIndices.push_back(cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel));
+	vector<size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
+	vIndices.add(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
+    }
+    return vIndices;
 }
 
 } //namespace ORB_SLAM

@@ -27,6 +27,7 @@
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "Frame.h"
+#include "CameraFrame.h"
 #include "KeyFrameDatabase.h"
 
 #include<boost/thread.hpp>
@@ -110,6 +111,8 @@ public:
     cv::Mat GetImage();
     bool IsInImage(const float &x, const float &y) const;
 
+    vector<CameraFrame> cameraFrames;
+
     // Activate/deactivate erasable flags
     void SetNotErase();
     void SetErase();
@@ -163,9 +166,6 @@ public:
     long unsigned int mnRelocQuery;
     int mnRelocWords;
     float mRelocScore;
-
-    // Calibration parameters
-    float fx, fy, cx, cy;
 
     //BoW
     DBoW2::BowVector mBowVec;

@@ -30,8 +30,7 @@ long unsigned int KeyFrame::nNextId=0;
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
-    mnLoopQuery(0), mnRelocQuery(0),fx(F.fx), fy(F.fy), cx(F.cx), cy(F.cy), mBowVec(F.mBowVec),
-    im(F.im), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX), mnMaxY(F.mnMaxY), mK(F.mK),
+    mnLoopQuery(0), mnRelocQuery(0), mBowVec(F.mBowVec), cameraFrames(F.cameraFrames),
     mvKeys(F.mvKeys), mvKeysUn(F.mvKeysUn), mDescriptors(F.mDescriptors.clone()),
     mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.mFeatVec),
     mbFirstConnection(true), mpParent(NULL), mbNotErase(false), mbToBeErased(false), mbBad(false),
@@ -99,11 +98,11 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
-cv::Mat KeyFrame::GetProjectionMatrix()
+/*cv::Mat KeyFrame::GetProjectionMatrix()
 {
     boost::mutex::scoped_lock lock(mMutexPose);
     return mK*Tcw.rowRange(0,3);
-}
+}*/
 
 cv::Mat KeyFrame::GetCameraCenter()
 {

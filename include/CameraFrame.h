@@ -22,8 +22,18 @@
 #ifndef CAMERAFRAME_H
 #define CAMERAFRAME_H
 
+#include "MapPoint.h"
+#include "Thirdparty/DBoW2/DBoW2/BowVector.h"
+#include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
+#include "ORBVocabulary.h"
+#include "ORBextractor.h"
+
 namespace ORB_SLAM
 {
+#define FRAME_GRID_ROWS 48
+#define FRAME_GRID_COLS 64
+
+class MapPoint;
 
 class CameraFrame
 {
