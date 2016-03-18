@@ -25,15 +25,22 @@
 namespace ORB_SLAM
 {
 
-class Frame
+class CameraFrame
 {
 public:
-    Frame();
-    Frame(const Frame &frame);
-    Frame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef);
+    CameraFrame();
+    CameraFrame(const CameraFrame &frame);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef);
 
     // Frame image
     cv::Mat im;
+
+    // Vector of keypoints (original for visualization) and undistorted (actually used by the system)
+    std::vector<cv::KeyPoint> mvKeys;
+    std::vector<cv::KeyPoint> mvKeysUn;
+
+    // Number of KeyPoints
+    int N;
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
@@ -42,6 +49,32 @@ public:
     static float cx;
     static float cy;
     cv::Mat mDistCoef;
+
+    // ORB descriptor, each row associated to a keypoint
+    cv::Mat mDescriptors;
+
+    // Bag of Words Vector structures
+    DBoW2::BowVector mBowVec;
+    DBoW2::FeatureVector mFeatVec;
+
+    // MapPoints associated to keypoints, NULL pointer if not association
+    std::vector<MapPoint*> mvpMapPoints;
+
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
+
+    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
+    float mfGridElementWidthInv;
+    float mfGridElementHeightInv;
+    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+
+    // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
+    bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
+
+    // Compute the cell of a keypoint (return false if outside the grid)
+    bool PosInGrid(cv::KeyPoint &kp, int &posX, int &posY);
+
+    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
     // Undistorted Image Bounds (computed once)
     static int mnMinX;
@@ -57,12 +90,8 @@ private:
     void UndistortKeyPoints();
     void ComputeImageBounds();
 
-    // Call UpdatePoseMatrices(), before using
-    cv::Mat mOw;
-    cv::Mat mRcw;
-    cv::Mat mtcw;
 };
 
 }// namespace ORB_SLAM
 
-#endif // FRAME_H
+#endif // CAMERAFRAME_H
