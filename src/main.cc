@@ -175,7 +175,7 @@ int main(int argc, char **argv)
     LoopCloser.SetLocalMapper(&LocalMapper);
 
     //This "main" thread will show the current processed frame and publish the map
-    float fps = strSettingsFiles[0]["Camera.fps"];
+    float fps = fsSettings_ORB["Camera.fps"];
     if(fps==0)
         fps=30;
 
