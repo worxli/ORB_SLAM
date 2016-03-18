@@ -160,7 +160,7 @@ void Tracking::SetKeyFrameDatabase(KeyFrameDatabase *pKFDB)
 void Tracking::Run()
 {
     ros::NodeHandle nodeHandler;
-    ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &Tracking::GrabImage, this);
+    ros::Subscriber sub = nodeHandler.subscribe("/sensor_msgs/imageraw", 1, &Tracking::GrabImage, this);
 
     ros::spin();
 }
@@ -196,10 +196,25 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv_ptr->image.copyTo(im);
     }
 
+    // Extract images from stitched image -> assuming 4 images
+    int width = im.cols/2;
+    int height = im.rows/2;
+
+    cv::Mat img1 = cv::Mat(im, cv::Rect(0,0, width, height));
+    cv::Mat img2 = cv::Mat(im, cv::Rect(0, height, width, height));
+    cv::Mat img3 = cv::Mat(im, cv::Rect(width, 0, width, height));
+    cv::Mat img4 = cv::Mat(im, cv::Rect(width, height, width, height));
+
+    vector<cv::Mat> imgs;
+    imgs.push_back(img1);
+    imgs.push_back(img2);
+    imgs.push_back(img3);
+    imgs.push_back(img4);
+
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
     else
-        mCurrentFrame = Frame(im,cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
 
     // Depending on the state of the Tracker we perform different tasks
 

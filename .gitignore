@@ -1,0 +1,6 @@
+build/
+bin/
+Thirdparty/
+*.pro*
+*~
+*.bag
