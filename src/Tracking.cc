@@ -200,21 +200,24 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     int width = im.cols/2;
     int height = im.rows/2;
 
-    cv::Mat img1 = cv::Mat(im, cv::Rect(0,0, width, height));
-    cv::Mat img2 = cv::Mat(im, cv::Rect(0, height, width, height));
-    cv::Mat img3 = cv::Mat(im, cv::Rect(width, 0, width, height));
-    cv::Mat img4 = cv::Mat(im, cv::Rect(width, height, width, height));
-
     vector<cv::Mat> imgs;
-    imgs.push_back(img1);
-    imgs.push_back(img2);
-    imgs.push_back(img3);
-    imgs.push_back(img4);
+
+    imgs.push_back(cv::Mat(im, cv::Rect(0,0, width, height)));
+    imgs.push_back(cv::Mat(im, cv::Rect(0, height, width, height)));
+    imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));
+    imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
+
+    vector<CameraFrame> cameraFrames;
+
+    for(int i=1; i<2; i++) {
+	CameraFrame cameraFrame = CameraFrame(imgs[i], mK, mDistCoef);
+	cameraFrames.push_back(cameraFrame);
+    }
 
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
+	mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     else
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+	mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
 
     // Depending on the state of the Tracker we perform different tasks
 

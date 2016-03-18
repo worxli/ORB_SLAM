@@ -217,10 +217,11 @@ void LocalMapping::CreateNewMapPoints()
     tcw1.copyTo(Tcw1.col(3));
     cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
-    const float fx1 = mpCurrentKeyFrame->fx;
-    const float fy1 = mpCurrentKeyFrame->fy;
-    const float cx1 = mpCurrentKeyFrame->cx;
-    const float cy1 = mpCurrentKeyFrame->cy;
+    // TODO
+    const float fx1 = mpCurrentKeyFrame->cameraFrames[0].fx;
+    const float fy1 = mpCurrentKeyFrame->cameraFrames[0].fy;
+    const float cx1 = mpCurrentKeyFrame->cameraFrames[0].cx;
+    const float cy1 = mpCurrentKeyFrame->cameraFrames[0].cy;
     const float invfx1 = 1.0f/fx1;
     const float invfy1 = 1.0f/fy1;
 
@@ -258,10 +259,11 @@ void LocalMapping::CreateNewMapPoints()
         Rcw2.copyTo(Tcw2.colRange(0,3));
         tcw2.copyTo(Tcw2.col(3));
 
-        const float fx2 = pKF2->fx;
-        const float fy2 = pKF2->fy;
-        const float cx2 = pKF2->cx;
-        const float cy2 = pKF2->cy;
+        // TODO
+        const float fx2 = pKF2->cameraFrames[0].fx;
+        const float fy2 = pKF2->cameraFrames[0].fy;
+        const float cx2 = pKF2->cameraFrames[0].cx;
+        const float cy2 = pKF2->cameraFrames[0].cy;
         const float invfx2 = 1.0f/fx2;
         const float invfy2 = 1.0f/fy2;
 

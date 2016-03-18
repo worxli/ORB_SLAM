@@ -286,10 +286,11 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
 int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapPoint*> &vpPoints, vector<MapPoint*> &vpMatched, int th)
 {
     // Get Calibration Parameters for later projection
-    const float fx = pKF->fx;
-    const float fy = pKF->fy;
-    const float cx = pKF->cx;
-    const float cy = pKF->cy;
+    // TODO
+    const float fx = pKF->cameraFrames[0].fx;
+    const float fy = pKF->cameraFrames[0].fy;
+    const float cx = pKF->cameraFrames[0].cx;
+    const float cy = pKF->cameraFrames[0].cy;
 
     const int nMaxLevel = pKF->GetScaleLevels()-1;
     vector<float> vfScaleFactors = pKF->GetScaleFactors();
@@ -545,8 +546,10 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
         const float yc2 = x3Dc2.at<float>(1);
         const float invzc2 = 1.0/x3Dc2.at<float>(2);
 
-        float u2 = F2.fx*xc2*invzc2+F2.cx;
-        float v2 = F2.fy*yc2*invzc2+F2.cy;
+	// TODO
+    	// for now just do the same thing with the first image
+        float u2 = F2.cameraFrames[0].fx*xc2*invzc2+F2.cameraFrames[0].cx;
+        float v2 = F2.cameraFrames[0].fy*yc2*invzc2+F2.cameraFrames[0].cy;
 
         vector<size_t> vIndices2 = F2.GetFeaturesInArea(u2,v2, windowSize, level1, level1);
 
@@ -1018,10 +1021,11 @@ int ORBmatcher::Fuse(KeyFrame *pKF, vector<MapPoint *> &vpMapPoints, float th)
     cv::Mat Rcw = pKF->GetRotation();
     cv::Mat tcw = pKF->GetTranslation();
 
-    const float &fx = pKF->fx;
-    const float &fy = pKF->fy;
-    const float &cx = pKF->cx;
-    const float &cy = pKF->cy;
+    // TODO
+    const float &fx = pKF->cameraFrames[0].fx;
+    const float &fy = pKF->cameraFrames[0].fy;
+    const float &cx = pKF->cameraFrames[0].cx;
+    const float &cy = pKF->cameraFrames[0].cy;
 
     const int nMaxLevel = pKF->GetScaleLevels()-1;
     vector<float> vfScaleFactors = pKF->GetScaleFactors();
@@ -1136,10 +1140,11 @@ int ORBmatcher::Fuse(KeyFrame *pKF, vector<MapPoint *> &vpMapPoints, float th)
 int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoints, float th)
 {
     // Get Calibration Parameters for later projection
-    const float &fx = pKF->fx;
-    const float &fy = pKF->fy;
-    const float &cx = pKF->cx;
-    const float &cy = pKF->cy;
+    // TODO
+    const float &fx = pKF->cameraFrames[0].fx;
+    const float &fy = pKF->cameraFrames[0].fy;
+    const float &cx = pKF->cameraFrames[0].cx;
+    const float &cy = pKF->cameraFrames[0].cy;
 
     // Decompose Scw
     cv::Mat sRcw = Scw.rowRange(0,3).colRange(0,3);
@@ -1267,10 +1272,11 @@ int ORBmatcher::Fuse(KeyFrame *pKF, cv::Mat Scw, const vector<MapPoint *> &vpPoi
 int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &vpMatches12,
                                    const float &s12, const cv::Mat &R12, const cv::Mat &t12, float th)
 {
-    const float fx = pKF1->fx;
-    const float fy = pKF1->fy;
-    const float cx = pKF1->cx;
-    const float cy = pKF1->cy;
+    // TODO
+    const float fx = pKF1->cameraFrames[0].fx;
+    const float fy = pKF1->cameraFrames[0].fy;
+    const float cx = pKF1->cameraFrames[0].cx;
+    const float cy = pKF1->cameraFrames[0].cy;
 
     // Camera 1 from world
     cv::Mat R1w = pKF1->GetRotation();
@@ -1533,12 +1539,13 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                 const float yc = x3Dc.at<float>(1);
                 const float invzc = 1.0/x3Dc.at<float>(2);
 
-                float u = CurrentFrame.fx*xc*invzc+CurrentFrame.cx;
-                float v = CurrentFrame.fy*yc*invzc+CurrentFrame.cy;
+		// TODO
+                float u = CurrentFrame.cameraFrames[0].fx*xc*invzc+CurrentFrame.cameraFrames[0].cx;
+                float v = CurrentFrame.cameraFrames[0].fy*yc*invzc+CurrentFrame.cameraFrames[0].cy;
 
-                if(u<CurrentFrame.mnMinX || u>CurrentFrame.mnMaxX)
+                if(u<CurrentFrame.cameraFrames[0].mnMinX || u>CurrentFrame.cameraFrames[0].mnMaxX)
                     continue;
-                if(v<CurrentFrame.mnMinY || v>CurrentFrame.mnMaxY)
+                if(v<CurrentFrame.cameraFrames[0].mnMinY || v>CurrentFrame.cameraFrames[0].mnMaxY)
                     continue;
 
                int nPredictedOctave = LastFrame.mvKeys[i].octave;
@@ -1651,12 +1658,13 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set
                 const float yc = x3Dc.at<float>(1);
                 const float invzc = 1.0/x3Dc.at<float>(2);
 
-                float u = CurrentFrame.fx*xc*invzc+CurrentFrame.cx;
-                float v = CurrentFrame.fy*yc*invzc+CurrentFrame.cy;
+		// TODO
+                float u = CurrentFrame.cameraFrames[0].fx*xc*invzc+CurrentFrame.cameraFrames[0].cx;
+                float v = CurrentFrame.cameraFrames[0].fy*yc*invzc+CurrentFrame.cameraFrames[0].cy;
 
-                if(u<CurrentFrame.mnMinX || u>CurrentFrame.mnMaxX)
+                if(u<CurrentFrame.cameraFrames[0].mnMinX || u>CurrentFrame.cameraFrames[0].mnMaxX)
                     continue;
-                if(v<CurrentFrame.mnMinY || v>CurrentFrame.mnMaxY)
+                if(v<CurrentFrame.cameraFrames[0].mnMinY || v>CurrentFrame.cameraFrames[0].mnMaxY)
                     continue;
 
                 // Compute predicted scale level
