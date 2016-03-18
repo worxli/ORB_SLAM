@@ -53,6 +53,21 @@ public:
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;
 
+    // Bag of Words Vector structures
+    DBoW2::BowVector mBowVec;
+    DBoW2::FeatureVector mFeatVec;
+
+    // MapPoints associated to keypoints, NULL pointer if not association
+    std::vector<MapPoint*> mvpMapPoints;
+
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
+
+    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
+    float mfGridElementWidthInv;
+    float mfGridElementHeightInv;
+    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+
     // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
 

@@ -46,31 +46,18 @@ namespace ORB_SLAM
     public:
         Frame();
         Frame(const Frame &frame);
-        Frame(cv::Mat &im, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
+        Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc);
 
         ORBVocabulary* mpORBvocabulary;
         ORBextractor* mpORBextractor;
+
+        DBoW2::BowVector mBowVec;
 
         // Camera
         vector<CameraFrame> cameraFrames;
 
         // Frame timestamp
         double mTimeStamp;
-
-        // Bag of Words Vector structures
-        DBoW2::BowVector mBowVec;
-        DBoW2::FeatureVector mFeatVec;
-
-        // MapPoints associated to keypoints, NULL pointer if not association
-        std::vector<MapPoint*> mvpMapPoints;
-
-        // Flag to identify outlier associations
-        std::vector<bool> mvbOutlier;
-
-        // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
-        float mfGridElementWidthInv;
-        float mfGridElementHeightInv;
-        std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
         // Camera Pose
         cv::Mat mTcw;
@@ -92,7 +79,6 @@ namespace ORB_SLAM
         vector<float> mvInvLevelSigma2;
 
         static bool mbInitialComputations;
-
 
     private:
 
