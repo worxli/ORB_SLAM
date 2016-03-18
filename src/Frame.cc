@@ -33,14 +33,12 @@ Frame::Frame()
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), mTimeStamp(frame.mTimeStamp),
-     mBowVec(frame.mBowVec), mnId(frame.mnId),
-     mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
+     mBowVec(frame.mBowVec), mnId(frame.mnId), mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
 {
     if(!frame.mTcw.empty())
         mTcw = frame.mTcw.clone();
 }
-
 
 Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc)
     :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(camFrame),mTimeStamp(timeStamp)

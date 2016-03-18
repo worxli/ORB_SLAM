@@ -37,11 +37,22 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
      mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
      mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
      mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv),mnId(frame.mnId),
+<<<<<<< HEAD
      mpReferenceKF(frame.mpReferenceKF)
+=======
+     mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
+     mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+>>>>>>> 913a554510ee18648a6868990a0a1de11cd5aca7
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
             mGrid[i][j]=frame.mGrid[i][j];
+<<<<<<< HEAD
+=======
+
+    if(!frame.mTcw.empty())
+        mTcw = frame.mTcw.clone();
+>>>>>>> 913a554510ee18648a6868990a0a1de11cd5aca7
 }
 
 CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef)
@@ -76,6 +87,12 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef)
         mbInitialComputations=false;
     }
 
+<<<<<<< HEAD
+=======
+
+    mnId=nNextId++;    
+
+>>>>>>> 913a554510ee18648a6868990a0a1de11cd5aca7
     //Scale Levels Info
     mnScaleLevels = mpORBextractor->GetLevels();
     mfScaleFactor = mpORBextractor->GetScaleFactor();
