@@ -52,12 +52,12 @@ int main(int argc, char **argv)
             "This is free software, and you are welcome to redistribute it" << endl <<
             "under certain conditions. See LICENSE.txt." << endl;
 
-    if(argc != 3)
-    {
-        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings (absolute or relative to package directory)" << endl;
-        ros::shutdown();
-        return 1;
-    }
+//    if(argc != 3)
+//    {
+//        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings (absolute or relative to package directory)" << endl;
+//        ros::shutdown();
+//        return 1;
+//    }
 
     // Load Settings and Check
     vector<string> strSettingsFiles;

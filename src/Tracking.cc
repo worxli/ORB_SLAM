@@ -47,9 +47,26 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     mState(NO_IMAGES_YET), mpORBVocabulary(pVoc), mpFramePublisher(pFramePublisher), mpMapPublisher(pMapPublisher), mpMap(pMap),
     mnLastRelocFrameId(0), mbPublisherStopped(false), mbReseting(false), mbForceRelocalisation(false), mbMotionModel(false)
 {
+	// Load parameters for each camera from settings files
+	vector<double> xi, k1, k2, p1, p2, gamma1, gamma2, u0, v0;
+
+	for(int i=0; i < strSettingPath.size()-1; i++)
+	{
+	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
+	    xi.push_back(fSettings["xi"]);
+	    k1.push_back(fSettings["k1"]);
+	    k2.push_back(fSettings["k2"]);
+	    p1.push_back(fSettings["p1"]);
+	    p2.push_back(fSettings["p2"]);
+	    gamma1.push_back(fSettings["gamma1"]);
+	    gamma2.push_back(fSettings["gamma2"]);
+	    u0.push_back(fSettings["u0"]);
+	    v0.push_back(fSettings["v0"]);
+	}
+
     // Load camera parameters from settings file
 
-    cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+    cv::FileStorage fSettings(strSettingPath[0], cv::FileStorage::READ);
     float fx = fSettings["Camera.fx"];
     float fy = fSettings["Camera.fy"];
     float cx = fSettings["Camera.cx"];
@@ -69,7 +86,9 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     DistCoef.at<float>(3) = fSettings["Camera.p2"];
     DistCoef.copyTo(mDistCoef);
 
-    float fps = fSettings["Camera.fps"];
+    // ORB settings read from last element of the vector strSettingPath
+    cv::FileStorage fSettings_ORB(strSettingPath[strSettingPath.size()-1], cv::FileStorage::READ);
+    float fps = fSettings_ORB["Camera.fps"];
     if(fps==0)
         fps=30;
 
@@ -90,7 +109,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     cout << "- fps: " << fps << endl;
 
 
-    int nRGB = fSettings["Camera.RGB"];
+    int nRGB = fSettings_ORB["Camera.RGB"];
     mbRGB = nRGB;
 
     if(mbRGB)
@@ -98,13 +117,14 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     else
         cout << "- color order: BGR (ignored if grayscale)" << endl;
 
+
     // Load ORB parameters
 
-    int nFeatures = fSettings["ORBextractor.nFeatures"];
-    float fScaleFactor = fSettings["ORBextractor.scaleFactor"];
-    int nLevels = fSettings["ORBextractor.nLevels"];
-    int fastTh = fSettings["ORBextractor.fastTh"];    
-    int Score = fSettings["ORBextractor.nScoreType"];
+    int nFeatures = fSettings_ORB["ORBextractor.nFeatures"];
+    float fScaleFactor = fSettings_ORB["ORBextractor.scaleFactor"];
+    int nLevels = fSettings_ORB["ORBextractor.nLevels"];
+    int fastTh = fSettings_ORB["ORBextractor.fastTh"];
+    int Score = fSettings_ORB["ORBextractor.nScoreType"];
 
     assert(Score==1 || Score==0);
 
@@ -125,7 +145,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     // Initialization uses only points from the finest scale level
     mpIniORBextractor = new ORBextractor(nFeatures*2,1.2,8,Score,fastTh);  
 
-    int nMotion = fSettings["UseMotionModel"];
+    int nMotion = fSettings_ORB["UseMotionModel"];
     mbMotionModel = nMotion;
 
     if(mbMotionModel)
