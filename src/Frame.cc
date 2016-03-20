@@ -41,12 +41,10 @@ Frame::Frame(const Frame &frame)
         mTcw = frame.mTcw.clone();
 }
 
-
 Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc)
     :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(cameraFrames),mTimeStamp(timeStamp)
 {
     mnId=nNextId++;
-
     
     //Scale Levels Info
     mnScaleLevels = mpORBextractor->GetLevels();
