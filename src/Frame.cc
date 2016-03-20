@@ -46,6 +46,25 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
     :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(cameraFrames),mTimeStamp(timeStamp)
 {
     mnId=nNextId++;
+
+    
+    //Scale Levels Info
+    mnScaleLevels = mpORBextractor->GetLevels();
+    mfScaleFactor = mpORBextractor->GetScaleFactor();
+
+    mvScaleFactors.resize(mnScaleLevels);
+    mvLevelSigma2.resize(mnScaleLevels);
+    mvScaleFactors[0]=1.0f;
+    mvLevelSigma2[0]=1.0f;
+    for(int i=1; i<mnScaleLevels; i++)
+    {
+        mvScaleFactors[i]=mvScaleFactors[i-1]*mfScaleFactor;        
+        mvLevelSigma2[i]=mvScaleFactors[i]*mvScaleFactors[i];
+    }
+
+    mvInvLevelSigma2.resize(mvLevelSigma2.size());
+    for(int i=0; i<mnScaleLevels; i++)
+        mvInvLevelSigma2[i]=1/mvLevelSigma2[i];
 }
 
 void Frame::UpdatePoseMatrices()
@@ -55,7 +74,7 @@ void Frame::UpdatePoseMatrices()
     mOw = -mRcw.t()*mtcw;
 }
 
-bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
+bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {
     for(int i = 0; i<cameraFrames.size(); i++)
     {
@@ -84,7 +103,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     {
 	//vIndices.push_back(cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel));
 	vector<size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
-	vIndices.add(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
+	vIndices.insert(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
     }
     return vIndices;
 }

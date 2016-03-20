@@ -25,6 +25,7 @@
 
 namespace ORB_SLAM
 {
+bool CameraFrame::mbInitialComputations=true;
 float CameraFrame::cx, CameraFrame::cy, CameraFrame::fx, CameraFrame::fy;
 int CameraFrame::mnMinX, CameraFrame::mnMinY, CameraFrame::mnMaxX, CameraFrame::mnMaxY;
 
@@ -74,24 +75,6 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef)
 
         mbInitialComputations=false;
     }
-
-    //Scale Levels Info
-    mnScaleLevels = mpORBextractor->GetLevels();
-    mfScaleFactor = mpORBextractor->GetScaleFactor();
-
-    mvScaleFactors.resize(mnScaleLevels);
-    mvLevelSigma2.resize(mnScaleLevels);
-    mvScaleFactors[0]=1.0f;
-    mvLevelSigma2[0]=1.0f;
-    for(int i=1; i<mnScaleLevels; i++)
-    {
-        mvScaleFactors[i]=mvScaleFactors[i-1]*mfScaleFactor;        
-        mvLevelSigma2[i]=mvScaleFactors[i]*mvScaleFactors[i];
-    }
-
-    mvInvLevelSigma2.resize(mvLevelSigma2.size());
-    for(int i=0; i<mnScaleLevels; i++)
-        mvInvLevelSigma2[i]=1/mvLevelSigma2[i];
 
     // Assign Features to Grid Cells
     int nReserve = 0.5*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);

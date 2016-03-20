@@ -38,6 +38,7 @@ namespace ORB_SLAM
     class MapPoint;
     class KeyFrame;
     class KeyFrameDatabase;
+    class CameraFrame;
 
     class Frame
     {
@@ -93,14 +94,6 @@ namespace ORB_SLAM
 
         // MapPoints associated to keypoints, NULL pointer if not association
         std::vector<MapPoint*> mvpMapPoints;
-
-        // Flag to identify outlier associations
-        std::vector<bool> mvbOutlier;
-
-        // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
-        float mfGridElementWidthInv;
-        float mfGridElementHeightInv;
-        std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
     private:
 

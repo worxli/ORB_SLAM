@@ -1529,7 +1529,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
 
         if(pMP)
         {
-            if(!LastFrame.mvbOutlier[i])
+            if(!LastFrame.cameraFrames[0].mvbOutlier[i])
             {
                 // Project
                 cv::Mat x3Dw = pMP->GetWorldPos();

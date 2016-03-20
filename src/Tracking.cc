@@ -294,9 +294,10 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
             // with those points so we discard them in the frame.
-            for(size_t i=0; i<mCurrentFrame.mvbOutlier.size();i++)
+            //TODO
+            for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size();i++)
             {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.cameraFrames[0].mvbOutlier[i])
                     mCurrentFrame.mvpMapPoints[i]=NULL;
             }
         }
@@ -554,11 +555,12 @@ bool Tracking::TrackPreviousFrame()
         // Optimize pose with correspondences
         Optimizer::PoseOptimization(&mCurrentFrame);
 
-        for(size_t i =0; i<mCurrentFrame.mvbOutlier.size(); i++)
-            if(mCurrentFrame.mvbOutlier[i])
+        //TODO
+        for(size_t i =0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); i++)
+            if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
             {
                 mCurrentFrame.mvpMapPoints[i]=NULL;
-                mCurrentFrame.mvbOutlier[i]=false;
+                mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
                 nmatches--;
             }
 
@@ -578,11 +580,13 @@ bool Tracking::TrackPreviousFrame()
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
-    for(size_t i =0; i<mCurrentFrame.mvbOutlier.size(); i++)
-        if(mCurrentFrame.mvbOutlier[i])
+    //TODO
+    for(size_t i =0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); i++)
+        if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
         {
             mCurrentFrame.mvpMapPoints[i]=NULL;
-            mCurrentFrame.mvbOutlier[i]=false;
+            // TODO
+            mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
             nmatches--;
         }
 
@@ -613,10 +617,11 @@ bool Tracking::TrackWithMotionModel()
     {
         if(mCurrentFrame.mvpMapPoints[i])
         {
-            if(mCurrentFrame.mvbOutlier[i])
+            if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
             {
+                //TODO
                 mCurrentFrame.mvpMapPoints[i]=NULL;
-                mCurrentFrame.mvbOutlier[i]=false;
+                mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
                 nmatches--;
             }
         }
@@ -644,7 +649,8 @@ bool Tracking::TrackLocalMap()
     for(size_t i=0; i<mCurrentFrame.mvpMapPoints.size(); i++)
         if(mCurrentFrame.mvpMapPoints[i])
         {
-            if(!mCurrentFrame.mvbOutlier[i])
+            //TODO
+            if(!mCurrentFrame.cameraFrames[0].mvbOutlier[i])
                 mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
         }
 
@@ -988,8 +994,9 @@ bool Tracking::Relocalisation()
                 if(nGood<10)
                     continue;
 
-                for(size_t io =0, ioend=mCurrentFrame.mvbOutlier.size(); io<ioend; io++)
-                    if(mCurrentFrame.mvbOutlier[io])
+                // TODO
+                for(size_t io =0, ioend=mCurrentFrame.cameraFrames[0].mvbOutlier.size(); io<ioend; io++)
+                    if(mCurrentFrame.cameraFrames[0].mvbOutlier[io])
                         mCurrentFrame.mvpMapPoints[io]=NULL;
 
                 // If few inliers, search by projection in a coarse window and optimize again
@@ -1016,8 +1023,9 @@ bool Tracking::Relocalisation()
                             {
                                 nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
-                                for(size_t io =0; io<mCurrentFrame.mvbOutlier.size(); io++)
-                                    if(mCurrentFrame.mvbOutlier[io])
+                                //TODO
+                                for(size_t io =0; io<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); io++)
+                                    if(mCurrentFrame.cameraFrames[0].mvbOutlier[io])
                                         mCurrentFrame.mvpMapPoints[io]=NULL;
                             }
                         }

@@ -194,7 +194,7 @@ void FramePublisher::Update(Tracking *pTracker)
     pTracker->mCurrentFrame.cameraFrames[0].im.copyTo(mIm);
     mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
     mvpMatchedMapPoints=pTracker->mCurrentFrame.mvpMapPoints;
-    mvbOutliers = pTracker->mCurrentFrame.mvbOutlier;
+    mvbOutliers = pTracker->mCurrentFrame.cameraFrames[0].mvbOutlier;
 
     if(pTracker->mLastProcessedState==Tracking::INITIALIZING)
     {

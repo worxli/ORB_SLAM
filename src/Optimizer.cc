@@ -202,7 +202,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             vVertices.push_back(vPoint);
 
             nInitialCorrespondences++;
-            pFrame->mvbOutlier[i] = false;
+            pFrame->cameraFrames[0].mvbOutlier[i] = false;
 
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
@@ -257,18 +257,18 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
             const size_t idx = vnIndexEdge[i];
 
-            if(pFrame->mvbOutlier[idx])
+            if(pFrame->cameraFrames[0].mvbOutlier[idx])
                 e->computeError();
 
             if(e->chi2()>chi2[it])
             {                
-                pFrame->mvbOutlier[idx]=true;
+                pFrame->cameraFrames[0].mvbOutlier[idx]=true;
                 e->setLevel(1);
                 nBad++;
             }
             else if(e->chi2()<=chi2[it])
             {
-                pFrame->mvbOutlier[idx]=false;
+                pFrame->cameraFrames[0].mvbOutlier[idx]=false;
                 e->setLevel(0);
             }
         }

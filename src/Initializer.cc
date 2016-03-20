@@ -32,7 +32,8 @@ namespace ORB_SLAM
 
 Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
 {
-    mK = ReferenceFrame.mK.clone();
+    //TODO 
+    mK = ReferenceFrame.cameraFrames[0].mK.clone();
 
     mvKeys1 = ReferenceFrame.mvKeysUn;
 

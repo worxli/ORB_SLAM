@@ -42,6 +42,9 @@ public:
     CameraFrame(const CameraFrame &frame);
     CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef);
 
+            ORBVocabulary* mpORBvocabulary;
+        ORBextractor* mpORBextractor;
+
     // Frame image
     cv::Mat im;
 
@@ -93,6 +96,17 @@ public:
     static int mnMaxY;
 
     static bool mbInitialComputations;
+
+    cv::Mat mOw;
+        cv::Mat mRcw;
+        cv::Mat mtcw;
+
+    // Scale Pyramid Info
+        int mnScaleLevels;
+        float mfScaleFactor;
+        vector<float> mvScaleFactors;
+        vector<float> mvLevelSigma2;
+        vector<float> mvInvLevelSigma2;
 
 
 private:
