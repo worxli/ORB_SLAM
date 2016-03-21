@@ -239,6 +239,21 @@ bool CameraFrame::PosInGrid(cv::KeyPoint &kp, int &posX, int &posY)
     return true;
 }
 
+void CameraFrame::SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFactors, vector<float> _mvLevelSigma2, vector<float> _mvInvLevelSigma2)
+{
+    mnScaleLevels = _mnScaleLevels;
+    mvScaleFactors = _mvScaleFactors;
+    mvLevelSigma2 = _mvLevelSigma2;
+    mvInvLevelSigma2 = _mvInvLevelSigma2;
+}
+
+void CameraFrame::SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw)
+{
+    mRcw = _mRcw;
+    mtcw = _mtcw;
+    mOw = _mOw;
+}
+
 
 void CameraFrame::UndistortKeyPoints()
 {

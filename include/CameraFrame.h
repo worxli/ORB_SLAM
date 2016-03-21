@@ -103,11 +103,12 @@ public:
 
     // Scale Pyramid Info
         int mnScaleLevels;
-        float mfScaleFactor;
         vector<float> mvScaleFactors;
         vector<float> mvLevelSigma2;
         vector<float> mvInvLevelSigma2;
 
+    void SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFactors, vector<float> _mvLevelSigma2, vector<float> _mvInvLevelSigma2);
+    void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
 
 private:
 

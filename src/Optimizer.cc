@@ -181,7 +181,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     vector<float> vInvSigmas2;
     vector<size_t> vnIndexEdge;
 
-    const int N = pFrame->mvpMapPoints.size();
+    const int N = pFrame->cameraFrames[0].mvpMapPoints.size();
     vpEdges.reserve(N);
     vVertices.reserve(N);
     vInvSigmas2.reserve(N);
@@ -191,7 +191,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
     for(int i=0; i<N; i++)
     {
-        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        MapPoint* pMP = pFrame->cameraFrames[0].mvpMapPoints[i];
         if(pMP)
         {
             g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
@@ -206,7 +206,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
-            cv::KeyPoint kpUn = pFrame->mvKeysUn[i];
+            cv::KeyPoint kpUn = pFrame->cameraFrames[0].mvKeysUn[i];
             obs << kpUn.pt.x, kpUn.pt.y;
 
             g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();

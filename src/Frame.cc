@@ -32,8 +32,8 @@ Frame::Frame()
 
 //Copy Constructor
 Frame::Frame(const Frame &frame)
-    :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), mTimeStamp(frame.mTimeStamp),
-     mBowVec(frame.mBowVec), mnId(frame.mnId),
+    :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
+     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId),
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
 {
@@ -63,6 +63,12 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
     mvInvLevelSigma2.resize(mvLevelSigma2.size());
     for(int i=0; i<mnScaleLevels; i++)
         mvInvLevelSigma2[i]=1/mvLevelSigma2[i];
+
+    // set params to camera frames
+    for(int i = 0; i<cameraFrames.size(); i++)
+    {
+        cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
+    }
 }
 
 void Frame::UpdatePoseMatrices()
@@ -70,11 +76,17 @@ void Frame::UpdatePoseMatrices()
     mRcw = mTcw.rowRange(0,3).colRange(0,3);
     mtcw = mTcw.rowRange(0,3).col(3);
     mOw = -mRcw.t()*mtcw;
+
+    // set params to camera frames
+    for(int i = 0; i<cameraFrames.size(); i++)
+    {
+        cameraFrames[i].SetPoseMatrices(mRcw, mtcw, mOw);
+    }
 }
 
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {
-    for(int i = 0; i<cameraFrames.size(); i++)
+    for(uint i = 0; i<cameraFrames.size(); i++)
     {
 	if(cameraFrames[i].isInFrustum(pMP, viewingCosLimit)) 
 	    return true;
@@ -85,19 +97,19 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
 void Frame::ComputeBoW()
 {
-    if(mBowVec.empty())
+    if(cameraFrames[0].mBowVec.empty())
     {
-        /* TODO for all camera frames
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
-        mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
-         */
+        /* TODO for all camera frames */
+        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
+        mpORBvocabulary->transform(vCurrentDesc,cameraFrames[0].mBowVec,cameraFrames[0].mFeatVec,4);
+        
     }
 }
 
 vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
 {
     vector<size_t> vIndices;
-    for(int i = 0; i<cameraFrames.size(); i++)
+    for(uint i = 0; i<cameraFrames.size(); i++)
     {
 	//vIndices.push_back(cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel));
 	vector<size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);

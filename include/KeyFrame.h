@@ -111,8 +111,6 @@ public:
     cv::Mat GetImage();
     bool IsInImage(const float &x, const float &y) const;
 
-    vector<CameraFrame> cameraFrames;
-
     // Activate/deactivate erasable flags
     void SetNotErase();
     void SetErase();
@@ -137,6 +135,9 @@ public:
 
     // Median MapPoint depth
     float ComputeSceneMedianDepth(int q = 2);
+
+    // Camera
+    vector<CameraFrame> cameraFrames;
 
 public:
     static long unsigned int nNextId;

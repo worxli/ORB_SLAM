@@ -192,13 +192,13 @@ void FramePublisher::Update(Tracking *pTracker)
     boost::mutex::scoped_lock lock(mMutex);
     // TODO
     pTracker->mCurrentFrame.cameraFrames[0].im.copyTo(mIm);
-    mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
-    mvpMatchedMapPoints=pTracker->mCurrentFrame.mvpMapPoints;
+    mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[0].mvKeys;
+    mvpMatchedMapPoints=pTracker->mCurrentFrame.cameraFrames[0].mvpMapPoints;
     mvbOutliers = pTracker->mCurrentFrame.cameraFrames[0].mvbOutlier;
 
     if(pTracker->mLastProcessedState==Tracking::INITIALIZING)
     {
-        mvIniKeys=pTracker->mInitialFrame.mvKeys;
+        mvIniKeys=pTracker->mInitialFrame.cameraFrames[0].mvKeys;
         mvIniMatches=pTracker->mvIniMatches;
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);

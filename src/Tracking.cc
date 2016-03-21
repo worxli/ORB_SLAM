@@ -297,8 +297,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             //TODO
             for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size();i++)
             {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.cameraFrames[0].mvbOutlier[i])
-                    mCurrentFrame.mvpMapPoints[i]=NULL;
+                if(mCurrentFrame.cameraFrames[0].mvpMapPoints[i] && mCurrentFrame.cameraFrames[0].mvbOutlier[i])
+                    mCurrentFrame.cameraFrames[0].mvpMapPoints[i]=NULL;
             }
         }
 
@@ -359,13 +359,13 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    if(mCurrentFrame.mvKeys.size()>100)
+    if(mCurrentFrame.cameraFrames[0].mvKeys.size()>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
-        mvbPrevMatched.resize(mCurrentFrame.mvKeysUn.size());
-        for(size_t i=0; i<mCurrentFrame.mvKeysUn.size(); i++)
-            mvbPrevMatched[i]=mCurrentFrame.mvKeysUn[i].pt;
+        mvbPrevMatched.resize(mCurrentFrame.cameraFrames[0].mvKeysUn.size());
+        for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
+            mvbPrevMatched[i]=mCurrentFrame.cameraFrames[0].mvKeysUn[i].pt;
 
         if(mpInitializer)
             delete mpInitializer;
@@ -380,7 +380,7 @@ void Tracking::FirstInitialization()
 void Tracking::Initialize()
 {
     // Check if current frame has enough keypoints, otherwise reset initialization process
-    if(mCurrentFrame.mvKeys.size()<=100)
+    if(mCurrentFrame.cameraFrames[0].mvKeys.size()<=100)
     {
         fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
         mState = NOT_INITIALIZED;
@@ -458,7 +458,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
         pMP->UpdateNormalAndDepth();
 
         //Fill Current Frame structure
-        mCurrentFrame.mvpMapPoints[mvIniMatches[i]] = pMP;
+        mCurrentFrame.cameraFrames[0].mvpMapPoints[mvIniMatches[i]] = pMP;
 
         //Add to Map
         mpMap->AddMapPoint(pMP);
@@ -541,13 +541,13 @@ bool Tracking::TrackPreviousFrame()
         nmatches = matcher.WindowSearch(mLastFrame,mCurrentFrame,100,vpMapPointMatches,0);
         if(nmatches<10)
         {
-            vpMapPointMatches=vector<MapPoint*>(mCurrentFrame.mvpMapPoints.size(),static_cast<MapPoint*>(NULL));
+            vpMapPointMatches=vector<MapPoint*>(mCurrentFrame.cameraFrames[0].mvpMapPoints.size(),static_cast<MapPoint*>(NULL));
             nmatches=0;
         }
     }
 
     mLastFrame.mTcw.copyTo(mCurrentFrame.mTcw);
-    mCurrentFrame.mvpMapPoints=vpMapPointMatches;
+    mCurrentFrame.cameraFrames[0].mvpMapPoints=vpMapPointMatches;
 
     // If enough correspondeces, optimize pose and project points from previous frame to search more correspondences
     if(nmatches>=10)
@@ -559,7 +559,7 @@ bool Tracking::TrackPreviousFrame()
         for(size_t i =0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); i++)
             if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
             {
-                mCurrentFrame.mvpMapPoints[i]=NULL;
+                mCurrentFrame.cameraFrames[0].mvpMapPoints[i]=NULL;
                 mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
                 nmatches--;
             }
@@ -571,7 +571,7 @@ bool Tracking::TrackPreviousFrame()
         nmatches = matcher.SearchByProjection(mLastFrame,mCurrentFrame,50,vpMapPointMatches);
 
 
-    mCurrentFrame.mvpMapPoints=vpMapPointMatches;
+    mCurrentFrame.cameraFrames[0].mvpMapPoints=vpMapPointMatches;
 
     if(nmatches<10)
         return false;
@@ -584,7 +584,7 @@ bool Tracking::TrackPreviousFrame()
     for(size_t i =0; i<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); i++)
         if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
         {
-            mCurrentFrame.mvpMapPoints[i]=NULL;
+            mCurrentFrame.cameraFrames[0].mvpMapPoints[i]=NULL;
             // TODO
             mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
             nmatches--;
@@ -601,7 +601,7 @@ bool Tracking::TrackWithMotionModel()
     // Compute current pose by motion model
     mCurrentFrame.mTcw = mVelocity*mLastFrame.mTcw;
 
-    fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
+    fill(mCurrentFrame.cameraFrames[0].mvpMapPoints.begin(),mCurrentFrame.cameraFrames[0].mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
 
     // Project points seen in previous frame
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,15);
@@ -613,14 +613,14 @@ bool Tracking::TrackWithMotionModel()
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
-    for(size_t i =0; i<mCurrentFrame.mvpMapPoints.size(); i++)
+    for(size_t i =0; i<mCurrentFrame.cameraFrames[0].mvpMapPoints.size(); i++)
     {
-        if(mCurrentFrame.mvpMapPoints[i])
+        if(mCurrentFrame.cameraFrames[0].mvpMapPoints[i])
         {
             if(mCurrentFrame.cameraFrames[0].mvbOutlier[i])
             {
                 //TODO
-                mCurrentFrame.mvpMapPoints[i]=NULL;
+                mCurrentFrame.cameraFrames[0].mvpMapPoints[i]=NULL;
                 mCurrentFrame.cameraFrames[0].mvbOutlier[i]=false;
                 nmatches--;
             }
@@ -646,12 +646,12 @@ bool Tracking::TrackLocalMap()
     mnMatchesInliers = Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Update MapPoints Statistics
-    for(size_t i=0; i<mCurrentFrame.mvpMapPoints.size(); i++)
-        if(mCurrentFrame.mvpMapPoints[i])
+    for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvpMapPoints.size(); i++)
+        if(mCurrentFrame.cameraFrames[0].mvpMapPoints[i])
         {
             //TODO
             if(!mCurrentFrame.cameraFrames[0].mvbOutlier[i])
-                mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+                mCurrentFrame.cameraFrames[0].mvpMapPoints[i]->IncreaseFound();
         }
 
     // Decide if the tracking was succesful
@@ -719,7 +719,7 @@ void Tracking::CreateNewKeyFrame()
 void Tracking::SearchReferencePointsInFrustum()
 {
     // Do not search map points already matched
-    for(vector<MapPoint*>::iterator vit=mCurrentFrame.mvpMapPoints.begin(), vend=mCurrentFrame.mvpMapPoints.end(); vit!=vend; vit++)
+    for(vector<MapPoint*>::iterator vit=mCurrentFrame.cameraFrames[0].mvpMapPoints.begin(), vend=mCurrentFrame.cameraFrames[0].mvpMapPoints.end(); vit!=vend; vit++)
     {
         MapPoint* pMP = *vit;
         if(pMP)
@@ -809,11 +809,11 @@ void Tracking::UpdateReferenceKeyFrames()
 {
     // Each map point vote for the keyframes in which it has been observed
     map<KeyFrame*,int> keyframeCounter;
-    for(size_t i=0, iend=mCurrentFrame.mvpMapPoints.size(); i<iend;i++)
+    for(size_t i=0, iend=mCurrentFrame.cameraFrames[0].mvpMapPoints.size(); i<iend;i++)
     {
-        if(mCurrentFrame.mvpMapPoints[i])
+        if(mCurrentFrame.cameraFrames[0].mvpMapPoints[i])
         {
-            MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+            MapPoint* pMP = mCurrentFrame.cameraFrames[0].mvpMapPoints[i];
             if(!pMP->isBad())
             {
                 map<KeyFrame*,size_t> observations = pMP->GetObservations();
@@ -822,7 +822,7 @@ void Tracking::UpdateReferenceKeyFrames()
             }
             else
             {
-                mCurrentFrame.mvpMapPoints[i]=NULL;
+                mCurrentFrame.cameraFrames[0].mvpMapPoints[i]=NULL;
             }
         }
     }
@@ -982,11 +982,11 @@ bool Tracking::Relocalisation()
                 {
                     if(vbInliers[j])
                     {
-                        mCurrentFrame.mvpMapPoints[j]=vvpMapPointMatches[i][j];
+                        mCurrentFrame.cameraFrames[0].mvpMapPoints[j]=vvpMapPointMatches[i][j];
                         sFound.insert(vvpMapPointMatches[i][j]);
                     }
                     else
-                        mCurrentFrame.mvpMapPoints[j]=NULL;
+                        mCurrentFrame.cameraFrames[0].mvpMapPoints[j]=NULL;
                 }
 
                 int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
@@ -997,7 +997,7 @@ bool Tracking::Relocalisation()
                 // TODO
                 for(size_t io =0, ioend=mCurrentFrame.cameraFrames[0].mvbOutlier.size(); io<ioend; io++)
                     if(mCurrentFrame.cameraFrames[0].mvbOutlier[io])
-                        mCurrentFrame.mvpMapPoints[io]=NULL;
+                        mCurrentFrame.cameraFrames[0].mvpMapPoints[io]=NULL;
 
                 // If few inliers, search by projection in a coarse window and optimize again
                 if(nGood<50)
@@ -1013,9 +1013,9 @@ bool Tracking::Relocalisation()
                         if(nGood>30 && nGood<50)
                         {
                             sFound.clear();
-                            for(size_t ip =0, ipend=mCurrentFrame.mvpMapPoints.size(); ip<ipend; ip++)
-                                if(mCurrentFrame.mvpMapPoints[ip])
-                                    sFound.insert(mCurrentFrame.mvpMapPoints[ip]);
+                            for(size_t ip =0, ipend=mCurrentFrame.cameraFrames[0].mvpMapPoints.size(); ip<ipend; ip++)
+                                if(mCurrentFrame.cameraFrames[0].mvpMapPoints[ip])
+                                    sFound.insert(mCurrentFrame.cameraFrames[0].mvpMapPoints[ip]);
                             nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,3,64);
 
                             // Final optimization
@@ -1026,7 +1026,7 @@ bool Tracking::Relocalisation()
                                 //TODO
                                 for(size_t io =0; io<mCurrentFrame.cameraFrames[0].mvbOutlier.size(); io++)
                                     if(mCurrentFrame.cameraFrames[0].mvbOutlier[io])
-                                        mCurrentFrame.mvpMapPoints[io]=NULL;
+                                        mCurrentFrame.cameraFrames[0].mvpMapPoints[io]=NULL;
                             }
                         }
                     }

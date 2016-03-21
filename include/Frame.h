@@ -50,19 +50,6 @@ namespace ORB_SLAM
         ORBVocabulary* mpORBvocabulary;
         ORBextractor* mpORBextractor;
 
-        DBoW2::BowVector mBowVec;
-	DBoW2::FeatureVector mFeatVec;
-
-    	// Vector of keypoints (original for visualization) and undistorted (actually used by the system)
-   	std::vector<cv::KeyPoint> mvKeys;
-    	std::vector<cv::KeyPoint> mvKeysUn;
-
-	// ORB descriptor, each row associated to a keypoint
-    	cv::Mat mDescriptors;
-
-	// Number of KeyPoints
-    	int N;
-
         // Camera
         vector<CameraFrame> cameraFrames;
 
@@ -88,12 +75,12 @@ namespace ORB_SLAM
         vector<float> mvLevelSigma2;
         vector<float> mvInvLevelSigma2;
 
-	// proxy to cameraFrames
+	   // proxy to cameraFrames
      	bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
-	vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+	   vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
         // MapPoints associated to keypoints, NULL pointer if not association
-        std::vector<MapPoint*> mvpMapPoints;
+        //std::vector<MapPoint*> mvpMapPoints;
 
     private:
 
