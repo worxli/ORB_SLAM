@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
     for(int i=0; i < num_cameras; i++)
     {
-        string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[i+3];
+        string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[i+4];
         cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
         if(!fsSettings.isOpened())
         {
@@ -79,6 +79,17 @@ int main(int argc, char **argv)
         	strSettingsFiles.push_back(strSettingsFile);
         }
     }
+
+    // Load and Check extrinsic parameters and add to SECOND-LAST element of vector strSettingsFiles
+    string strSettingsFile_EXT = ros::package::getPath("ORB_SLAM")+"/"+argv[3];
+    cv::FileStorage fsSettings_EXT(strSettingsFile_EXT.c_str(), cv::FileStorage::READ);
+    if(!fsSettings_EXT.isOpened())
+    {
+        ROS_ERROR("Wrong path to extrinsic parameters. Path must be absolut or relative to ORB_SLAM package directory.");
+        ros::shutdown();
+        return 1;
+    }
+    strSettingsFiles.push_back(strSettingsFile_EXT);
 
     // Load and Check ORB Settings and add to LAST element of vector strSettingsFiles
     string strSettingsFile_ORB = ros::package::getPath("ORB_SLAM")+"/"+argv[2];

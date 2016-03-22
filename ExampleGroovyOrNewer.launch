@@ -11,7 +11,7 @@
  	<!--<node pkg="ORB_SLAM" type="ORB_SLAM" name="ORB_SLAM"  args="Data/ORBvoc.txt Data/Settings.yaml" cwd="node" output="screen">
    </node>-->
 
- 	<node pkg="ORB_SLAM" type="ORB_SLAM" name="ORB_SLAM"  args="Data/ORBvoc.txt Data/ORB_Settings.yaml Data/fisheye-calibration/2015_05_06/mono_front_calib.yaml Data/fisheye-calibration/2015_05_06/mono_rear_calib.yaml Data/fisheye-calibration/2015_05_06/mono_left_calib.yaml Data/fisheye-calibration/2015_05_06/mono_right_calib.yaml" cwd="node" output="screen">
+ 	<node pkg="ORB_SLAM" type="ORB_SLAM" name="ORB_SLAM"  args="Data/ORBvoc.txt Data/ORB_Settings.yaml Data/fisheye-calibration/2015_05_06/extrinsic.yaml Data/fisheye-calibration/2015_05_06/mono_front_calib.yaml Data/fisheye-calibration/2015_05_06/mono_rear_calib.yaml Data/fisheye-calibration/2015_05_06/mono_left_calib.yaml Data/fisheye-calibration/2015_05_06/mono_right_calib.yaml" cwd="node" output="screen">
    </node>
 
 </launch>

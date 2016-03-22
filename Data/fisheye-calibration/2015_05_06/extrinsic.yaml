@@ -1,0 +1,57 @@
+%YAML:1.0
+
+############# mono_front:
+mono_front_t1: 3.3776433400 
+mono_front_t2: 0.0008253945 
+mono_front_t3: 0.5671647332
+mono_front_r11: 0.0022664591 
+mono_front_r12: 0.0305354976 
+mono_front_r13: 0.9995311133
+mono_front_r21: -0.9999389819 
+mono_front_r22: 0.0108760213 
+mono_front_r23: 0.0019351234
+mono_front_r31: -0.0108118317 
+mono_front_r32: -0.9994745097 
+mono_front_r33: 0.0305582845
+
+############## mono_left:
+mono_left_t1: 1.8651242380 
+mono_left_t2: 0.9906747045 
+mono_left_t3: 0.9264310151
+mono_left_r11: 0.9979975076 
+mono_left_r12: -0.0062065220 
+mono_left_r13: 0.0629480256
+mono_left_r21: -0.0508137360 
+mono_left_r22: -0.6713169182 
+mono_left_r23: 0.7394265072
+mono_left_r31: 0.0376688077 
+mono_left_r32: -0.7411444356 
+mono_left_r33: -0.6702879877
+
+############### mono_rear:
+mono_rear_t1: -0.6981675937 
+mono_rear_t2: 0.0064424272 
+mono_rear_t3: 0.8533999449
+mono_rear_r11: -0.0005030555 
+mono_rear_r12: -0.0932410598 
+mono_rear_r13: -0.9956434360
+mono_rear_r21: 0.9999753365 
+mono_rear_r22: 0.0069278197 
+mono_rear_r23: -0.0011540280
+mono_rear_r31: 0.0070052410 
+mono_rear_r32: -0.9956194605 
+mono_rear_r33: 0.0932352751
+
+################ mono_right:
+mono_right_t1: 1.8615763779 
+mono_right_t2: -0.9963280402 
+mono_right_t3: 0.9155332765
+mono_right_r11: -0.9962553696 
+mono_right_r12: -0.0608213347 
+mono_right_r13: 0.0614491961
+mono_right_r21: -0.0862453455 
+mono_right_r22: 0.6491084479 
+mono_right_r23: -0.7557909521
+mono_right_r31: 0.0060810222 
+mono_right_r32: -0.7582605015 
+mono_right_r33: -0.6519233337

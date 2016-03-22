@@ -48,12 +48,17 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     mnLastRelocFrameId(0), mbPublisherStopped(false), mbReseting(false), mbForceRelocalisation(false), mbMotionModel(false)
 {
 	// Load parameters for each camera from settings files
-	vector<double> xi, k1, k2, p1, p2, gamma1, gamma2, u0, v0;
+	vector<float> xi, k1, k2, p1, p2, gamma1, gamma2, u0, v0, fx, fy, cx, cy;
+    vector<cv::Mat> K, DistCoef;
 
-	for(int i=0; i < strSettingPath.size()-1; i++)
-	{
+    for(int i=0; i < (strSettingPath.size()-2); i++)
+    {
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
-	    xi.push_back(fSettings["xi"]);
+        fx.push_back(fSettings["fx"]);
+        fy.push_back(fSettings["fy"]);
+        cx.push_back(fSettings["cx"]);
+        cy.push_back(fSettings["cy"]);
+        xi.push_back(fSettings["xi"]);
 	    k1.push_back(fSettings["k1"]);
 	    k2.push_back(fSettings["k2"]);
 	    p1.push_back(fSettings["p1"]);
@@ -62,29 +67,60 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
 	    gamma2.push_back(fSettings["gamma2"]);
 	    u0.push_back(fSettings["u0"]);
 	    v0.push_back(fSettings["v0"]);
+
+        K.push_back(cv::Mat::eye(3,3,CV_32F));
+        K[i].at<float>(0,0) = fx[i];
+        K[i].at<float>(1,1) = fy[i];
+        K[i].at<float>(0,2) = cx[i];
+        K[i].at<float>(1,2) = cy[i];
+        //K[i].copyTo(mK);
+
+        DistCoef.push_back(cv::Mat(4,1,CV_32F));
+        DistCoef[i].at<float>(0) = k1[i];
+        DistCoef[i].at<float>(1) = k2[i];
+        DistCoef[i].at<float>(2) = p1[i];
+        DistCoef[i].at<float>(3) = p2[i];
+        //DistCoef[i].copyTo(mDistCoef);
+
+        // Print parameters
+        cout << "Parameters Camera[" << i << "]: " << endl;
+        cout << "- fx[" << i << "]: " << fx[i] << endl;
+        cout << "- fy[" << i << "]: " << fy[i] << endl;
+        cout << "- cx[" << i << "]: " << cx[i] << endl;
+        cout << "- cy[" << i << "]: " << cy[i] << endl;
+        cout << "- k1[" << i << "]: " << DistCoef[i].at<float>(0) << endl;
+        cout << "- k2[" << i << "]: " << DistCoef[i].at<float>(1) << endl;
+        cout << "- p1[" << i << "]: " << DistCoef[i].at<float>(2) << endl;
+        cout << "- p2[" << i << "]: " << DistCoef[i].at<float>(3) << endl;
 	}
 
     // Load camera parameters from settings file
 
-    cv::FileStorage fSettings(strSettingPath[0], cv::FileStorage::READ);
-    float fx = fSettings["Camera.fx"];
-    float fy = fSettings["Camera.fy"];
-    float cx = fSettings["Camera.cx"];
-    float cy = fSettings["Camera.cy"];
+//    cv::FileStorage fSettings(strSettingPath[0], cv::FileStorage::READ);
+//    fx[0] = fSettings["Camera.fx"];
+//    fy[0] = fSettings["Camera.fy"];
+//    cx[0] = fSettings["Camera.cx"];
+//    cy[0] = fSettings["Camera.cy"];
 
-    cv::Mat K = cv::Mat::eye(3,3,CV_32F);
-    K.at<float>(0,0) = fx;
-    K.at<float>(1,1) = fy;
-    K.at<float>(0,2) = cx;
-    K.at<float>(1,2) = cy;
-    K.copyTo(mK);
+//    vector<cv::Mat> K;// = vector<cv::Mat::eye(3,3,CV_32F)>;
+//    K[0] = cv::Mat::eye(3,3,CV_32F);
+//    K[0].at<float>(0,0) = fx[0];
+//    K[0].at<float>(1,1) = fy[0];
+//    K[0].at<float>(0,2) = cx[0];
+//    K[0].at<float>(1,2) = cy[0];
+    K[0].copyTo(mK);
 
-    cv::Mat DistCoef(4,1,CV_32F);
-    DistCoef.at<float>(0) = fSettings["Camera.k1"];
-    DistCoef.at<float>(1) = fSettings["Camera.k2"];
-    DistCoef.at<float>(2) = fSettings["Camera.p1"];
-    DistCoef.at<float>(3) = fSettings["Camera.p2"];
-    DistCoef.copyTo(mDistCoef);
+//    vector<cv::Mat> DistCoef; //(4,1,CV_32F)
+//    DistCoef[0] = cv::Mat(4,1,CV_32F);
+//    DistCoef[0].at<float>(0) = k1[0];
+//    DistCoef[0].at<float>(1) = k2[0];
+//    DistCoef[0].at<float>(2) = p1[0];
+//    DistCoef[0].at<float>(3) = p2[0];
+    DistCoef[0].copyTo(mDistCoef);
+
+    // Extrinisic parameters read from SECOND-LAST element of the vector strSettingPath
+    cv::FileStorage fSettings_EXT(strSettingPath[strSettingPath.size()-2], cv::FileStorage::READ);
+
 
     // ORB settings read from last element of the vector strSettingPath
     cv::FileStorage fSettings_ORB(strSettingPath[strSettingPath.size()-1], cv::FileStorage::READ);
@@ -92,21 +128,11 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     if(fps==0)
         fps=30;
 
+    cout << "\n- fps: " << fps << endl;
+
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
     mMaxFrames = 18*fps/30;
-
-
-    cout << "Camera Parameters: " << endl;
-    cout << "- fx: " << fx << endl;
-    cout << "- fy: " << fy << endl;
-    cout << "- cx: " << cx << endl;
-    cout << "- cy: " << cy << endl;
-    cout << "- k1: " << DistCoef.at<float>(0) << endl;
-    cout << "- k2: " << DistCoef.at<float>(1) << endl;
-    cout << "- p1: " << DistCoef.at<float>(2) << endl;
-    cout << "- p2: " << DistCoef.at<float>(3) << endl;
-    cout << "- fps: " << fps << endl;
 
 
     int nRGB = fSettings_ORB["Camera.RGB"];
