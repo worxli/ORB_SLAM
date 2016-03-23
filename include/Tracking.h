@@ -25,6 +25,7 @@
 #include<opencv2/features2d/features2d.hpp>
 #include<sensor_msgs/Image.h>
 #include<sensor_msgs/image_encodings.h>
+#include <Eigen/Eigen>
 
 #include"FramePublisher.h"
 #include"Map.h"
@@ -90,6 +91,10 @@ public:
 
 
 protected:
+    void distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u);
+    void spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p);
+    void initUndistortMap(cv::Mat& map1, cv::Mat& map2);
+
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
     void FirstInitialization();

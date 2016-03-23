@@ -227,6 +227,80 @@ void Tracking::Run()
     ros::spin();
 }
 
+void Tracking::distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
+{
+    double k1 = mDistCoef[1].at<float>(0);
+    double k2 = mDistCoef[1].at<float>(1);
+    double p1 = mDistCoef[1].at<float>(2);
+    double p2 = mDistCoef[1].at<float>(3);
+
+    double mx2_u, my2_u, mxy_u, rho2_u, rad_dist_u;
+
+    mx2_u = p_u(0) * p_u(0);
+    my2_u = p_u(1) * p_u(1);
+    mxy_u = p_u(0) * p_u(1);
+    rho2_u = mx2_u + my2_u;
+    rad_dist_u = k1 * rho2_u + k2 * rho2_u * rho2_u;
+    d_u << p_u(0) * rad_dist_u + 2.0 * p1 * mxy_u + p2 * (rho2_u + 2.0 * mx2_u),
+            p_u(1) * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
+}
+
+void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
+{
+    Eigen::Vector2d p_u, p_d;
+
+    // Project points to the normalised plane
+    double z = P(2) ;//+ m_parameters.xi() * P.norm();
+    p_u << P(0) / z, P(1) / z;
+
+    if (0)//(m_noDistortion)
+    {
+        p_d = p_u;
+    }
+    else
+    {
+        // Apply distortion
+        Eigen::Vector2d d_u;
+        Tracking::distortion(p_u, d_u);
+        p_d = p_u + d_u;
+    }
+
+    // Apply generalised projection matrix
+    //p << m_parameters.gamma1() * p_d(0) + m_parameters.u0(),
+    //        m_parameters.gamma2() * p_d(1) + m_parameters.v0();
+}
+
+void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
+{
+//    cv::Size imageSize;//(m_parameters.imageWidth(), m_parameters.imageHeight());
+//
+//    cv::Mat mapX = cv::Mat::zeros(imageSize, CV_32F);
+//    cv::Mat mapY = cv::Mat::zeros(imageSize, CV_32F);
+//
+//    for (int v = 0; v < imageSize.height; ++v)
+//    {
+//        for (int u = 0; u < imageSize.width; ++u)
+//        {
+//            double mx_u = m_inv_K11 * u + m_inv_K13;
+//            double my_u = m_inv_K22 * v + m_inv_K23;
+//
+//            double xi = m_parameters.xi();
+//            double d2 = mx_u * mx_u + my_u * my_u;
+//
+//            Eigen::Vector3d P;
+//            P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+//
+//            Eigen::Vector2d p;
+//            spaceToPlane(P, p);
+//
+//            mapX.at<float>(v,u) = p(0);
+//            mapY.at<float>(v,u) = p(1);
+//        }
+//    }
+//
+//    cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
+}
+
 void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 {
 
@@ -397,7 +471,6 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     }
 
 }
-
 
 void Tracking::FirstInitialization()
 {
