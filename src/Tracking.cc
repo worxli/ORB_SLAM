@@ -273,6 +273,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img3);
     imgs.push_back(img4);
 
+    if (Frame::mbInitialComputations)
+    {
+
+    }
+
     if(mState==WORKING || mState==LOST)
         mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
     else
