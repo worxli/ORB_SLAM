@@ -123,11 +123,20 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         cout << "        " << R[i].at<float>(2,0) << " " << R[i].at<float>(2,1) << " " << R[i].at<float>(2,2) << endl;
         cout << "- T[" << i << "]: " << T[i].at<float>(0) << " " << T[i].at<float>(1) << " " << T[i].at<float>(2) << endl;
 
+        mK.push_back(K[i]);
+        mDistCoef.push_back(DistCoef[i]);
+
+        cout << "- mK[" << i << "]: " << mK[i].at<float>(0,0) << " " << mK[i].at<float>(0,1) << " " << mK[i].at<float>(0,2) << endl;
+        cout << "         " << mK[i].at<float>(1,0) << " " << mK[i].at<float>(1,1) << " " << mK[i].at<float>(1,2) << endl;
+        cout << "         " << mK[i].at<float>(2,0) << " " << mK[i].at<float>(2,1) << " " << mK[i].at<float>(2,2) << endl;
+        cout << "- mDistCoef[" << i << "]: " << mDistCoef[i].at<float>(0) << " " << mDistCoef[i].at<float>(1) << " "
+                                             << mDistCoef[i].at<float>(2) << " " << mDistCoef[i].at<float>(3) << endl;
+
     }
 
     // Load camera parameters from settings file
-    K[0].copyTo(mK);
-    DistCoef[0].copyTo(mDistCoef);
+    //K[0].copyTo(mK);
+    //DistCoef[0].copyTo(mDistCoef);
 
     // ORB settings read from last element of the vector strSettingPath
     cv::FileStorage fSettings_ORB(strSettingPath[strSettingPath.size()-1], cv::FileStorage::READ);
@@ -265,9 +274,9 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img4);
 
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
     else
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK,mDistCoef);
+        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
 
     // Depending on the state of the Tracker we perform different tasks
 
