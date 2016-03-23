@@ -49,14 +49,17 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
 {
 	// Load parameters for each camera from settings files
 	vector<float> xi, k1, k2, p1, p2, gamma1, gamma2, u0, v0, fx, fy, cx, cy;
+    vector<int> image_width, image_height;
     vector<cv::Mat> K, DistCoef;
-    vector<cv::Mat> R, T;
     vector<string> camera_name;
+    vector<cv::Mat> R, T;
 
     for(int i=0; i < (strSettingPath.size()-1); i++)
     {
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
         camera_name.push_back(fSettings["camera_name"]);
+        image_width.push_back(fSettings["image_width"]);
+        image_height.push_back(fSettings["image_height"]);
         fx.push_back(fSettings["fx"]);
         fy.push_back(fSettings["fy"]);
         cx.push_back(fSettings["cx"]);
@@ -103,8 +106,18 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         T[i].at<float>(2) = fSettings["t3"];
 
 
+        mK.push_back(K[i]);
+        mDistCoef.push_back(DistCoef[i]);
+        mT.push_back(T[i]);
+        mR.push_back(R[i]);
+        mXi.push_back(xi[i]);
+        im_width.push_back(image_width[i]);
+        im_height.push_back(image_height[i]);
+
         // Print parameters
         cout << "Parameters Camera[" << i << "]: " << camera_name[i] << endl;
+        cout << "- Image_width[" << i << "]: " << im_width[i] << endl;
+        cout << "- Image_height[" << i << "]: " << im_height[i] << endl;
         cout << "- fx[" << i << "]: " << fx[i] << endl;
         cout << "- fy[" << i << "]: " << fy[i] << endl;
         cout << "- cx[" << i << "]: " << cx[i] << endl;
@@ -117,21 +130,19 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         cout << "- gamma2[" << i << "]: " << gamma2[i] << endl;
         cout << "- u0[" << i << "]: " << u0[i] << endl;
         cout << "- v0[" << i << "]: " << v0[i] << endl;
+        cout << "- mXi[" << i << "]: " << mXi[i] << endl;
 
-        cout << "- R[" << i << "]: " << R[i].at<float>(0,0) << " " << R[i].at<float>(0,1) << " " << R[i].at<float>(0,2) << endl;
-        cout << "        " << R[i].at<float>(1,0) << " " << R[i].at<float>(1,1) << " " << R[i].at<float>(1,2) << endl;
-        cout << "        " << R[i].at<float>(2,0) << " " << R[i].at<float>(2,1) << " " << R[i].at<float>(2,2) << endl;
-        cout << "- T[" << i << "]: " << T[i].at<float>(0) << " " << T[i].at<float>(1) << " " << T[i].at<float>(2) << endl;
 
-        mK.push_back(K[i]);
-        mDistCoef.push_back(DistCoef[i]);
+        cout << "- mR[" << i << "]: " << mR[i].at<float>(0,0) << " " << mR[i].at<float>(0,1) << " " << mR[i].at<float>(0,2) << endl;
+        cout << "        " << mR[i].at<float>(1,0) << " " << mR[i].at<float>(1,1) << " " << mR[i].at<float>(1,2) << endl;
+        cout << "        " << mR[i].at<float>(2,0) << " " << mR[i].at<float>(2,1) << " " << mR[i].at<float>(2,2) << endl;
+        cout << "- mT[" << i << "]: " << mT[i].at<float>(0) << " " << mT[i].at<float>(1) << " " << mT[i].at<float>(2) << endl;
 
         cout << "- mK[" << i << "]: " << mK[i].at<float>(0,0) << " " << mK[i].at<float>(0,1) << " " << mK[i].at<float>(0,2) << endl;
         cout << "         " << mK[i].at<float>(1,0) << " " << mK[i].at<float>(1,1) << " " << mK[i].at<float>(1,2) << endl;
         cout << "         " << mK[i].at<float>(2,0) << " " << mK[i].at<float>(2,1) << " " << mK[i].at<float>(2,2) << endl;
         cout << "- mDistCoef[" << i << "]: " << mDistCoef[i].at<float>(0) << " " << mDistCoef[i].at<float>(1) << " "
                                              << mDistCoef[i].at<float>(2) << " " << mDistCoef[i].at<float>(3) << endl;
-
     }
 
     // Load camera parameters from settings file
