@@ -52,23 +52,44 @@ int main(int argc, char **argv)
             "This is free software, and you are welcome to redistribute it" << endl <<
             "under certain conditions. See LICENSE.txt." << endl;
 
-    if(argc != 3)
-    {
-        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings (absolute or relative to package directory)" << endl;
-        ros::shutdown();
-        return 1;
-    }
+//    if(argc != 3)
+//    {
+//        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings (absolute or relative to package directory)" << endl;
+//        ros::shutdown();
+//        return 1;
+//    }
 
     // Load Settings and Check
-    string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[2];
+    vector<string> strSettingsFiles;
+    // 4 camera setup: 1=front; 2=rear; 3=left; 4=right
+    int num_cameras = 4;
 
-    cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
-    if(!fsSettings.isOpened())
+    for(int i=0; i < num_cameras; i++)
+    {
+        string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[i+3];
+        cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
+        if(!fsSettings.isOpened())
+        {
+            ROS_ERROR("Wrong path to settings. Path must be absolut or relative to ORB_SLAM package directory.");
+            ros::shutdown();
+            return 1;
+        }
+        else
+        {
+        	strSettingsFiles.push_back(strSettingsFile);
+        }
+    }
+
+    // Load and Check ORB Settings and add to LAST element of vector strSettingsFiles
+    string strSettingsFile_ORB = ros::package::getPath("ORB_SLAM")+"/"+argv[2];
+    cv::FileStorage fsSettings_ORB(strSettingsFile_ORB.c_str(), cv::FileStorage::READ);
+    if(!fsSettings_ORB.isOpened())
     {
         ROS_ERROR("Wrong path to settings. Path must be absolut or relative to ORB_SLAM package directory.");
         ros::shutdown();
         return 1;
     }
+    strSettingsFiles.push_back(strSettingsFile_ORB);
 
     //Create Frame Publisher for image_view
     ORB_SLAM::FramePublisher FramePub;
@@ -119,7 +140,7 @@ int main(int argc, char **argv)
     ORB_SLAM::MapPublisher MapPub(&World);
 
     //Initialize the Tracking Thread and launch
-    ORB_SLAM::Tracking Tracker(&Vocabulary, &FramePub, &MapPub, &World, strSettingsFile);
+    ORB_SLAM::Tracking Tracker(&Vocabulary, &FramePub, &MapPub, &World, strSettingsFiles);
     boost::thread trackingThread(&ORB_SLAM::Tracking::Run,&Tracker);
 
     Tracker.SetKeyFrameDatabase(&Database);
@@ -143,7 +164,7 @@ int main(int argc, char **argv)
     LoopCloser.SetLocalMapper(&LocalMapper);
 
     //This "main" thread will show the current processed frame and publish the map
-    float fps = fsSettings["Camera.fps"];
+    float fps = fsSettings_ORB["Camera.fps"];
     if(fps==0)
         fps=30;
 

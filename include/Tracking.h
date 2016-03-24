@@ -52,7 +52,7 @@ class Tracking
 {  
 
 public:
-    Tracking(ORBVocabulary* pVoc, FramePublisher* pFramePublisher, MapPublisher* pMapPublisher, Map* pMap, string strSettingPath);
+    Tracking(ORBVocabulary* pVoc, FramePublisher* pFramePublisher, MapPublisher* pMapPublisher, Map* pMap, std::vector<string> strSettingPath);
 
     enum eTrackingState{
         SYSTEM_NOT_READY=-1,
@@ -143,8 +143,23 @@ protected:
     Map* mpMap;
 
     //Calibration matrix
-    cv::Mat mK;
-    cv::Mat mDistCoef;
+    //cv::Mat mK;
+    //cv::Mat mDistCoef;
+
+    // Vector of Calibration matrices
+    vector<cv::Mat> mK;
+    vector<cv::Mat> mDistCoef;
+
+    // Vector of Extrinsic parameters
+    vector<cv::Mat> mR;
+    vector<cv::Mat> mT;
+
+    // Mirror parameters
+    vector<float> mXi;
+
+    // Camera info
+    vector<int> im_width;
+    vector<int> im_height;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;
