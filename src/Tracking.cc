@@ -54,7 +54,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     vector<string> camera_name;
     vector<cv::Mat> R, T;
 
-    for(int i=0; i < (strSettingPath.size()-1); i++)
+    for(unsigned int i=0; i < (strSettingPath.size()-1); i++)
     {
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
         camera_name.push_back(fSettings["camera_name"]);
@@ -319,7 +319,7 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             double d2 = mx_u * mx_u + my_u * my_u;
 
             Eigen::Vector3d P;
-            double P_z;
+            double P_z = 1.0 + (1.0 - xi * xi) * d2;
             if (P_z > 0)
                 P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
             else
@@ -407,19 +407,46 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         fileX << "mapX" << mapX;
         fileY << "mapY" << mapY;
 
-    }
+        cout << "img1.type(): " << img1.type() << endl;
+        cout << "img1.channels(): " << img1.channels() << endl;
 
-    cv::Mat::zeros img_new(img1.cols, img1.rows, CV_32F);
+        cout << "Pos1 " << endl;
+        cv::Mat img_new = cv::Mat::zeros(img1.cols, img1.rows, CV_8U);
 
-    for (int u=0; u<img1.cols; u++) {
-        for (int v=0; v<img1.rows; v++) {
-            int new_x = mapX
+        cout << "Pos1 --b " << endl;
+
+        cout << "img1.cols: " <<  img1.cols << endl;
+        cout << "img1.rows: " <<  img1.rows << endl;
+        cout << "img1.size: " << img1.size() << endl;
+        cout << "mapX.size: " << mapX.size() << endl;
+        cout << "mapY.size: " << mapY.size() << endl;
+
+        // Convert and Write new undistorted image
+        for (int u=0; u<img1.cols; u++) {
+            //cout << "u: " << u << endl;
+            for (int v=0; v<img1.rows; v++) {
+                //cout << "v: " << v << endl;
+                //cout << "mapX: " << mapX.at<float>(v,u) << " | mapY: " << mapY.at<float>(v,u) << endl;
+                int new_v = static_cast<int>(mapX.at<float>(v,u));
+                int new_u = static_cast<int>(mapY.at<float>(v,u));
+                if (new_u > 0 && new_u < img1.cols && new_v > 0 && new_v < img1.rows)
+                {
+                    img_new.at<uint8_t>(new_v,new_u) = img1.at<uint8_t>(v,u);
+                }
+                else
+                {
+                    //cout << "u: " << u << " v: " << v << endl;
+                    //cout << "new_u: " << new_u << " new_v: " << new_v << endl;
+                }
+            }
         }
+        cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
     }
+
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
+        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[0],mDistCoef[0]);
     else
-        mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
+        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK[0],mDistCoef[0]);
 
     // Depending on the state of the Tracker we perform different tasks
 
