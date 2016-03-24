@@ -37,6 +37,7 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
     :im(frame.im.clone()), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
      mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
+     mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
      mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
@@ -44,8 +45,8 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
             mGrid[i][j]=frame.mGrid[i][j];
 }
 
-CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef)
-    :im(im_), mK(K.clone()),mDistCoef(distCoef.clone())
+CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, ORBextractor* extractor, ORBVocabulary* voc)
+    :im(im_), mK(K.clone()),mDistCoef(distCoef.clone()),mpORBvocabulary(voc),mpORBextractor(extractor)
 {
     // Exctract ORB  
     (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
@@ -253,7 +254,6 @@ void CameraFrame::SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw)
     mtcw = _mtcw;
     mOw = _mOw;
 }
-
 
 void CameraFrame::UndistortKeyPoints()
 {

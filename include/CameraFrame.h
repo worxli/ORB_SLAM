@@ -40,10 +40,10 @@ class CameraFrame
 public:
     CameraFrame();
     CameraFrame(const CameraFrame &frame);
-    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, ORBextractor* extractor, ORBVocabulary* voc);
 
-            ORBVocabulary* mpORBvocabulary;
-        ORBextractor* mpORBextractor;
+    ORBVocabulary* mpORBvocabulary;
+    ORBextractor* mpORBextractor;
 
     // Frame image
     cv::Mat im;
@@ -109,6 +109,7 @@ public:
 
     void SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFactors, vector<float> _mvLevelSigma2, vector<float> _mvInvLevelSigma2);
     void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
+    void SetORB(ORBextractor* mpORBextractor, ORBVocabulary* mpORBvocabulary);
 
 private:
 

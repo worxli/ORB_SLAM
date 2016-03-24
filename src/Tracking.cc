@@ -50,7 +50,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
 	// Load parameters for each camera from settings files
 	vector<double> xi, k1, k2, p1, p2, gamma1, gamma2, u0, v0;
 
-	for(int i=0; i < strSettingPath.size()-1; i++)
+	for(uint i=0; i < strSettingPath.size()-1; i++)
 	{
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
 	    xi.push_back(fSettings["xi"]);
@@ -229,18 +229,23 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     vector<CameraFrame> cameraFrames;
 
-    for(int i=1; i<2; i++) {
-	CameraFrame cameraFrame = CameraFrame(imgs[i], mK, mDistCoef);
-	cameraFrames.push_back(cameraFrame);
+    if(mState==WORKING || mState==LOST) {
+        for(int i=0; i<4; i++) {
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK, mDistCoef, mpORBextractor, mpORBVocabulary);
+            cameraFrames.push_back(cameraFrame);
+        }
+        cout << "working or lost frame pushed" << endl;
+	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
+    } else {
+        for(int i=0; i<4; i++) {
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK, mDistCoef, mpIniORBextractor, mpORBVocabulary);
+            cameraFrames.push_back(cameraFrame);
+        }
+        cout << "Init frame pushed" << endl;
+	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
     }
 
-    if(mState==WORKING || mState==LOST)
-	mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
-    else
-	mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
-
     // Depending on the state of the Tracker we perform different tasks
-
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -524,6 +529,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
 bool Tracking::TrackPreviousFrame()
 {
+    cout << "track previous frame" << endl;
     ORBmatcher matcher(0.9,true);
     vector<MapPoint*> vpMapPointMatches;
 
@@ -595,6 +601,7 @@ bool Tracking::TrackPreviousFrame()
 
 bool Tracking::TrackWithMotionModel()
 {
+    cout << "track with motion model" << endl;
     ORBmatcher matcher(0.9,true);
     vector<MapPoint*> vpMapPointMatches;
 

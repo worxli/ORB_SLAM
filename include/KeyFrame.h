@@ -47,6 +47,9 @@ class KeyFrame
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
+    // Camera
+    vector<CameraFrame> cameraFrames;
+
     // Pose functions
     void SetPose(const cv::Mat &Rcw,const cv::Mat &tcw);
     void SetPose(const cv::Mat &Tcw);
@@ -135,9 +138,6 @@ public:
 
     // Median MapPoint depth
     float ComputeSceneMedianDepth(int q = 2);
-
-    // Camera
-    vector<CameraFrame> cameraFrames;
 
 public:
     static long unsigned int nNextId;
