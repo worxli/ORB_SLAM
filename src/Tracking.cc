@@ -409,6 +409,13 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     }
 
+    cv::Mat::zeros img_new(img1.cols, img1.rows, CV_32F);
+
+    for (int u=0; u<img1.cols; u++) {
+        for (int v=0; v<img1.rows; v++) {
+            int new_x = mapX
+        }
+    }
     if(mState==WORKING || mState==LOST)
         mCurrentFrame = Frame(imgs[1],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[1],mDistCoef[1]);
     else
