@@ -65,7 +65,7 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
         mvInvLevelSigma2[i]=1/mvLevelSigma2[i];
 
     // set params to camera frames
-    for(int i = 0; i<cameraFrames.size(); i++)
+    for(uint i = 0; i<cameraFrames.size(); i++)
     {
         cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
     }
@@ -78,7 +78,7 @@ void Frame::UpdatePoseMatrices()
     mOw = -mRcw.t()*mtcw;
 
     // set params to camera frames
-    for(int i = 0; i<cameraFrames.size(); i++)
+    for(uint i = 0; i<cameraFrames.size(); i++)
     {
         cameraFrames[i].SetPoseMatrices(mRcw, mtcw, mOw);
     }
@@ -92,7 +92,7 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 	    return true;
 	return false;
     }
-	
+	return false;
 }
 
 void Frame::ComputeBoW()

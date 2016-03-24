@@ -54,7 +54,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     vector<string> camera_name;
     vector<cv::Mat> R, T;
 
-    for(int i=0; i < (strSettingPath.size()-1); i++)
+    for(uint i=0; i < (strSettingPath.size()-1); i++)
     {
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
         camera_name.push_back(fSettings["camera_name"]);
@@ -424,11 +424,13 @@ void Tracking::FirstInitialization()
         for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
             mvbPrevMatched[i]=mCurrentFrame.cameraFrames[0].mvKeysUn[i].pt;
 
-        if(mpInitializer)
-            delete mpInitializer;
+        if(mpInitializer ) {
+            //cout << mState << endl;
+            //cout << "delete Initializer" << mpInitializer << endl;
+            //delete mpInitializer;
+        }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
 
         mState = INITIALIZING;
     }

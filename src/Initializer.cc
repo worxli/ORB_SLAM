@@ -34,8 +34,11 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 {
     //TODO 
     mK = ReferenceFrame.cameraFrames[0].mK.clone();
+    cout << "clone mk" << endl;
 
     mvKeys1 = ReferenceFrame.cameraFrames[0].mvKeysUn;
+
+    cout << "copy keys" << endl;
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
