@@ -91,17 +91,6 @@ int main(int argc, char **argv)
     }
     strSettingsFiles.push_back(strSettingsFile_ORB);
 
-//    string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[2];
-//
-//    cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
-//    if(!fsSettings.isOpened())
-//    {
-//        ROS_ERROR("Wrong path to settings. Path must be absolut or relative to ORB_SLAM package directory.");
-//        ros::shutdown();
-//        return 1;
-//    }
-
-
     //Create Frame Publisher for image_view
     ORB_SLAM::FramePublisher FramePub;
 
