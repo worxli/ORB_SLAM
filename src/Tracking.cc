@@ -307,17 +307,33 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
     {
         for (int u = 0; u < imageSize.width; ++u)
         {
-            double mx_u = mK_inv.at<double>(0,0) * u + mK_inv.at<double>(0,2);
-            double my_u = mK_inv.at<double>(1,1) * v + mK_inv.at<double>(1,2);
+            double mx_u = mK_inv.at<float>(0,0) * u + mK_inv.at<float>(0,2);
+            double my_u = mK_inv.at<float>(1,1) * v + mK_inv.at<float>(1,2);
+
+//            cout << "mK_inv:  "<< mK_inv << endl;
+//            cout << "mK_inv.at<double>(0,0): " << mK_inv.at<double>(0,0) << endl;
+//            cout << "mK_inv.at<floate>(0,0): " << mK_inv.at<float>(0,0) << endl;
+//            cout << "mx, my _u: " << mx_u << " " << my_u << endl;
 
             double xi = mXi[1];
             double d2 = mx_u * mx_u + my_u * my_u;
 
             Eigen::Vector3d P;
-            P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+            double P_z;
+            if (P_z > 0)
+                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+            else
+                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi);
+
+//            cout << "P: " << P << endl;
+//            cout << "xi: " << xi << endl;
+//            cout << "sqrt(1.0 + (1.0 - xi * xi) * d2): " << sqrt(1.0 + (1.0 - xi * xi) * d2) << endl;
+//            cout << "d2: " << d2 << endl;
 
             Eigen::Vector2d p;
             spaceToPlane(P, p);
+
+//            cout << "p: " << p << endl;
 
             mapX.at<float>(v,u) = p(0);
             mapY.at<float>(v,u) = p(1);
