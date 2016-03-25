@@ -240,10 +240,10 @@ void Tracking::Run()
 
 void Tracking::distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
 {
-    double k1 = mDistCoef[1].at<float>(0);
-    double k2 = mDistCoef[1].at<float>(1);
-    double p1 = mDistCoef[1].at<float>(2);
-    double p2 = mDistCoef[1].at<float>(3);
+    double k1 = mDistCoef[0].at<float>(0);
+    double k2 = mDistCoef[0].at<float>(1);
+    double p1 = mDistCoef[0].at<float>(2);
+    double p2 = mDistCoef[0].at<float>(3);
 
     double mx2_u, my2_u, mxy_u, rho2_u, rad_dist_u;
 
@@ -262,13 +262,13 @@ void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
     bool m_noDistortion;
 
     // Project points to the normalised plane
-    double z = P(2) + mXi[1] * P.norm();
+    double z = P(2) + mXi[0] * P.norm();
     p_u << P(0) / z, P(1) / z;
 
-    if ((mDistCoef[1].at<float>(0) == 0.0) &&
-        (mDistCoef[1].at<float>(1) == 0.0) &&
-        (mDistCoef[1].at<float>(2) == 0.0) &&
-        (mDistCoef[1].at<float>(3) == 0.0))
+    if ((mDistCoef[0].at<float>(0) == 0.0) &&
+        (mDistCoef[0].at<float>(1) == 0.0) &&
+        (mDistCoef[0].at<float>(2) == 0.0) &&
+        (mDistCoef[0].at<float>(3) == 0.0))
     {
         m_noDistortion = true;
     }
@@ -290,18 +290,20 @@ void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
     }
 
     // Apply generalised projection matrix
-    p << mK[1].at<float>(0,0) * p_d(0) + mK[1].at<float>(0,2),
-            mK[1].at<float>(1,1) * p_d(1) + mK[1].at<float>(1,2);
+    p << mK[0].at<float>(0,0) * p_d(0) + mK[0].at<float>(0,2),
+            mK[0].at<float>(1,1) * p_d(1) + mK[0].at<float>(1,2);
 }
 
 void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
 {
-    cv::Size imageSize(im_width[1], im_height[1]);
+    cv::Size imageSize(im_width[0], im_height[0]);
 
     cv::Mat mapX = cv::Mat::zeros(imageSize, CV_32F);
     cv::Mat mapY = cv::Mat::zeros(imageSize, CV_32F);
 
-    cv::Mat mK_inv = mK[1].inv();
+    // cout << "im_width: " << im_width[0] << " im_height: " << im_height[0] << endl;
+
+    cv::Mat mK_inv = mK[0].inv();
 
     for (int v = 0; v < imageSize.height; ++v)
     {
@@ -315,15 +317,17 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
 //            cout << "mK_inv.at<floate>(0,0): " << mK_inv.at<float>(0,0) << endl;
 //            cout << "mx, my _u: " << mx_u << " " << my_u << endl;
 
-            double xi = mXi[1];
+            double xi = mXi[0];
             double d2 = mx_u * mx_u + my_u * my_u;
 
             Eigen::Vector3d P;
             double P_z = 1.0 + (1.0 - xi * xi) * d2;
-            if (P_z > 0)
-                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
-            else
-                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi);
+            P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+
+          //  if (P_z > 0)
+          //      P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+          //  else
+          //      P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi);
 
 //            cout << "P: " << P << endl;
 //            cout << "xi: " << xi << endl;
@@ -404,14 +408,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
 
         // Write to file!
-        fileX << "mapX" << mapX;
-        fileY << "mapY" << mapY;
+        //fileX << "mapX" << mapX;
+        //fileY << "mapY" << mapY;
 
         cout << "img1.type(): " << img1.type() << endl;
         cout << "img1.channels(): " << img1.channels() << endl;
 
         cout << "Pos1 " << endl;
-        cv::Mat img_new = cv::Mat::zeros(img1.cols, img1.rows, CV_8U);
+        cv::Mat img_new = cv::Mat::zeros(img1.rows, img1.cols, CV_8U);
 
         cout << "Pos1 --b " << endl;
 
@@ -429,14 +433,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                 //cout << "mapX: " << mapX.at<float>(v,u) << " | mapY: " << mapY.at<float>(v,u) << endl;
                 int new_v = static_cast<int>(mapX.at<float>(v,u));
                 int new_u = static_cast<int>(mapY.at<float>(v,u));
-                if (new_u > 0 && new_u < img1.cols && new_v > 0 && new_v < img1.rows)
+                if (new_u > 0 && new_u < img1.rows && new_v > 0 && new_v < img1.cols)
                 {
-                    img_new.at<uint8_t>(new_v,new_u) = img1.at<uint8_t>(v,u);
+                    img_new.at<uint8_t>(new_u,new_v) = img1.at<uint8_t>(v, u);
                 }
                 else
                 {
-                    //cout << "u: " << u << " v: " << v << endl;
-                    //cout << "new_u: " << new_u << " new_v: " << new_v << endl;
+                    //img_new.at<uint8_t>(new_u,new_v) = img1.at<uint8_t>(v, u);
+                    // cout << "u: " << u << " | new_u: " << new_u << " | v: " << v << " | new_v: " << new_v << endl;
                 }
             }
         }
