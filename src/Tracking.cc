@@ -321,13 +321,7 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             double d2 = mx_u * mx_u + my_u * my_u;
 
             Eigen::Vector3d P;
-            double P_z = 1.0 + (1.0 - xi * xi) * d2;
             P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
-
-          //  if (P_z > 0)
-          //      P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
-          //  else
-          //      P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi);
 
 //            cout << "P: " << P << endl;
 //            cout << "xi: " << xi << endl;
@@ -393,14 +387,23 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img3);
     imgs.push_back(img4);
 
-    cv::Mat mapX;
-    cv::Mat mapY;
+
+    cv::Mat mapX = cv::Mat::zeros(img1.size(), CV_32F);
+    cv::Mat mapY = cv::Mat::zeros(img1.size(), CV_32F);
 
     cout << "BOOL: INITIALCOMPUTATION: " << Frame::mbInitialComputations << endl;
 
     if (Frame::mbInitialComputations) // true only for first incoming frame
     {
+        cv::Mat img_new = cv::Mat::zeros(img1.size(), img1.type());
+
         Tracking::initUndistortMap(mapX, mapY);
+
+        cv::Mat newCameraMatrix = cv::Mat::zeros(3,3,CV_32F);
+        //cv::initUndistortRectifyMap(mK[0],mDistCoef[0],mR[0],newCameraMatrix,img1.size(),img1.type(),mapX,mapY);
+        //cv::remap(img1, img_new, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
+        cv::undistort(img1, img_new, mK[0], mDistCoef[0]);
+
 
         // Declare what you need
         cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX.yaml", cv::FileStorage::WRITE);
@@ -408,16 +411,13 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
 
         // Write to file!
-        //fileX << "mapX" << mapX;
-        //fileY << "mapY" << mapY;
+        fileX << "mapX" << mapX;
+        fileY << "mapY" << mapY;
 
         cout << "img1.type(): " << img1.type() << endl;
         cout << "img1.channels(): " << img1.channels() << endl;
 
         cout << "Pos1 " << endl;
-        cv::Mat img_new = cv::Mat::zeros(img1.rows, img1.cols, CV_8U);
-
-        cout << "Pos1 --b " << endl;
 
         cout << "img1.cols: " <<  img1.cols << endl;
         cout << "img1.rows: " <<  img1.rows << endl;
@@ -425,6 +425,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cout << "mapX.size: " << mapX.size() << endl;
         cout << "mapY.size: " << mapY.size() << endl;
 
+        /*
         // Convert and Write new undistorted image
         for (int u=0; u<img1.cols; u++) {
             //cout << "u: " << u << endl;
@@ -444,6 +445,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                 }
             }
         }
+        */
         cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
     }
 
