@@ -74,7 +74,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
 	    u0.push_back(fSettings["u0"]);
 	    v0.push_back(fSettings["v0"]);
 
-        K.push_back(cv::Mat::eye(3,3,CV_32F));
+        K.push_back(cv::Mat::eye(3,3,CV_32FC1));
         K[i].at<float>(0,0) = fx[i];
         K[i].at<float>(1,1) = fy[i];
         K[i].at<float>(0,2) = cx[i];
@@ -144,10 +144,6 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         cout << "- mDistCoef[" << i << "]: " << mDistCoef[i].at<float>(0) << " " << mDistCoef[i].at<float>(1) << " "
                                              << mDistCoef[i].at<float>(2) << " " << mDistCoef[i].at<float>(3) << endl;
     }
-
-    // Load camera parameters from settings file
-    //K[0].copyTo(mK);
-    //DistCoef[0].copyTo(mDistCoef);
 
     // ORB settings read from last element of the vector strSettingPath
     cv::FileStorage fSettings_ORB(strSettingPath[strSettingPath.size()-1], cv::FileStorage::READ);
@@ -301,37 +297,151 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
     cv::Mat mapX = cv::Mat::zeros(imageSize, CV_32F);
     cv::Mat mapY = cv::Mat::zeros(imageSize, CV_32F);
 
-    // cout << "im_width: " << im_width[0] << " im_height: " << im_height[0] << endl;
-
     cv::Mat mK_inv = mK[0].inv();
 
     for (int v = 0; v < imageSize.height; ++v)
     {
         for (int u = 0; u < imageSize.width; ++u)
         {
-            double mx_u = mK_inv.at<float>(0,0) * u + mK_inv.at<float>(0,2);
-            double my_u = mK_inv.at<float>(1,1) * v + mK_inv.at<float>(1,2);
+            // Undistort pixel point
+            Eigen::Vector2d m_d, m_u;
+            m_d << u,v;
+            undistort(m_d, m_u);
 
-//            cout << "mK_inv:  "<< mK_inv << endl;
-//            cout << "mK_inv.at<double>(0,0): " << mK_inv.at<double>(0,0) << endl;
-//            cout << "mK_inv.at<floate>(0,0): " << mK_inv.at<float>(0,0) << endl;
-//            cout << "mx, my _u: " << mx_u << " " << my_u << endl;
+            float mx_u = m_u(0);
+            float my_u = m_u(1);
 
-            double xi = mXi[0];
-            double d2 = mx_u * mx_u + my_u * my_u;
-
+            // Lift normalised points to the sphere (inv_hslash)
             Eigen::Vector3d P;
-            P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+            double lambda;
+            double xi = mXi[0];
 
-//            cout << "P: " << P << endl;
-//            cout << "xi: " << xi << endl;
-//            cout << "sqrt(1.0 + (1.0 - xi * xi) * d2): " << sqrt(1.0 + (1.0 - xi * xi) * d2) << endl;
-//            cout << "d2: " << d2 << endl;
+            if (xi == 1.0)
+            {
+                lambda = 2.0 / (mx_u * mx_u + my_u * my_u + 1.0);
+                P << lambda * mx_u, lambda * my_u, lambda - 1.0;
+            }
+            else
+            {
+                lambda = (xi + sqrt(1.0 + (1.0 - xi * xi) * (mx_u * mx_u + my_u * my_u))) / (1.0 + mx_u * mx_u + my_u * my_u);
+                P << lambda * mx_u, lambda * my_u, lambda - xi;
+            }
+
+            // convert again to pixel
+            cv::Mat K = mK[0];
+            float fx = K.at<float>(0,0);
+            float fy = K.at<float>(1,1);
+            float cx = K.at<float>(0,2);
+            float cy = K.at<float>(1,2);
+
+//            cout << "P0: " << P[0] << " | P1: " << P[1] << " | P2: " << P[2] << endl;
+//            cout << "P0/P2: " << (P[0]/P[2]) << " | P1/P2: " << (P[1]/P[2]) << endl;
+//            cout << "fx: " << fx << " | fy: " << fy << " | cx: " << cx << " | cy: " << cy << endl;
+
+            // new pixel coordinate in image frame
+            float X = 0.1*(P[0]/P[2])*fx + cx;
+            float Y = 0.1*(P[1]/P[2])*fy + cy;
+
+            // Add new pixel(v,u)/(x,y) to maps
+            mapX.at<float>(v,u) = X*1.0f;
+            mapY.at<float>(v,u) = Y*1.0f;
+
+            //cout << "Orginal: " << v << " " << u << endl;
+            //cout << "XY: " << X << " | " << Y << endl;
+            //cout << "mapXY: " << mapX.at<float>(v,u) << " | " <<  mapY.at<float>(v,u) << endl << endl;
+        }
+    }
+
+    cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
+}
+
+void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
+{
+    double mx_d, my_d,mx2_d, mxy_d, my2_d, mx_u, my_u;
+    double rho2_d, rho4_d, radDist_d, Dx_d, Dy_d, inv_denom_d;
+
+    cv::Mat mK_inv = mK[0].inv();
+
+    // Lift points to normalised plane
+    mx_d = mK_inv.at<float>(0,0) * p(0) + mK_inv.at<float>(0,2);
+    my_d = mK_inv.at<float>(1,1) * p(1) + mK_inv.at<float>(1,2);
+
+    // Apply inverse distortion model
+    double k1 = mDistCoef[0].at<float>(0);
+    double k2 = mDistCoef[0].at<float>(1);
+    double p1 = mDistCoef[0].at<float>(2);
+    double p2 = mDistCoef[0].at<float>(3);
+
+    // Inverse distortion model
+    // proposed by Heikkila
+    mx2_d = mx_d*mx_d;
+    my2_d = my_d*my_d;
+    mxy_d = mx_d*my_d;
+    rho2_d = mx2_d+my2_d;
+    rho4_d = rho2_d*rho2_d;
+    radDist_d = k1*rho2_d+k2*rho4_d;
+    Dx_d = mx_d*radDist_d + p2*(rho2_d+2*mx2_d) + 2*p1*mxy_d;
+    Dy_d = my_d*radDist_d + p1*(rho2_d+2*my2_d) + 2*p2*mxy_d;
+    inv_denom_d = 1/(1+4*k1*rho2_d+6*k2*rho4_d+8*p1*my_d+8*p2*mx_d);
+
+    mx_u = mx_d - inv_denom_d*Dx_d;
+    my_u = my_d - inv_denom_d*Dy_d;
+
+    p_u << mx_u, my_u;
+}
+
+cv::Mat Tracking::initUndistortRectifyMap(cv::Mat& map1, cv::Mat& map2,
+                                    float fx, float fy,
+                                    cv::Size imageSize,
+                                    float cx, float cy,
+                                    cv::Mat rmat)
+{
+    if (imageSize == cv::Size(0, 0))
+    {
+        imageSize = cv::Size(im_width[0], im_height[0]);
+    }
+
+    cv::Mat mapX = cv::Mat::zeros(imageSize.height, imageSize.width, CV_32F);
+    cv::Mat mapY = cv::Mat::zeros(imageSize.height, imageSize.width, CV_32F);
+
+    Eigen::Matrix3f K_rect;
+
+    if (cx == -1.0f && cy == -1.0f)
+    {
+        K_rect << fx, 0, imageSize.width / 2,
+                0, fy, imageSize.height / 2,
+                0, 0, 1;
+    }
+    else
+    {
+        K_rect << fx, 0, cx,
+                0, fy, cy,
+                0, 0, 1;
+    }
+
+    if (fx == -1.0f || fy == -1.0f)
+    {
+        K_rect(0,0) = mK[0].at<float>(0,0);
+        K_rect(1,1) = mK[0].at<float>(1,1);
+    }
+
+    Eigen::Matrix3f K_rect_inv = K_rect.inverse();
+
+    Eigen::Matrix3f R, R_inv;
+    cv::cv2eigen(rmat, R);
+    R_inv = R.inverse();
+
+    for (int v = 0; v < imageSize.height; ++v)
+    {
+        for (int u = 0; u < imageSize.width; ++u)
+        {
+            Eigen::Vector3f xo;
+            xo << u, v, 1;
+
+            Eigen::Vector3f uo = R_inv * K_rect_inv * xo;
 
             Eigen::Vector2d p;
-            spaceToPlane(P, p);
-
-//            cout << "p: " << p << endl;
+            spaceToPlane(uo.cast<double>(), p);
 
             mapX.at<float>(v,u) = p(0);
             mapY.at<float>(v,u) = p(1);
@@ -339,6 +449,10 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
     }
 
     cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
+
+    cv::Mat K_rect_cv;
+    cv::eigen2cv(K_rect, K_rect_cv);
+    return K_rect_cv;
 }
 
 void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
@@ -388,8 +502,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img4);
 
 
-    cv::Mat mapX = cv::Mat::zeros(img1.size(), CV_32F);
-    cv::Mat mapY = cv::Mat::zeros(img1.size(), CV_32F);
+    cv::Mat mapX = cv::Mat::zeros(img1.size(), CV_32FC1);
+    cv::Mat mapY = cv::Mat::zeros(img1.size(), CV_32FC1);
 
     cout << "BOOL: INITIALCOMPUTATION: " << Frame::mbInitialComputations << endl;
 
@@ -398,12 +512,13 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cv::Mat img_new = cv::Mat::zeros(img1.size(), img1.type());
 
         Tracking::initUndistortMap(mapX, mapY);
+        //Tracking::initUndistortRectifyMap(mapX, mapY, mK[0].at<float>(0,0),mK[0].at<float>(1,1),
+        //                                  img1.size(),mK[0].at<float>(0,2),mK[0].at<float>(1,2),mR[0]);
 
-        cv::Mat newCameraMatrix = cv::Mat::zeros(3,3,CV_32F);
+        //cv::Mat newCameraMatrix = cv::Mat::zeros(3,3,CV_32F);
         //cv::initUndistortRectifyMap(mK[0],mDistCoef[0],mR[0],newCameraMatrix,img1.size(),img1.type(),mapX,mapY);
         //cv::remap(img1, img_new, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
-        cv::undistort(img1, img_new, mK[0], mDistCoef[0]);
-
+        //cv::undistort(img1, img_new, mK[0], mDistCoef[0]);
 
         // Declare what you need
         cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX.yaml", cv::FileStorage::WRITE);
@@ -422,10 +537,12 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cout << "img1.cols: " <<  img1.cols << endl;
         cout << "img1.rows: " <<  img1.rows << endl;
         cout << "img1.size: " << img1.size() << endl;
+        cout << "img1.heigth: " << img1.size().height << endl;
+        cout << "img1.width: " << img1.size().width << endl;
         cout << "mapX.size: " << mapX.size() << endl;
         cout << "mapY.size: " << mapY.size() << endl;
 
-        /*
+
         // Convert and Write new undistorted image
         for (int u=0; u<img1.cols; u++) {
             //cout << "u: " << u << endl;
@@ -445,7 +562,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                 }
             }
         }
-        */
+
+
+        //cv::imshow("img_new", img_new);
+        //cv::waitKey(10);
+
         cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
     }
 
