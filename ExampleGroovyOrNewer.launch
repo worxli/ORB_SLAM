@@ -1,9 +1,9 @@
 <launch>
 
-   <!--<node pkg="image_view" type="image_view" name="image_view" respawn="false" output="log">
+   <node pkg="image_view" type="image_view" name="image_view" respawn="false" output="log">
 	<remap from="/image" to="/ORB_SLAM/Frame" />
 	<param name="autosize" value="true"/>
-	</node>-->
+	</node>
 
 	<!--<node pkg="rviz" type="rviz" name="rviz" args="-d $(find ORB_SLAM)/Data/rviz.rviz" output="log">
    </node>-->

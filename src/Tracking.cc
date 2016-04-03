@@ -105,7 +105,6 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         T[i].at<float>(1) = fSettings["t2"];
         T[i].at<float>(2) = fSettings["t3"];
 
-
         mK.push_back(K[i]);
         mDistCoef.push_back(DistCoef[i]);
         mT.push_back(T[i]);
@@ -113,6 +112,8 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         mXi.push_back(xi[i]);
         im_width.push_back(image_width[i]);
         im_height.push_back(image_height[i]);
+        mmapX.push_back(cv::Mat::zeros(image_height[i], image_width[i], CV_32FC1));
+        mmapY.push_back(cv::Mat::zeros(image_height[i], image_width[i], CV_32FC1));
 
         // Print parameters
         cout << "Parameters Camera[" << i << "]: " << camera_name[i] << endl;
@@ -234,6 +235,8 @@ void Tracking::Run()
     ros::spin();
 }
 
+/*
+
 void Tracking::distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
 {
     double k1 = mDistCoef[0].at<float>(0);
@@ -252,6 +255,9 @@ void Tracking::distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
             p_u(1) * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
 }
 
+*/
+
+/*
 void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
 {
     Eigen::Vector2d p_u, p_d;
@@ -289,6 +295,8 @@ void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
     p << mK[0].at<float>(0,0) * p_d(0) + mK[0].at<float>(0,2),
             mK[0].at<float>(1,1) * p_d(1) + mK[0].at<float>(1,2);
 }
+
+*/
 
 void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
 {
@@ -334,10 +342,6 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             float cx = K.at<float>(0,2);
             float cy = K.at<float>(1,2);
 
-//            cout << "P0: " << P[0] << " | P1: " << P[1] << " | P2: " << P[2] << endl;
-//            cout << "P0/P2: " << (P[0]/P[2]) << " | P1/P2: " << (P[1]/P[2]) << endl;
-//            cout << "fx: " << fx << " | fy: " << fy << " | cx: " << cx << " | cy: " << cy << endl;
-
             // new pixel coordinate in image frame
             float X = 0.1*(P[0]/P[2])*fx + cx;
             float Y = 0.1*(P[1]/P[2])*fy + cy;
@@ -345,15 +349,56 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             // Add new pixel(v,u)/(x,y) to maps
             mapX.at<float>(v,u) = X*1.0f;
             mapY.at<float>(v,u) = Y*1.0f;
-
-            //cout << "Orginal: " << v << " " << u << endl;
-            //cout << "XY: " << X << " | " << Y << endl;
-            //cout << "mapXY: " << mapX.at<float>(v,u) << " | " <<  mapY.at<float>(v,u) << endl << endl;
         }
     }
 
     cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
 }
+
+/*
+void Tracking::undistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
+{
+    cv::Mat mK_inv = mK[0].inv();
+    double u = p(0);
+    double v = p(1);
+
+    // Undistort pixel point
+    Eigen::Vector2d m_d, m_u;
+    m_d << u,v;
+    undistort(m_d, m_u);
+
+    float mx_u = m_u(0);
+    float my_u = m_u(1);
+
+    // Lift normalised points to the sphere (inv_hslash)
+    Eigen::Vector3d P;
+    double lambda;
+    double xi = mXi[0];
+
+    if (xi == 1.0)
+    {
+        lambda = 2.0 / (mx_u * mx_u + my_u * my_u + 1.0);
+        P << lambda * mx_u, lambda * my_u, lambda - 1.0;
+    }
+    else
+    {
+        lambda = (xi + sqrt(1.0 + (1.0 - xi * xi) * (mx_u * mx_u + my_u * my_u))) / (1.0 + mx_u * mx_u + my_u * my_u);
+        P << lambda * mx_u, lambda * my_u, lambda - xi;
+    }
+
+    // convert again to pixel
+    cv::Mat K = mK[0];
+    float fx = K.at<float>(0,0);
+    float fy = K.at<float>(1,1);
+    float cx = K.at<float>(0,2);
+    float cy = K.at<float>(1,2);;
+
+    // new pixel coordinate in image frame
+    p_u(0) = 0.1*(P[0]/P[2])*fx + cx;
+    p_u(1) = 0.1*(P[1]/P[2])*fy + cy;
+}
+
+*/
 
 void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
 {
@@ -388,71 +433,6 @@ void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
     my_u = my_d - inv_denom_d*Dy_d;
 
     p_u << mx_u, my_u;
-}
-
-cv::Mat Tracking::initUndistortRectifyMap(cv::Mat& map1, cv::Mat& map2,
-                                    float fx, float fy,
-                                    cv::Size imageSize,
-                                    float cx, float cy,
-                                    cv::Mat rmat)
-{
-    if (imageSize == cv::Size(0, 0))
-    {
-        imageSize = cv::Size(im_width[0], im_height[0]);
-    }
-
-    cv::Mat mapX = cv::Mat::zeros(imageSize.height, imageSize.width, CV_32F);
-    cv::Mat mapY = cv::Mat::zeros(imageSize.height, imageSize.width, CV_32F);
-
-    Eigen::Matrix3f K_rect;
-
-    if (cx == -1.0f && cy == -1.0f)
-    {
-        K_rect << fx, 0, imageSize.width / 2,
-                0, fy, imageSize.height / 2,
-                0, 0, 1;
-    }
-    else
-    {
-        K_rect << fx, 0, cx,
-                0, fy, cy,
-                0, 0, 1;
-    }
-
-    if (fx == -1.0f || fy == -1.0f)
-    {
-        K_rect(0,0) = mK[0].at<float>(0,0);
-        K_rect(1,1) = mK[0].at<float>(1,1);
-    }
-
-    Eigen::Matrix3f K_rect_inv = K_rect.inverse();
-
-    Eigen::Matrix3f R, R_inv;
-    cv::cv2eigen(rmat, R);
-    R_inv = R.inverse();
-
-    for (int v = 0; v < imageSize.height; ++v)
-    {
-        for (int u = 0; u < imageSize.width; ++u)
-        {
-            Eigen::Vector3f xo;
-            xo << u, v, 1;
-
-            Eigen::Vector3f uo = R_inv * K_rect_inv * xo;
-
-            Eigen::Vector2d p;
-            spaceToPlane(uo.cast<double>(), p);
-
-            mapX.at<float>(v,u) = p(0);
-            mapY.at<float>(v,u) = p(1);
-        }
-    }
-
-    cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
-
-    cv::Mat K_rect_cv;
-    cv::eigen2cv(K_rect, K_rect_cv);
-    return K_rect_cv;
 }
 
 void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
@@ -502,55 +482,45 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(img4);
 
 
-    cv::Mat mapX = cv::Mat::zeros(img1.size(), CV_32FC1);
-    cv::Mat mapY = cv::Mat::zeros(img1.size(), CV_32FC1);
-
-    cout << "BOOL: INITIALCOMPUTATION: " << Frame::mbInitialComputations << endl;
+    //mmapX.push_back(cv::Mat::zeros(img1.size(), CV_32FC1));
+    //mmapY.push_back(cv::Mat::zeros(img1.size(), CV_32FC1));
 
     if (Frame::mbInitialComputations) // true only for first incoming frame
     {
-        cv::Mat img_new = cv::Mat::zeros(img1.size(), img1.type());
+        cout << "BOOL: INITIALCOMPUTATION: " << Frame::mbInitialComputations << endl;
 
-        Tracking::initUndistortMap(mapX, mapY);
-        //Tracking::initUndistortRectifyMap(mapX, mapY, mK[0].at<float>(0,0),mK[0].at<float>(1,1),
-        //                                  img1.size(),mK[0].at<float>(0,2),mK[0].at<float>(1,2),mR[0]);
+        //cv::Mat img_new = cv::Mat::zeros(img1.size(), img1.type());
 
-        //cv::Mat newCameraMatrix = cv::Mat::zeros(3,3,CV_32F);
-        //cv::initUndistortRectifyMap(mK[0],mDistCoef[0],mR[0],newCameraMatrix,img1.size(),img1.type(),mapX,mapY);
-        //cv::remap(img1, img_new, mapX, mapY, cv::INTER_LINEAR, cv::BORDER_CONSTANT, 0);
-        //cv::undistort(img1, img_new, mK[0], mDistCoef[0]);
+        Tracking::initUndistortMap(mmapX[0], mmapY[0]);
 
         // Declare what you need
-        cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX.yaml", cv::FileStorage::WRITE);
-        cv::FileStorage fileY("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapY.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX[0].yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fileY("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapY[0].yaml", cv::FileStorage::WRITE);
 
 
         // Write to file!
-        fileX << "mapX" << mapX;
-        fileY << "mapY" << mapY;
+        fileX << "mmapX0" << mmapX[0];
+        fileY << "mmapY0" << mmapY[0];
 
         cout << "img1.type(): " << img1.type() << endl;
         cout << "img1.channels(): " << img1.channels() << endl;
-
-        cout << "Pos1 " << endl;
-
         cout << "img1.cols: " <<  img1.cols << endl;
         cout << "img1.rows: " <<  img1.rows << endl;
         cout << "img1.size: " << img1.size() << endl;
         cout << "img1.heigth: " << img1.size().height << endl;
         cout << "img1.width: " << img1.size().width << endl;
-        cout << "mapX.size: " << mapX.size() << endl;
-        cout << "mapY.size: " << mapY.size() << endl;
+        cout << "mmapX[0].size: " << mmapX[0].size() << endl;
+        cout << "mmapY[0].size: " << mmapY[0].size() << endl;
 
-
+/*
         // Convert and Write new undistorted image
         for (int u=0; u<img1.cols; u++) {
             //cout << "u: " << u << endl;
             for (int v=0; v<img1.rows; v++) {
                 //cout << "v: " << v << endl;
-                //cout << "mapX: " << mapX.at<float>(v,u) << " | mapY: " << mapY.at<float>(v,u) << endl;
-                int new_v = static_cast<int>(mapX.at<float>(v,u));
-                int new_u = static_cast<int>(mapY.at<float>(v,u));
+                //cout << "mmapX[0]: " << mmapX[0].at<float>(v,u) << " | mmapY[0]: " << mmapY[0].at<float>(v,u) << endl;
+                int new_v = static_cast<int>(mmapX[0].at<float>(v,u));
+                int new_u = static_cast<int>(mmapY[0].at<float>(v,u));
                 if (new_u > 0 && new_u < img1.rows && new_v > 0 && new_v < img1.cols)
                 {
                     img_new.at<uint8_t>(new_u,new_v) = img1.at<uint8_t>(v, u);
@@ -562,18 +532,17 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                 }
             }
         }
+*/
 
-
-        //cv::imshow("img_new", img_new);
-        //cv::waitKey(10);
-
-        cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
+        //cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
     }
 
     if(mState==WORKING || mState==LOST)
-        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[0],mDistCoef[0]);
+        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpORBextractor,mpORBVocabulary,mK[0],mDistCoef[0],
+                              mXi[0], mmapX[0], mmapY[0]);
     else
-        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK[0],mDistCoef[0]);
+        mCurrentFrame = Frame(imgs[0],cv_ptr->header.stamp.toSec(),mpIniORBextractor,mpORBVocabulary,mK[0],mDistCoef[0],
+                              mXi[0], mmapX[0], mmapY[0]);
 
     // Depending on the state of the Tracker we perform different tasks
 

@@ -29,6 +29,8 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include<Eigen/Eigen>
+
 
 namespace ORB_SLAM
 {
@@ -46,7 +48,8 @@ public:
     Frame();
     Frame(const Frame &frame);
     //Frame(vector<cv::Mat> &imgs, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
-    Frame(cv::Mat &im, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
+    Frame(cv::Mat &im, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K,
+          cv::Mat &distCoef, float &xi, cv::Mat &mapX, cv::Mat &mapY);
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractor;
@@ -57,13 +60,18 @@ public:
     // Frame timestamp
     double mTimeStamp;
 
-    // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
+    // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters and mirror parameter
     cv::Mat mK;
     static float fx;
     static float fy;
     static float cx;
     static float cy;
     cv::Mat mDistCoef;
+    float mXi;
+
+    // Maps for lense undistortion
+    cv::Mat mmapX;
+    cv::Mat mmapY;
 
     // Number of KeyPoints
     int N;
@@ -129,6 +137,8 @@ public:
 
 private:
 
+    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
     void UndistortKeyPoints();
     void ComputeImageBounds();
 
