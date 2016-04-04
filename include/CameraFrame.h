@@ -27,6 +27,7 @@
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "ORBextractor.h"
+#include <Eigen/Eigen>
 
 namespace ORB_SLAM
 {
@@ -40,7 +41,7 @@ class CameraFrame
 public:
     CameraFrame();
     CameraFrame(const CameraFrame &frame);
-    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, ORBextractor* extractor, ORBVocabulary* voc);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractor;
@@ -62,6 +63,13 @@ public:
     static float cx;
     static float cy;
     cv::Mat mDistCoef;
+
+    // and mirror parameter
+    float mXi;
+
+    // Maps for lense undistortion
+    cv::Mat mmapX;
+    cv::Mat mmapY;
 
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;
@@ -115,6 +123,8 @@ private:
 
     void UndistortKeyPoints();
     void ComputeImageBounds();
+    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
 
 };
 

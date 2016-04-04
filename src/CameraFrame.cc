@@ -34,7 +34,8 @@ CameraFrame::CameraFrame()
 
 //Copy Constructor
 CameraFrame::CameraFrame(const CameraFrame &frame)
-    :im(frame.im.clone()), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
+    :im(frame.im.clone()), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()), 
+     mmapY(frame.mmapY.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
      mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
@@ -45,8 +46,9 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
             mGrid[i][j]=frame.mGrid[i][j];
 }
 
-CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, ORBextractor* extractor, ORBVocabulary* voc)
-    :im(im_), mK(K.clone()),mDistCoef(distCoef.clone()),mpORBvocabulary(voc),mpORBextractor(extractor)
+CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc)
+    :im(im_), mK(K.clone()),mDistCoef(distCoef.clone()),mpORBvocabulary(voc),mpORBextractor(extractor),
+    mXi(xi), mmapX(mapX.clone()), mmapY(mapY.clone())
 {
     // Exctract ORB  
     (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
@@ -267,8 +269,22 @@ void CameraFrame::UndistortKeyPoints()
     cv::Mat mat(mvKeys.size(),2,CV_32F);
     for(unsigned int i=0; i<mvKeys.size(); i++)
     {
-        mat.at<float>(i,0)=mvKeys[i].pt.x;
-        mat.at<float>(i,1)=mvKeys[i].pt.y;
+     /*   mat.at<float>(i,0)=mvKeys[i].pt.x;
+        mat.at<float>(i,1)=mvKeys[i].pt.y;*/
+        mat.at<float>(i,0)= mmapX.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
+        mat.at<float>(i,1)= mmapY.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
+        
+        /*
+        //cout << " mvKeys: " << mvKeys[i].pt.x << " | " << mvKeys[i].pt.y << endl;
+
+        // Correct fisheye lense distortion
+        Eigen::Vector2d p, p_u;
+        p << mvKeys[i].pt.x, mvKeys[i].pt.y;
+        UndistortPoint(p,p_u);
+
+        mat.at<float>(i,0) = p_u(0);
+        mat.at<float>(i,1) = p_u(1);
+         */
     }
 
     // Undistort points
@@ -285,6 +301,84 @@ void CameraFrame::UndistortKeyPoints()
         kp.pt.y=mat.at<float>(i,1);
         mvKeysUn[i]=kp;
     }
+}
+
+void CameraFrame::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
+{
+    double mx_d, my_d,mx2_d, mxy_d, my2_d, mx_u, my_u;
+    double rho2_d, rho4_d, radDist_d, Dx_d, Dy_d, inv_denom_d;
+
+    cv::Mat mK_inv = mK.inv();
+
+    // Lift points to normalised plane
+    mx_d = mK_inv.at<float>(0,0) * p(0) + mK_inv.at<float>(0,2);
+    my_d = mK_inv.at<float>(1,1) * p(1) + mK_inv.at<float>(1,2);
+
+    // Apply inverse distortion model
+    double k1 = mDistCoef.at<float>(0);
+    double k2 = mDistCoef.at<float>(1);
+    double p1 = mDistCoef.at<float>(2);
+    double p2 = mDistCoef.at<float>(3);
+
+    // Inverse distortion model
+    // proposed by Heikkila
+    mx2_d = mx_d*mx_d;
+    my2_d = my_d*my_d;
+    mxy_d = mx_d*my_d;
+    rho2_d = mx2_d+my2_d;
+    rho4_d = rho2_d*rho2_d;
+    radDist_d = k1*rho2_d+k2*rho4_d;
+    Dx_d = mx_d*radDist_d + p2*(rho2_d+2*mx2_d) + 2*p1*mxy_d;
+    Dy_d = my_d*radDist_d + p1*(rho2_d+2*my2_d) + 2*p2*mxy_d;
+    inv_denom_d = 1/(1+4*k1*rho2_d+6*k2*rho4_d+8*p1*my_d+8*p2*mx_d);
+
+    mx_u = mx_d - inv_denom_d*Dx_d;
+    my_u = my_d - inv_denom_d*Dy_d;
+
+    p_u << mx_u, my_u;
+}
+
+void CameraFrame::UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
+{
+    cv::Mat mK_inv = mK.inv();
+    double u = p(0);
+    double v = p(1);
+
+    // Undistort pixel point
+    Eigen::Vector2d m_d, m_u;
+    m_d << u,v;
+    undistort(m_d, m_u);
+
+    float mx_u = m_u(0);
+    float my_u = m_u(1);
+
+    // Lift normalised points to the sphere (inv_hslash)
+    Eigen::Vector3d P;
+    double lambda;
+    double xi = mXi;//2.1437173371589706 (image 0)
+    //cout << "xi: " << xi << endl;
+
+    if (xi == 1.0)
+    {
+        lambda = 2.0 / (mx_u * mx_u + my_u * my_u + 1.0);
+        P << lambda * mx_u, lambda * my_u, lambda - 1.0;
+    }
+    else
+    {
+        lambda = (xi + sqrt(1.0 + (1.0 - xi * xi) * (mx_u * mx_u + my_u * my_u))) / (1.0 + mx_u * mx_u + my_u * my_u);
+        P << lambda * mx_u, lambda * my_u, lambda - xi;
+    }
+
+    // convert again to pixel
+    cv::Mat K = mK;
+    float fx = K.at<float>(0,0);
+    float fy = K.at<float>(1,1);
+    float cx = K.at<float>(0,2);
+    float cy = K.at<float>(1,2);;
+
+    // new pixel coordinate in image frame
+    p_u(0) = 0.1*(P[0]/P[2])*fx + cx;
+    p_u(1) = 0.1*(P[1]/P[2])*fy + cy;
 }
 
 void CameraFrame::ComputeImageBounds()

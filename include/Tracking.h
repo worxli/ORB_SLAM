@@ -23,9 +23,11 @@
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
+
 #include<sensor_msgs/Image.h>
 #include<sensor_msgs/image_encodings.h>
-#include <Eigen/Eigen>
+#include<Eigen/Eigen>
+#include<opencv2/core/eigen.hpp>
 
 #include"FramePublisher.h"
 #include"Map.h"
@@ -92,9 +94,11 @@ public:
 
 
 protected:
-    void distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u);
-    void spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p);
+    //void distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u);
+    //void spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p);
     void initUndistortMap(cv::Mat& map1, cv::Mat& map2);
+    //void undistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
@@ -162,6 +166,10 @@ protected:
 
     // Mirror parameters
     vector<float> mXi;
+
+    // Maps with lense undisorted pixel
+    vector<cv::Mat> mmapX;
+    vector<cv::Mat> mmapY;
 
     // Camera info
     vector<int> im_width;
