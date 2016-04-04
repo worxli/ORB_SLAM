@@ -237,6 +237,111 @@ void Tracking::Run()
     ros::spin();
 }
 
+void Tracking::distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u)
+{
+    double k1 = mDistCoef[1].at<float>(0);
+    double k2 = mDistCoef[1].at<float>(1);
+    double p1 = mDistCoef[1].at<float>(2);
+    double p2 = mDistCoef[1].at<float>(3);
+
+    double mx2_u, my2_u, mxy_u, rho2_u, rad_dist_u;
+
+    mx2_u = p_u(0) * p_u(0);
+    my2_u = p_u(1) * p_u(1);
+    mxy_u = p_u(0) * p_u(1);
+    rho2_u = mx2_u + my2_u;
+    rad_dist_u = k1 * rho2_u + k2 * rho2_u * rho2_u;
+    d_u << p_u(0) * rad_dist_u + 2.0 * p1 * mxy_u + p2 * (rho2_u + 2.0 * mx2_u),
+            p_u(1) * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
+}
+
+void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
+{
+    Eigen::Vector2d p_u, p_d;
+    bool m_noDistortion;
+
+    // Project points to the normalised plane
+    double z = P(2) + mXi[1] * P.norm();
+    p_u << P(0) / z, P(1) / z;
+
+    if ((mDistCoef[1].at<float>(0) == 0.0) &&
+        (mDistCoef[1].at<float>(1) == 0.0) &&
+        (mDistCoef[1].at<float>(2) == 0.0) &&
+        (mDistCoef[1].at<float>(3) == 0.0))
+    {
+        m_noDistortion = true;
+    }
+    else
+    {
+        m_noDistortion = false;
+    }
+
+    if (m_noDistortion)
+    {
+        p_d = p_u;
+    }
+    else
+    {
+        // Apply distortion
+        Eigen::Vector2d d_u;
+        Tracking::distortion(p_u, d_u);
+        p_d = p_u + d_u;
+    }
+
+    // Apply generalised projection matrix
+    p << mK[1].at<float>(0,0) * p_d(0) + mK[1].at<float>(0,2),
+            mK[1].at<float>(1,1) * p_d(1) + mK[1].at<float>(1,2);
+}
+
+void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
+{
+    cv::Size imageSize(im_width[1], im_height[1]);
+
+    cv::Mat mapX = cv::Mat::zeros(imageSize, CV_32F);
+    cv::Mat mapY = cv::Mat::zeros(imageSize, CV_32F);
+
+    cv::Mat mK_inv = mK[1].inv();
+
+    for (int v = 0; v < imageSize.height; ++v)
+    {
+        for (int u = 0; u < imageSize.width; ++u)
+        {
+            double mx_u = mK_inv.at<float>(0,0) * u + mK_inv.at<float>(0,2);
+            double my_u = mK_inv.at<float>(1,1) * v + mK_inv.at<float>(1,2);
+
+//            cout << "mK_inv:  "<< mK_inv << endl;
+//            cout << "mK_inv.at<double>(0,0): " << mK_inv.at<double>(0,0) << endl;
+//            cout << "mK_inv.at<floate>(0,0): " << mK_inv.at<float>(0,0) << endl;
+//            cout << "mx, my _u: " << mx_u << " " << my_u << endl;
+
+            double xi = mXi[1];
+            double d2 = mx_u * mx_u + my_u * my_u;
+
+            Eigen::Vector3d P;
+            double P_z = 1.0 + (1.0 - xi * xi) * d2;
+            if (P_z > 0)
+                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi + sqrt(1.0 + (1.0 - xi * xi) * d2));
+            else
+                P << mx_u, my_u, 1.0 - xi * (d2 + 1.0) / (xi);
+
+//            cout << "P: " << P << endl;
+//            cout << "xi: " << xi << endl;
+//            cout << "sqrt(1.0 + (1.0 - xi * xi) * d2): " << sqrt(1.0 + (1.0 - xi * xi) * d2) << endl;
+//            cout << "d2: " << d2 << endl;
+
+            Eigen::Vector2d p;
+            spaceToPlane(P, p);
+
+//            cout << "p: " << p << endl;
+
+            mapX.at<float>(v,u) = p(0);
+            mapY.at<float>(v,u) = p(1);
+        }
+    }
+
+    cv::convertMaps(mapX, mapY, map1, map2, CV_32FC1, false);
+}
+
 void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 {
 
@@ -278,6 +383,58 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(cv::Mat(im, cv::Rect(0, height, width, height)));
     imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));
     imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
+
+    cv::Mat mapX;
+    cv::Mat mapY;
+
+    if (mState==NO_IMAGES_YET) // true only for first incoming frame
+    {
+        Tracking::initUndistortMap(mapX, mapY);
+
+        // Declare what you need
+        cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fileY("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapY.yaml", cv::FileStorage::WRITE);
+
+
+        // Write to file!
+        fileX << "mapX" << mapX;
+        fileY << "mapY" << mapY;
+
+        cout << "imgs[0].type(): " << imgs[0].type() << endl;
+        cout << "imgs[0].channels(): " << imgs[0].channels() << endl;
+
+        cout << "Pos1 " << endl;
+        cv::Mat img_new = cv::Mat::zeros(imgs[0].cols, imgs[0].rows, CV_8U);
+
+        cout << "Pos1 --b " << endl;
+
+        cout << "imgs[0].cols: " <<  imgs[0].cols << endl;
+        cout << "imgs[0].rows: " <<  imgs[0].rows << endl;
+        cout << "imgs[0].size: " << imgs[0].size() << endl;
+        cout << "mapX.size: " << mapX.size() << endl;
+        cout << "mapY.size: " << mapY.size() << endl;
+
+        // Convert and Write new undistorted image
+        for (int u=0; u<imgs[0].cols; u++) {
+            //cout << "u: " << u << endl;
+            for (int v=0; v<imgs[0].rows; v++) {
+                //cout << "v: " << v << endl;
+                //cout << "mapX: " << mapX.at<float>(v,u) << " | mapY: " << mapY.at<float>(v,u) << endl;
+                int new_v = static_cast<int>(mapX.at<float>(v,u));
+                int new_u = static_cast<int>(mapY.at<float>(v,u));
+                if (new_u > 0 && new_u < imgs[0].cols && new_v > 0 && new_v < imgs[0].rows)
+                {
+                    img_new.at<uint8_t>(new_v,new_u) = imgs[0].at<uint8_t>(v,u);
+                }
+                else
+                {
+                    //cout << "u: " << u << " v: " << v << endl;
+                    //cout << "new_u: " << new_u << " new_v: " << new_v << endl;
+                }
+            }
+        }
+        cv::imwrite( "/home/lukas/catkin_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
+    }
 
     vector<CameraFrame> cameraFrames;
 
@@ -411,7 +568,6 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     }
 
 }
-
 
 void Tracking::FirstInitialization()
 {
