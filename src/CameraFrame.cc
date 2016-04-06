@@ -274,22 +274,14 @@ void CameraFrame::UndistortKeyPoints()
         mat.at<float>(i,0)= mmapX.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
         mat.at<float>(i,1)= mmapY.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
         
-        /*
-        //cout << " mvKeys: " << mvKeys[i].pt.x << " | " << mvKeys[i].pt.y << endl;
-
-        // Correct fisheye lense distortion
-        Eigen::Vector2d p, p_u;
-        p << mvKeys[i].pt.x, mvKeys[i].pt.y;
-        UndistortPoint(p,p_u);
-
-        mat.at<float>(i,0) = p_u(0);
-        mat.at<float>(i,1) = p_u(1);
-         */
+/*        
+        cout << " mvKeys: " << mvKeys[i].pt.x << " | " << mvKeys[i].pt.y << endl; 
+        cout << "dist map x:" << mat.at<float>(i,0)  << " y: " << mat.at<float>(i,1) << endl;  */   
     }
 
     // Undistort points
     mat=mat.reshape(2);
-    cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
+    /*cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);*/
     mat=mat.reshape(1);
 
     // Fill undistorted keypoint vector
@@ -299,6 +291,7 @@ void CameraFrame::UndistortKeyPoints()
         cv::KeyPoint kp = mvKeys[i];
         kp.pt.x=mat.at<float>(i,0);
         kp.pt.y=mat.at<float>(i,1);
+        /*if(kp.pt.y != 0 and kp.pt.x != 0)*/
         mvKeysUn[i]=kp;
     }
 }

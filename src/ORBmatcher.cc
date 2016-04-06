@@ -37,8 +37,8 @@ using namespace std;
 namespace ORB_SLAM
 {
 
-const int ORBmatcher::TH_HIGH = 100;
-const int ORBmatcher::TH_LOW = 50;
+const int ORBmatcher::TH_HIGH = 150;
+const int ORBmatcher::TH_LOW = 100;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
 
@@ -1804,6 +1804,9 @@ int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
     const int *pa = a.ptr<int32_t>();
     const int *pb = b.ptr<int32_t>();
 
+   /* cout << "kp a " << *pa << endl;
+    cout << "kp b " << *pb << endl;
+*/
     int dist=0;
 
     for(int i=0; i<8; i++, pa++, pb++)
@@ -1813,6 +1816,8 @@ int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
         v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
         dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
     }
+
+   // cout << "dist " << dist << endl;
 
     return dist;
 }

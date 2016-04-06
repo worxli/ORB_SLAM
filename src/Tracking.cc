@@ -342,8 +342,8 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             float cy = K.at<float>(1,2);
 
             // new pixel coordinate in image frame
-            float X = 0.1*(P[0]/P[2])*fx + cx;
-            float Y = 0.1*(P[1]/P[2])*fy + cy;
+            float X = 0.5*(P[0]/P[2])*fx + cx;
+            float Y = 0.5*(P[1]/P[2])*fy + cy;
 
             // Add new pixel(v,u)/(x,y) to maps
             mapX.at<float>(v,u) = X*1.0f;
@@ -471,10 +471,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     vector<cv::Mat> imgs;
 
+    // front, rear, left, right
     imgs.push_back(cv::Mat(im, cv::Rect(0,0, width, height)));
+/*  imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));  
     imgs.push_back(cv::Mat(im, cv::Rect(0, height, width, height)));
-    imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));
-    imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
+    imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));*/
 
 
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
@@ -486,8 +487,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         Tracking::initUndistortMap(mmapX[0], mmapY[0]);
 
         // Declare what you need
-        cv::FileStorage fileX("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapX[0].yaml", cv::FileStorage::WRITE);
-        cv::FileStorage fileY("/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/MapY[0].yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fileX("~/catkin_ws/src/ORB_SLAM/Data/MapX[0].yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fileY("~/catkin_ws/src/ORB_SLAM/Data/MapY[0].yaml", cv::FileStorage::WRITE);
 
 
         // Write to file!
@@ -497,16 +498,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         cout << "imgs[0].type(): " << imgs[0].type() << endl;
         cout << "imgs[0].channels(): " << imgs[0].channels() << endl;
 
-        cout << "Pos1 " << endl;
         cv::Mat img_new = cv::Mat::zeros(imgs[0].cols, imgs[0].rows, CV_8U);
-
-        cout << "Pos1 --b " << endl;
 
         cout << "imgs[0].cols: " <<  imgs[0].cols << endl;
         cout << "imgs[0].rows: " <<  imgs[0].rows << endl;
         cout << "imgs[0].size: " << imgs[0].size() << endl;
-       /* cout << "mapX.size: " << mapX.size() << endl;
-        cout << "mapY.size: " << mapY.size() << endl;*/
 
         cout << "img[0].heigth: " << imgs[0].size().height << endl;
         cout << "img[0].width: " << imgs[0].size().width << endl;
@@ -519,21 +515,12 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             //cout << "u: " << u << endl;
             for (int v=0; v<imgs[0].rows; v++) {
                 //cout << "v: " << v << endl;
-<<<<<<< HEAD
-                //cout << "mapX: " << mapX.at<float>(v,u) << " | mapY: " << mapY.at<float>(v,u) << endl;
-                int new_v = static_cast<int>(mapX.at<float>(v,u));
-                int new_u = static_cast<int>(mapY.at<float>(v,u));
-                if (new_u > 0 && new_u < imgs[0].cols && new_v > 0 && new_v < imgs[0].rows)
-                {
-                    img_new.at<uint8_t>(new_v,new_u) = imgs[0].at<uint8_t>(v,u);
-=======
                 //cout << "mmapX[0]: " << mmapX[0].at<float>(v,u) << " | mmapY[0]: " << mmapY[0].at<float>(v,u) << endl;
                 int new_v = static_cast<int>(mmapX[0].at<float>(v,u));
                 int new_u = static_cast<int>(mmapY[0].at<float>(v,u));
                 if (new_u > 0 && new_u < img1.rows && new_v > 0 && new_v < img1.cols)
                 {
                     img_new.at<uint8_t>(new_u,new_v) = img1.at<uint8_t>(v, u);
->>>>>>> change_camera_model
                 }
                 else
                 {
@@ -542,11 +529,9 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
                 }
             }
         }
-<<<<<<< HEAD
         cv::imwrite( "/home/lukas/catkin_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
-    }
 
-=======
+
 */
 
         //cv::imwrite( "/home/marius/catkin_3dvision_ws/src/ORB_SLAM/Data/undist_img.bmp", img_new);
@@ -555,18 +540,18 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=0; i<4; i++) {
+        for(int i=0; i<1; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=0; i<4; i++) {
+        for(int i=0; i<1; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
-        cout << "Init frame pushed" << endl;
+        //cout << "Init frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
     }
 
@@ -580,14 +565,17 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     if(mState==NOT_INITIALIZED)
     {
+        cout << "do first init" << endl;
         FirstInitialization();
     }
     else if(mState==INITIALIZING)
     {
+        cout << "Initialize" << endl;
         Initialize();
     }
     else
     {
+        cout << "initialized" << endl;
         // System is initialized. Track Frame.
         bool bOK;
 
@@ -698,8 +686,8 @@ void Tracking::FirstInitialization()
 
         if(mpInitializer ) {
             //cout << mState << endl;
-            //cout << "delete Initializer" << mpInitializer << endl;
-            //delete mpInitializer;
+            cout << "delete Initializer" << mpInitializer << endl;
+            delete mpInitializer;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
@@ -713,6 +701,7 @@ void Tracking::Initialize()
     // Check if current frame has enough keypoints, otherwise reset initialization process
     if(mCurrentFrame.cameraFrames[0].mvKeys.size()<=100)
     {
+        cout << "not enough keys" << endl;
         fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
         mState = NOT_INITIALIZED;
         return;
@@ -725,6 +714,8 @@ void Tracking::Initialize()
     // Check if there are enough correspondences
     if(nmatches<100)
     {
+        cout << "number of correspondences " << nmatches << endl;
+        cout << "set state not init" << endl;
         mState = NOT_INITIALIZED;
         return;
     }  
