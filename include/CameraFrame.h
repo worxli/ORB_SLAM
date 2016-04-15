@@ -41,7 +41,7 @@ class CameraFrame
 public:
     CameraFrame();
     CameraFrame(const CameraFrame &frame);
-    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractor;
@@ -52,6 +52,7 @@ public:
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system)
     std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
+    std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
 
     // Number of KeyPoints
     int N;
@@ -63,6 +64,9 @@ public:
     static float cx;
     static float cy;
     cv::Mat mDistCoef;
+
+    cv::Mat mR;
+    cv::Mat mt;
 
     // and mirror parameter
     float mXi;
@@ -122,9 +126,10 @@ public:
 private:
 
     void UndistortKeyPoints();
+    void PluckerLine();
     void ComputeImageBounds();
     void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
-    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, Eigen::Vector3d& P);
 
 };
 

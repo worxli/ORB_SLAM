@@ -541,14 +541,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     if(mState==WORKING || mState==LOST) {
         for(int i=0; i<1; i++) {
-            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
         for(int i=0; i<1; i++) {
-            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         //cout << "Init frame pushed" << endl;
