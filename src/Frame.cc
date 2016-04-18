@@ -46,6 +46,8 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
 {
     mnId=nNextId++;
     
+    // loop all camera frames to extract plucker lines and ORB descriptors
+    
     //Scale Levels Info
     mnScaleLevels = mpORBextractor->GetLevels();
     mfScaleFactor = mpORBextractor->GetScaleFactor();
