@@ -59,6 +59,9 @@ namespace ORB_SLAM
         // ORB descriptor, each row associated to a keypoint
         cv::Mat mDescriptors;
 
+        // MapPoints associated to keypoints, NULL pointer if not association
+        std::vector<MapPoint*> mvpMapPoints;
+
         // Frame timestamp
         double mTimeStamp;
 

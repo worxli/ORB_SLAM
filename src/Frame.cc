@@ -33,9 +33,10 @@ Frame::Frame()
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
-     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines),
+     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines), mvpMapPoints(frame.mvpMapPoints),
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
-     mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+     mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
+     mDescriptors(frame.mDescriptors.clone())
 {
     if(!frame.mTcw.empty())
         mTcw = frame.mTcw.clone();
@@ -106,7 +107,7 @@ void Frame::ComputeBoW()
 {
     if(cameraFrames[0].mBowVec.empty())
     {
-        /* TODO for all camera frames */
+        /* TODO how to do this */
         vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
         mpORBvocabulary->transform(vCurrentDesc,cameraFrames[0].mBowVec,cameraFrames[0].mFeatVec,4);
         

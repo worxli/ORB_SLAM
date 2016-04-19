@@ -79,7 +79,7 @@ public:
     cv::Mat mDescriptors;
 
     // Bag of Words Vector structures
-    DBoW2::BowVector mBowVec;
+    DBoW2::BowVector mBowVec; // TODO probably needed in Frame
     DBoW2::FeatureVector mFeatVec;
 
     // MapPoints associated to keypoints, NULL pointer if not association
@@ -110,14 +110,14 @@ public:
     static bool mbInitialComputations;
 
     cv::Mat mOw;
-        cv::Mat mRcw;
-        cv::Mat mtcw;
+    cv::Mat mRcw;
+    cv::Mat mtcw;
 
     // Scale Pyramid Info
-        int mnScaleLevels;
-        vector<float> mvScaleFactors;
-        vector<float> mvLevelSigma2;
-        vector<float> mvInvLevelSigma2;
+    int mnScaleLevels;
+    vector<float> mvScaleFactors;
+    vector<float> mvLevelSigma2;
+    vector<float> mvInvLevelSigma2;
 
     void SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFactors, vector<float> _mvLevelSigma2, vector<float> _mvInvLevelSigma2);
     void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
