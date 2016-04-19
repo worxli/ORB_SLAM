@@ -54,6 +54,10 @@ namespace ORB_SLAM
 
         // Camera
         vector<CameraFrame> cameraFrames;
+        std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
+
+        // ORB descriptor, each row associated to a keypoint
+        cv::Mat mDescriptors;
 
         // Frame timestamp
         double mTimeStamp;

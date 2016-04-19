@@ -33,7 +33,7 @@ Frame::Frame()
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
-     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId),
+     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines),
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
 {
@@ -47,6 +47,11 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
     mnId=nNextId++;
     
     // loop all camera frames to extract plucker lines and ORB descriptors
+    for(uint i = 0; i<cameraFrames.size(); i++)
+    {
+        pluckerLines.insert(pluckerLines.end(), cameraFrames[i].pluckerLines.begin(), cameraFrames[i].pluckerLines.end());
+        cout << "Add " << cameraFrames[0].pluckerLines.size() << " pluckerlines for frame " << i << " to base frame." << endl;
+    }
     
     //Scale Levels Info
     mnScaleLevels = mpORBextractor->GetLevels();

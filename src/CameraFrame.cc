@@ -35,10 +35,11 @@ CameraFrame::CameraFrame()
 
 //Copy Constructor
 CameraFrame::CameraFrame(const CameraFrame &frame)
-    :im(frame.im.clone()), mK(frame.mK.clone()), mR(frame.mR.clone()), mt(frame.mt.clone()),mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()), 
+    :im(frame.im.clone()), mK(frame.mK.clone()), mR(frame.mR.clone()), mt(frame.mt.clone()),
+     mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()),
      mmapY(frame.mmapY.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
-     mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
+     mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), pluckerLines(frame.pluckerLines),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
      mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv)
 {
@@ -55,6 +56,8 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
     (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
 
     N = mvKeys.size();
+
+    cout << "# features: " << N << endl;
 
     if(mvKeys.empty())
         return;
@@ -397,22 +400,22 @@ void CameraFrame::PluckerLine()
 		Eigen::Vector3d t;
 		cv::cv2eigen(mR,R);
 		cv::cv2eigen(mt,t);
-		cout << "mR: " << mR << endl;
-		cout << "mt: " << mt << endl;
-		cout << "R: " << R << endl;
-		cout << "t: " << t << endl;
+//		cout << "mR: " << mR << endl;
+//		cout << "mt: " << mt << endl;
+//		cout << "R: " << R << endl;
+//		cout << "t: " << t << endl;
 		UndistortPoint(p_in, p_temp, P);
-		cout << "P Betrag: " << sqrt(P.dot(P)) << endl;
+//		cout << "P Betrag: " << sqrt(P.dot(P)) << endl;
 		std::vector<Eigen::Vector3d> pluckerLine;
 		Eigen::Vector3d q = R.inverse()*(P-t);
 		q.normalize();
 		pluckerLine.push_back(q);
-		cout << "q Betrag: " << sqrt(q.dot(q)) << endl;
+//		cout << "q Betrag: " << sqrt(q.dot(q)) << endl;
 		cout << "q: " << pluckerLine[0] << endl;
 		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
 		cout << "q': " << pluckerLine[1] << endl;
 		pluckerLines.push_back(pluckerLine);
-		cout << "q.q': " << pluckerLine[0].dot(pluckerLine[1]) << endl;
+//		cout << "q.q': " << pluckerLine[0].dot(pluckerLine[1]) << endl;
 	}
 
 
