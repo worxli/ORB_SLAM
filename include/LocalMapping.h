@@ -72,6 +72,10 @@ protected:
     void ProcessNewKeyFrame();
     void CreateNewMapPoints();
 
+    void PluckerLineTriangulation(const std::vector<Eigen::Vector3d> &matched_plucker_line1,
+                                  const std::vector<Eigen::Vector3d> &matched_plucker_line2,
+                                  const Eigen::Matrix3d &R1, const Eigen::Vector3d &t1, Eigen::Vector3d * point_3d);
+
     void MapPointCulling();
     void SearchInNeighbors();
 
@@ -106,6 +110,8 @@ protected:
 
     bool mbAcceptKeyFrames;
     boost::mutex mMutexAccept;
+
+    std::vector<std::vector<Eigen::Vector3d> > pluckerLines;
 };
 
 } //namespace ORB_SLAM
