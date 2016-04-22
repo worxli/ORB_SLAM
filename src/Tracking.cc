@@ -1285,6 +1285,7 @@ bool Tracking::Relocalisation()
             int nInliers;
             bool bNoMore;
 
+            // TODO 3d-2d reloc.
             PnPsolver* pSolver = vpPnPsolvers[i];
             cv::Mat Tcw = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
 
