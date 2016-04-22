@@ -27,6 +27,7 @@
 #include <cmath>
 #include <opencv/cv.h>
 #include "Thirdparty/DBoW2/DUtils/Random.h"
+#include "Thirdparty/opengv/absolute_pose/methods.hpp"
 #include <ros/ros.h>
 #include <algorithm>
 
@@ -90,6 +91,10 @@ PnPsolver::~PnPsolver()
   delete [] pcs;
 }
 
+void PnPsolver::gpnp()
+{
+    transformation_t gpnp_transformation = absolute_pose::gpnp(adapter);
+}
 
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)
 {
