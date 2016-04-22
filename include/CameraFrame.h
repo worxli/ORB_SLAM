@@ -129,7 +129,7 @@ private:
     void PluckerLine();
     void ComputeImageBounds();
     void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
-    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, Eigen::Vector3d& P);
+    void LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P);
 
 };
 

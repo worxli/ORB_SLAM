@@ -68,7 +68,6 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
     
     PluckerLine();
 
-
     // This is done for the first created Frame
     if(mbInitialComputations)
     {
@@ -101,9 +100,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
 
-
     mvbOutlier = vector<bool>(N,false);
-
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
@@ -233,7 +230,6 @@ vector<size_t> CameraFrame::GetFeaturesInArea(const float &x, const float  &y, c
     }
 
     return vIndices;
-
 }
 
 bool CameraFrame::PosInGrid(cv::KeyPoint &kp, int &posX, int &posY)
@@ -275,14 +271,8 @@ void CameraFrame::UndistortKeyPoints()
     cv::Mat mat(mvKeys.size(),2,CV_32F);
     for(unsigned int i=0; i<mvKeys.size(); i++)
     {
-     /*   mat.at<float>(i,0)=mvKeys[i].pt.x;
-        mat.at<float>(i,1)=mvKeys[i].pt.y;*/
         mat.at<float>(i,0)= mmapX.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
         mat.at<float>(i,1)= mmapY.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
-        
-/*        
-        cout << " mvKeys: " << mvKeys[i].pt.x << " | " << mvKeys[i].pt.y << endl; 
-        cout << "dist map x:" << mat.at<float>(i,0)  << " y: " << mat.at<float>(i,1) << endl;  */   
     }
 
     // Undistort points
@@ -297,7 +287,6 @@ void CameraFrame::UndistortKeyPoints()
         cv::KeyPoint kp = mvKeys[i];
         kp.pt.x=mat.at<float>(i,0);
         kp.pt.y=mat.at<float>(i,1);
-        /*if(kp.pt.y != 0 and kp.pt.x != 0)*/
         mvKeysUn[i]=kp;
     }
 }
@@ -337,7 +326,7 @@ void CameraFrame::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
     p_u << mx_u, my_u;
 }
 
-void CameraFrame::UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u,Eigen::Vector3d& P)
+void CameraFrame::LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P)
 {
     cv::Mat mK_inv = mK.inv();
     double u = p(0);
@@ -346,6 +335,7 @@ void CameraFrame::UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u,
     // Undistort pixel point
     Eigen::Vector2d m_d, m_u;
     m_d << u,v;
+
     undistort(m_d, m_u);
 
     float mx_u = m_u(0);
@@ -353,8 +343,7 @@ void CameraFrame::UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u,
 
     // Lift normalised points to the sphere (inv_hslash)
     double lambda;
-    double xi = mXi;//2.1437173371589706 (image 0)
-    //cout << "xi: " << xi << endl;
+    double xi = mXi;
 
     if (xi == 1.0)
     {
@@ -366,23 +355,10 @@ void CameraFrame::UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u,
         lambda = (xi + sqrt(1.0 + (1.0 - xi * xi) * (mx_u * mx_u + my_u * my_u))) / (1.0 + mx_u * mx_u + my_u * my_u);
         P << lambda * mx_u, lambda * my_u, lambda - xi;
     }
-
-    // convert again to pixel
-    cv::Mat K = mK;
-    float fx = K.at<float>(0,0);
-    float fy = K.at<float>(1,1);
-    float cx = K.at<float>(0,2);
-    float cy = K.at<float>(1,2);;
-
-    // new pixel coordinate in image frame
-    p_u(0) = 0.1*(P[0]/P[2])*fx + cx;
-    p_u(1) = 0.1*(P[1]/P[2])*fy + cy;
 }
 
 void CameraFrame::PluckerLine()
 {
-
-
 	for(unsigned int i=0; i<mvKeys.size(); i++)
 	{
 		Eigen::Vector2d p_in;
@@ -394,7 +370,6 @@ void CameraFrame::PluckerLine()
 		
 /*		p_in(0) = mvKeys[i].pt.x;
 		p_in(1) = mvKeys[i].pt.y;*/
-		Eigen::Vector2d p_temp;
 		Eigen::Vector3d P;
 		Eigen::Matrix3d R;
 		Eigen::Vector3d t;
@@ -404,7 +379,7 @@ void CameraFrame::PluckerLine()
 //		cout << "mt: " << mt << endl;
 //		cout << "R: " << R << endl;
 //		cout << "t: " << t << endl;
-		UndistortPoint(p_in, p_temp, P);
+		LiftToSphere(p_in, P);
 //		cout << "P Betrag: " << sqrt(P.dot(P)) << endl;
 		std::vector<Eigen::Vector3d> pluckerLine;
 		Eigen::Vector3d q = R.inverse()*(P-t);
@@ -417,8 +392,6 @@ void CameraFrame::PluckerLine()
 		pluckerLines.push_back(pluckerLine);
 //		cout << "q.q': " << pluckerLine[0].dot(pluckerLine[1]) << endl;
 	}
-
-
 }
 
 void CameraFrame::ComputeImageBounds()
@@ -426,14 +399,24 @@ void CameraFrame::ComputeImageBounds()
     if(mDistCoef.at<float>(0)!=0.0)
     {
         cv::Mat mat(4,2,CV_32F);
-        mat.at<float>(0,0)=0.0; mat.at<float>(0,1)=0.0;
-        mat.at<float>(1,0)=im.cols; mat.at<float>(1,1)=0.0;
-        mat.at<float>(2,0)=0.0; mat.at<float>(2,1)=im.rows;
-        mat.at<float>(3,0)=im.cols; mat.at<float>(3,1)=im.rows;
+
+        // Cut away certain pixel width at the boundaries since fisheye distorts coners to infinity
+        float cut_image_size = 200;
+
+        mat.at<float>(0,0)=cut_image_size; mat.at<float>(0,1)=cut_image_size;
+        mat.at<float>(1,0)=im.cols - cut_image_size; mat.at<float>(1,1)=cut_image_size;
+        mat.at<float>(2,0)=cut_image_size; mat.at<float>(2,1)=im.rows - cut_image_size;
+        mat.at<float>(3,0)=im.cols - cut_image_size; mat.at<float>(3,1)=im.rows - cut_image_size;
+
+        Eigen::Vector3d empty;
+        for (int i = 0; i < mat.rows; ++i) {
+            mat.at<float>(i,0)= mmapX.at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
+            mat.at<float>(i,1)= mmapY.at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
+        }
 
         // Undistort corners
         mat=mat.reshape(2);
-        cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
+        //cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
         mat=mat.reshape(1);
 
         mnMinX = min(floor(mat.at<float>(0,0)),floor(mat.at<float>(2,0)));

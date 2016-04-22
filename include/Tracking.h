@@ -28,6 +28,7 @@
 #include<sensor_msgs/image_encodings.h>
 #include<Eigen/Eigen>
 #include<opencv2/core/eigen.hpp>
+#include<ros/package.h>
 
 #include"FramePublisher.h"
 #include"Map.h"
@@ -94,13 +95,13 @@ public:
 
 
 protected:
-    //void distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u);
-    //void spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p);
+
     void initUndistortMap(cv::Mat& map1, cv::Mat& map2, int camera);
-    //void undistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
     void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, int camera);
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
+
+    void ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2, const cv::Mat& img1, cv::Mat* img);
 
     void FirstInitialization();
     void Initialize();
@@ -151,10 +152,6 @@ protected:
 
     //Map
     Map* mpMap;
-
-    //Calibration matrix
-    //cv::Mat mK;
-    //cv::Mat mDistCoef;
 
     // Vector of Calibration matrices
     vector<cv::Mat> mK;
