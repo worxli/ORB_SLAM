@@ -27,6 +27,7 @@
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "Frame.h"
+#include "CameraFrame.h"
 #include "KeyFrameDatabase.h"
 
 #include<boost/thread.hpp>
@@ -45,6 +46,9 @@ class KeyFrame
 {
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
+
+    // Camera
+    vector<CameraFrame> cameraFrames;
 
     // Pose functions
     void SetPose(const cv::Mat &Rcw,const cv::Mat &tcw);
@@ -163,9 +167,6 @@ public:
     long unsigned int mnRelocQuery;
     int mnRelocWords;
     float mRelocScore;
-
-    // Calibration parameters
-    float fx, fy, cx, cy;
 
     //BoW
     DBoW2::BowVector mBowVec;

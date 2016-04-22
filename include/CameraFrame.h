@@ -22,18 +22,40 @@
 #ifndef CAMERAFRAME_H
 #define CAMERAFRAME_H
 
+#include "MapPoint.h"
+#include "Thirdparty/DBoW2/DBoW2/BowVector.h"
+#include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
+#include "ORBVocabulary.h"
+#include "ORBextractor.h"
+#include <Eigen/Eigen>
+
 namespace ORB_SLAM
 {
+#define FRAME_GRID_ROWS 48
+#define FRAME_GRID_COLS 64
 
-class Frame
+class MapPoint;
+
+class CameraFrame
 {
 public:
-    Frame();
-    Frame(const Frame &frame);
-    Frame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef);
+    CameraFrame();
+    CameraFrame(const CameraFrame &frame);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
+
+    ORBVocabulary* mpORBvocabulary;
+    ORBextractor* mpORBextractor;
 
     // Frame image
     cv::Mat im;
+
+    // Vector of keypoints (original for visualization) and undistorted (actually used by the system)
+    std::vector<cv::KeyPoint> mvKeys;
+    std::vector<cv::KeyPoint> mvKeysUn;
+    std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
+
+    // Number of KeyPoints
+    int N;
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
@@ -43,6 +65,42 @@ public:
     static float cy;
     cv::Mat mDistCoef;
 
+    cv::Mat mR;
+    cv::Mat mt;
+
+    // and mirror parameter
+    float mXi;
+
+    // Maps for lense undistortion
+    cv::Mat mmapX;
+    cv::Mat mmapY;
+
+    // ORB descriptor, each row associated to a keypoint
+    cv::Mat mDescriptors;
+
+    // Bag of Words Vector structures
+    DBoW2::BowVector mBowVec; // TODO probably needed in Frame
+    DBoW2::FeatureVector mFeatVec;
+
+    // MapPoints associated to keypoints, NULL pointer if not association
+    std::vector<MapPoint*> mvpMapPoints;
+
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
+
+    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
+    float mfGridElementWidthInv;
+    float mfGridElementHeightInv;
+    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+
+    // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
+    bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
+
+    // Compute the cell of a keypoint (return false if outside the grid)
+    bool PosInGrid(cv::KeyPoint &kp, int &posX, int &posY);
+
+    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+
     // Undistorted Image Bounds (computed once)
     static int mnMinX;
     static int mnMaxX;
@@ -51,18 +109,30 @@ public:
 
     static bool mbInitialComputations;
 
+    cv::Mat mOw;
+    cv::Mat mRcw;
+    cv::Mat mtcw;
+
+    // Scale Pyramid Info
+    int mnScaleLevels;
+    vector<float> mvScaleFactors;
+    vector<float> mvLevelSigma2;
+    vector<float> mvInvLevelSigma2;
+
+    void SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFactors, vector<float> _mvLevelSigma2, vector<float> _mvInvLevelSigma2);
+    void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
+    void SetORB(ORBextractor* mpORBextractor, ORBVocabulary* mpORBvocabulary);
 
 private:
 
     void UndistortKeyPoints();
+    void PluckerLine();
     void ComputeImageBounds();
+    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void UndistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, Eigen::Vector3d& P);
 
-    // Call UpdatePoseMatrices(), before using
-    cv::Mat mOw;
-    cv::Mat mRcw;
-    cv::Mat mtcw;
 };
 
 }// namespace ORB_SLAM
 
-#endif // FRAME_H
+#endif // CAMERAFRAME_H

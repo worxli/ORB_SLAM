@@ -42,6 +42,7 @@ src/MapPublisher.cc
 src/Optimizer.cc
 src/PnPsolver.cc
 src/Frame.cc
+src/CameraFrame.cc
 src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc

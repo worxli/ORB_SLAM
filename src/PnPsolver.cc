@@ -41,11 +41,11 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     mnIterations(0), mnBestInliers(0), N(0)
 {
     mvpMapPointMatches = vpMapPointMatches;
-    mvP2D.reserve(F.mvpMapPoints.size());
-    mvSigma2.reserve(F.mvpMapPoints.size());
-    mvP3Dw.reserve(F.mvpMapPoints.size());
-    mvKeyPointIndices.reserve(F.mvpMapPoints.size());
-    mvAllIndices.reserve(F.mvpMapPoints.size());
+    mvP2D.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvSigma2.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvP3Dw.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvKeyPointIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvAllIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
 
     int idx=0;
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
@@ -56,7 +56,7 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
         {
             if(!pMP->isBad())
             {
-                const cv::KeyPoint &kp = F.mvKeysUn[i];
+                const cv::KeyPoint &kp = F.cameraFrames[0].mvKeysUn[i];
 
                 mvP2D.push_back(kp.pt);
                 mvSigma2.push_back(F.mvLevelSigma2[kp.octave]);
@@ -73,10 +73,11 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     }
 
     // Set camera calibration parameters
-    fu = F.fx;
-    fv = F.fy;
-    uc = F.cx;
-    vc = F.cy;
+    // TODO
+    fu = F.cameraFrames[0].fx;
+    fv = F.cameraFrames[0].fy;
+    uc = F.cameraFrames[0].cx;
+    vc = F.cameraFrames[0].cy;
 
     SetRansacParameters();
 }

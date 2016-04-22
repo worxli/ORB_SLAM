@@ -28,12 +28,11 @@ namespace ORB_SLAM
 long unsigned int KeyFrame::nNextId=0;
 
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
-    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mfGridElementWidthInv(F.mfGridElementWidthInv),
-    mfGridElementHeightInv(F.mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
-    mnLoopQuery(0), mnRelocQuery(0),fx(F.fx), fy(F.fy), cx(F.cx), cy(F.cy), mBowVec(F.mBowVec),
-    im(F.im), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX), mnMaxY(F.mnMaxY), mK(F.mK),
-    mvKeys(F.mvKeys), mvKeysUn(F.mvKeysUn), mDescriptors(F.mDescriptors.clone()),
-    mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.mFeatVec),
+    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), cameraFrames(F.cameraFrames), mfGridElementWidthInv(F.cameraFrames[0].mfGridElementWidthInv),
+    mfGridElementHeightInv(F.cameraFrames[0].mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
+    mnLoopQuery(0), mnRelocQuery(0), mBowVec(F.cameraFrames[0].mBowVec),
+    mvKeys(F.cameraFrames[0].mvKeys), mvKeysUn(F.cameraFrames[0].mvKeysUn), mDescriptors(F.cameraFrames[0].mDescriptors.clone()), 
+    mvpMapPoints(F.cameraFrames[0].mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.cameraFrames[0].mFeatVec),
     mbFirstConnection(true), mpParent(NULL), mbNotErase(false), mbToBeErased(false), mbBad(false),
     mnScaleLevels(F.mnScaleLevels), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),
     mvInvLevelSigma2(F.mvInvLevelSigma2), mpMap(pMap)
@@ -43,12 +42,13 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnGridCols=FRAME_GRID_COLS;
     mnGridRows=FRAME_GRID_ROWS;
     mGrid.resize(mnGridCols);
-    for(int i=0; i<mnGridCols;i++)
+/*    for(int i=0; i<mnGridCols;i++)
     {
         mGrid[i].resize(mnGridRows);
         for(int j=0; j<mnGridRows; j++)
             mGrid[i][j] = F.mGrid[i][j];
-    }
+    }*/
+    //TODO in camera frame
 
     SetPose(F.mTcw);    
 }
@@ -99,11 +99,11 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
-cv::Mat KeyFrame::GetProjectionMatrix()
+/*cv::Mat KeyFrame::GetProjectionMatrix()
 {
     boost::mutex::scoped_lock lock(mMutexPose);
     return mK*Tcw.rowRange(0,3);
-}
+}*/
 
 cv::Mat KeyFrame::GetCameraCenter()
 {

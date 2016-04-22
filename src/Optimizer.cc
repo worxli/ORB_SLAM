@@ -115,10 +115,11 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             e->setRobustKernel(rk);
             rk->setDelta(thHuber);
 
-            e->fx = pKF->fx;
-            e->fy = pKF->fy;
-            e->cx = pKF->cx;
-            e->cy = pKF->cy;
+            // TODO
+            e->fx = pKF->cameraFrames[0].fx;
+            e->fy = pKF->cameraFrames[0].fy;
+            e->cx = pKF->cameraFrames[0].cx;
+            e->cy = pKF->cameraFrames[0].cy;
 
             optimizer.addEdge(e);
         }
@@ -180,7 +181,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     vector<float> vInvSigmas2;
     vector<size_t> vnIndexEdge;
 
-    const int N = pFrame->mvpMapPoints.size();
+    const int N = pFrame->cameraFrames[0].mvpMapPoints.size();
     vpEdges.reserve(N);
     vVertices.reserve(N);
     vInvSigmas2.reserve(N);
@@ -190,7 +191,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
     for(int i=0; i<N; i++)
     {
-        MapPoint* pMP = pFrame->mvpMapPoints[i];
+        MapPoint* pMP = pFrame->cameraFrames[0].mvpMapPoints[i];
         if(pMP)
         {
             g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
@@ -201,11 +202,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             vVertices.push_back(vPoint);
 
             nInitialCorrespondences++;
-            pFrame->mvbOutlier[i] = false;
+            pFrame->cameraFrames[0].mvbOutlier[i] = false;
 
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
-            cv::KeyPoint kpUn = pFrame->mvKeysUn[i];
+            cv::KeyPoint kpUn = pFrame->cameraFrames[0].mvKeysUn[i];
             obs << kpUn.pt.x, kpUn.pt.y;
 
             g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
@@ -220,10 +221,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             e->setRobustKernel(rk);
             rk->setDelta(delta);
 
-            e->fx = pFrame->fx;
-            e->fy = pFrame->fy;
-            e->cx = pFrame->cx;
-            e->cy = pFrame->cy;
+            // TODO
+            e->fx = pFrame->cameraFrames[0].fx;
+            e->fy = pFrame->cameraFrames[0].fy;
+            e->cx = pFrame->cameraFrames[0].cx;
+            e->cy = pFrame->cameraFrames[0].cy;
 
             e->setLevel(0);
 
@@ -255,18 +257,18 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
             const size_t idx = vnIndexEdge[i];
 
-            if(pFrame->mvbOutlier[idx])
+            if(pFrame->cameraFrames[0].mvbOutlier[idx])
                 e->computeError();
 
             if(e->chi2()>chi2[it])
             {                
-                pFrame->mvbOutlier[idx]=true;
+                pFrame->cameraFrames[0].mvbOutlier[idx]=true;
                 e->setLevel(1);
                 nBad++;
             }
             else if(e->chi2()<=chi2[it])
             {
-                pFrame->mvbOutlier[idx]=false;
+                pFrame->cameraFrames[0].mvbOutlier[idx]=false;
                 e->setLevel(0);
             }
         }
@@ -432,10 +434,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuber);
 
-                e->fx = pKFi->fx;
-                e->fy = pKFi->fy;
-                e->cx = pKFi->cx;
-                e->cy = pKFi->cy;
+                // TODO
+                e->fx = pKFi->cameraFrames[0].fx;
+                e->fy = pKFi->cameraFrames[0].fy;
+                e->cx = pKFi->cameraFrames[0].cx;
+                e->cy = pKFi->cameraFrames[0].cy;
 
                 optimizer.addEdge(e);
                 vpEdges.push_back(e);
