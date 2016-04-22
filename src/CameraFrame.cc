@@ -389,8 +389,8 @@ void CameraFrame::PluckerLine()
 		
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 		
-		cout << "Keypoints: " << mvKeys[i].pt.x << endl;
-		cout << "Keypoints in Eigen: " << p_in[0] << endl;
+//		cout << "Keypoints: " << mvKeys[i].pt.x << endl;
+//		cout << "Keypoints in Eigen: " << p_in[0] << endl;
 		
 /*		p_in(0) = mvKeys[i].pt.x;
 		p_in(1) = mvKeys[i].pt.y;*/
@@ -411,9 +411,9 @@ void CameraFrame::PluckerLine()
 		q.normalize();
 		pluckerLine.push_back(q);
 //		cout << "q Betrag: " << sqrt(q.dot(q)) << endl;
-		cout << "q: " << pluckerLine[0] << endl;
+//		cout << "q: " << pluckerLine[0] << endl;
 		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
-		cout << "q': " << pluckerLine[1] << endl;
+//		cout << "q': " << pluckerLine[1] << endl;
 		pluckerLines.push_back(pluckerLine);
 //		cout << "q.q': " << pluckerLine[0].dot(pluckerLine[1]) << endl;
 	}

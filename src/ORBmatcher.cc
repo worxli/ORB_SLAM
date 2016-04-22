@@ -37,8 +37,8 @@ using namespace std;
 namespace ORB_SLAM
 {
 
-const int ORBmatcher::TH_HIGH = 150;
-const int ORBmatcher::TH_LOW = 100;
+const int ORBmatcher::TH_HIGH = 100;
+const int ORBmatcher::TH_LOW = 50;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
 

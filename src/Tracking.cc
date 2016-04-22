@@ -297,14 +297,12 @@ void Tracking::spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p)
 
 */
 
-void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
+void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2, int camera)
 {
-    cv::Size imageSize(im_width[0], im_height[0]);
+    cv::Size imageSize(im_width[camera], im_height[camera]);
 
     cv::Mat mapX = cv::Mat::zeros(imageSize, CV_32F);
     cv::Mat mapY = cv::Mat::zeros(imageSize, CV_32F);
-
-    cv::Mat mK_inv = mK[0].inv();
 
     for (int v = 0; v < imageSize.height; ++v)
     {
@@ -313,7 +311,7 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             // Undistort pixel point
             Eigen::Vector2d m_d, m_u;
             m_d << u,v;
-            undistort(m_d, m_u);
+            undistort(m_d, m_u, camera);
 
             float mx_u = m_u(0);
             float my_u = m_u(1);
@@ -321,7 +319,7 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             // Lift normalised points to the sphere (inv_hslash)
             Eigen::Vector3d P;
             double lambda;
-            double xi = mXi[0];
+            double xi = mXi[camera];
 
             if (xi == 1.0)
             {
@@ -335,15 +333,15 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2)
             }
 
             // convert again to pixel
-            cv::Mat K = mK[0];
+            cv::Mat K = mK[camera];
             float fx = K.at<float>(0,0);
             float fy = K.at<float>(1,1);
             float cx = K.at<float>(0,2);
             float cy = K.at<float>(1,2);
 
             // new pixel coordinate in image frame
-            float X = 0.5*(P[0]/P[2])*fx + cx;
-            float Y = 0.5*(P[1]/P[2])*fy + cy;
+            float X = 0.1*(P[0]/P[2])*fx + cx;
+            float Y = 0.1*(P[1]/P[2])*fy + cy;
 
             // Add new pixel(v,u)/(x,y) to maps
             mapX.at<float>(v,u) = X*1.0f;
@@ -399,22 +397,22 @@ void Tracking::undistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
 
 */
 
-void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
+void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, int camera)
 {
     double mx_d, my_d,mx2_d, mxy_d, my2_d, mx_u, my_u;
     double rho2_d, rho4_d, radDist_d, Dx_d, Dy_d, inv_denom_d;
 
-    cv::Mat mK_inv = mK[0].inv();
+    cv::Mat mK_inv = mK[camera].inv();
 
     // Lift points to normalised plane
     mx_d = mK_inv.at<float>(0,0) * p(0) + mK_inv.at<float>(0,2);
     my_d = mK_inv.at<float>(1,1) * p(1) + mK_inv.at<float>(1,2);
 
     // Apply inverse distortion model
-    double k1 = mDistCoef[0].at<float>(0);
-    double k2 = mDistCoef[0].at<float>(1);
-    double p1 = mDistCoef[0].at<float>(2);
-    double p2 = mDistCoef[0].at<float>(3);
+    double k1 = mDistCoef[camera].at<float>(0);
+    double k2 = mDistCoef[camera].at<float>(1);
+    double p1 = mDistCoef[camera].at<float>(2);
+    double p2 = mDistCoef[camera].at<float>(3);
 
     // Inverse distortion model
     // proposed by Heikkila
@@ -473,41 +471,43 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     // front, rear, left, right
     imgs.push_back(cv::Mat(im, cv::Rect(0,0, width, height)));
-/*  imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));  
+    imgs.push_back(cv::Mat(im, cv::Rect(width, 0, width, height)));
     imgs.push_back(cv::Mat(im, cv::Rect(0, height, width, height)));
-    imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));*/
+    imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
 
 
+    int camera = 2;
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
     {
         cout << "mState==NO_IMAGES_YET: " << (mState==NO_IMAGES_YET) << endl;
 
         //cv::Mat img_new = cv::Mat::zeros(img1.size(), img1.type());
 
-        Tracking::initUndistortMap(mmapX[0], mmapY[0]);
+        for(int i=camera; i<camera+1; i++) {
+            Tracking::initUndistortMap(mmapX[camera], mmapY[camera], camera);
 
-        // Declare what you need
-        cv::FileStorage fileX("~/catkin_ws/src/ORB_SLAM/Data/MapX[0].yaml", cv::FileStorage::WRITE);
-        cv::FileStorage fileY("~/catkin_ws/src/ORB_SLAM/Data/MapY[0].yaml", cv::FileStorage::WRITE);
+//            // Declare what you need
+//            cv::FileStorage fileX("~/catkin_ws/src/ORB_SLAM/Data/MapX[0].yaml", cv::FileStorage::WRITE);
+//            cv::FileStorage fileY("~/catkin_ws/src/ORB_SLAM/Data/MapY[0].yaml", cv::FileStorage::WRITE);
+        }
 
-
-        // Write to file!
-        fileX << "mmapX0" << mmapX[0];
-        fileY << "mmapY0" << mmapY[0];
-
-        cout << "imgs[0].type(): " << imgs[0].type() << endl;
-        cout << "imgs[0].channels(): " << imgs[0].channels() << endl;
-
-        cv::Mat img_new = cv::Mat::zeros(imgs[0].cols, imgs[0].rows, CV_8U);
-
-        cout << "imgs[0].cols: " <<  imgs[0].cols << endl;
-        cout << "imgs[0].rows: " <<  imgs[0].rows << endl;
-        cout << "imgs[0].size: " << imgs[0].size() << endl;
-
-        cout << "img[0].heigth: " << imgs[0].size().height << endl;
-        cout << "img[0].width: " << imgs[0].size().width << endl;
-        cout << "mmapX[0].size: " << mmapX[0].size() << endl;
-        cout << "mmapY[0].size: " << mmapY[0].size() << endl;
+//        // Write to file!
+//        fileX << "mmapX0" << mmapX[0];
+//        fileY << "mmapY0" << mmapY[0];
+//
+//        cout << "imgs[0].type(): " << imgs[0].type() << endl;
+//        cout << "imgs[0].channels(): " << imgs[0].channels() << endl;
+//
+//        cv::Mat img_new = cv::Mat::zeros(imgs[0].cols, imgs[0].rows, CV_8U);
+//
+//        cout << "imgs[0].cols: " <<  imgs[0].cols << endl;
+//        cout << "imgs[0].rows: " <<  imgs[0].rows << endl;
+//        cout << "imgs[0].size: " << imgs[0].size() << endl;
+//
+//        cout << "img[0].heigth: " << imgs[0].size().height << endl;
+//        cout << "img[0].width: " << imgs[0].size().width << endl;
+//        cout << "mmapX[0].size: " << mmapX[0].size() << endl;
+//        cout << "mmapY[0].size: " << mmapY[0].size() << endl;
 
 /*
         // Convert and Write new undistorted image
@@ -540,14 +540,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=0; i<1; i++) {
+        for(int i=camera; i<camera+1; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=0; i<1; i++) {
+        for(int i=camera; i<camera+1; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }

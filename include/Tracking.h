@@ -96,9 +96,9 @@ public:
 protected:
     //void distortion(const Eigen::Vector2d& p_u, Eigen::Vector2d& d_u);
     //void spaceToPlane(const Eigen::Vector3d& P, Eigen::Vector2d& p);
-    void initUndistortMap(cv::Mat& map1, cv::Mat& map2);
+    void initUndistortMap(cv::Mat& map1, cv::Mat& map2, int camera);
     //void undistortPoint(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
-    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
+    void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, int camera);
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 

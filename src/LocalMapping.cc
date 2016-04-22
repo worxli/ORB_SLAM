@@ -135,6 +135,7 @@ void LocalMapping::ProcessNewKeyFrame()
         return;
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
+    // Associate MapPoints to the new keyframe and update normal and descriptor
     vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
     if(mpCurrentKeyFrame->mnId>1) //This operations are already done in the tracking for the first two keyframes
     {
