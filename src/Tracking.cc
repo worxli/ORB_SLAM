@@ -687,7 +687,7 @@ void Tracking::FirstInitialization()
         if(mpInitializer) {
             //cout << mState << endl;
             cout << "delete Initializer" << mpInitializer << endl;
-            //delete mpInitializer;
+            delete mpInitializer;
             cout << "deleted" << endl;
         }
 
@@ -706,7 +706,7 @@ void Tracking::Initialize()
         fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
         mState = NOT_INITIALIZED;
         return;
-    }    
+    }
 
     // Find correspondences
     ORBmatcher matcher(0.9,true);

@@ -52,7 +52,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
     :im(im_), mK(K.clone()),mDistCoef(distCoef.clone()), mR(R.clone()), mt(t.clone()),mpORBvocabulary(voc),mpORBextractor(extractor),
     mXi(xi), mmapX(mapX.clone()), mmapY(mapY.clone())
 {
-    // Exctract ORB  
+    // Exctract ORB
     (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
 
     N = mvKeys.size();
@@ -63,7 +63,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
         return;
 
     UndistortKeyPoints();
-    
+
     PluckerLine();
 
 
@@ -105,7 +105,7 @@ bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     pMP->mbTrackInView = false;
 
     // 3D in absolute coordinates
-    cv::Mat P = pMP->GetWorldPos(); 
+    cv::Mat P = pMP->GetWorldPos();
 
     // 3D in camera coordinates
     const cv::Mat Pc = mRcw*P+mtcw;
@@ -165,7 +165,6 @@ bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
 vector<size_t> CameraFrame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
 {
-    cout << "get features in area x:" << x << " y: " << y << " r: " << " minlevel: " << minLevel << " maxlevel: " << endl;
     vector<size_t> vIndices;
     vIndices.reserve(mvKeysUn.size());
 
@@ -258,44 +257,33 @@ void CameraFrame::SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw)
     mOw = _mOw;
 }
 
-void CameraFrame::UndistortKeyPoints()
-{
-    if(mDistCoef.at<float>(0)==0.0)
-    {
-        mvKeysUn=mvKeys;
-        return;
-    }
+    void CameraFrame::UndistortKeyPoints() {
+        if (mDistCoef.at<float>(0) == 0.0) {
+            mvKeysUn = mvKeys;
+            return;
+        }
 
-    // Fill matrix with points
-    cv::Mat mat(mvKeys.size(),2,CV_32F);
-    for(unsigned int i=0; i<mvKeys.size(); i++)
-    {
-     /*   mat.at<float>(i,0)=mvKeys[i].pt.x;
-        mat.at<float>(i,1)=mvKeys[i].pt.y;*/
-        mat.at<float>(i,0)= mmapX.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
-        mat.at<float>(i,1)= mmapY.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
-        
-/*        
-        cout << " mvKeys: " << mvKeys[i].pt.x << " | " << mvKeys[i].pt.y << endl; 
-        cout << "dist map x:" << mat.at<float>(i,0)  << " y: " << mat.at<float>(i,1) << endl;  */   
-    }
+        // Fill matrix with points
+        cv::Mat mat(mvKeys.size(), 2, CV_32F);
+        for (unsigned int i = 0; i < mvKeys.size(); i++) {
+            mat.at<float>(i, 0) = mvKeys[i].pt.x;
+            mat.at<float>(i, 1) = mvKeys[i].pt.y;
+        }
 
-    // Undistort points
-    mat=mat.reshape(2);
-    /*cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);*/
-    mat=mat.reshape(1);
+        // Undistort points
+        mat = mat.reshape(2);
+        cv::undistortPoints(mat, mat, mK, mDistCoef, cv::Mat(), mK);
+        mat = mat.reshape(1);
 
-    // Fill undistorted keypoint vector
-    mvKeysUn.resize(mvKeys.size());
-    for(unsigned int i=0; i<mvKeys.size(); i++)
-    {
-        cv::KeyPoint kp = mvKeys[i];
-        kp.pt.x=mat.at<float>(i,0);
-        kp.pt.y=mat.at<float>(i,1);
-        /*if(kp.pt.y != 0 and kp.pt.x != 0)*/
-        mvKeysUn[i]=kp;
+        // Fill undistorted keypoint vector
+        mvKeysUn.resize(mvKeys.size());
+        for (unsigned int i = 0; i < mvKeys.size(); i++) {
+            cv::KeyPoint kp = mvKeys[i];
+            kp.pt.x = mat.at<float>(i, 0);
+            kp.pt.y = mat.at<float>(i, 1);
+            mvKeysUn[i] = kp;
+        }
     }
-}
 
 void CameraFrame::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u)
 {
@@ -381,9 +369,9 @@ void CameraFrame::PluckerLine()
 	for(unsigned int i=0; i<mvKeys.size(); i++)
 	{
 		Eigen::Vector2d p_in;
-		
+
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
-		
+
 /*		p_in(0) = mvKeys[i].pt.x;
 		p_in(1) = mvKeys[i].pt.y;*/
 		Eigen::Vector2d p_temp;
