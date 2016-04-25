@@ -37,8 +37,8 @@ using namespace std;
 namespace ORB_SLAM
 {
 
-const int ORBmatcher::TH_HIGH = 150;
-const int ORBmatcher::TH_LOW = 100;
+const int ORBmatcher::TH_HIGH = 100;
+const int ORBmatcher::TH_LOW = 50;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
 
@@ -519,7 +519,7 @@ int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoi
 
 int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<MapPoint *> &vpMapPointMatches2)
 {
-    vpMapPointMatches2 = F1.mvpMapPoints;
+    vpMapPointMatches2 = F2.mvpMapPoints;
     set<MapPoint*> spMapPointsAlreadyFound(vpMapPointMatches2.begin(),vpMapPointMatches2.end());
 
     int nmatches = 0;
