@@ -44,6 +44,8 @@ class PnPsolver {
 
  private:
 
+  void gpnp();
+
   void CheckInliers();
   bool Refine();
 

@@ -24,6 +24,7 @@ include_directories(
 ${PROJECT_SOURCE_DIR}
 ${EIGEN3_INCLUDE_DIR}
 ${CHOLMOD_INCLUDE_DIR}
+${PROJECT_SOURCE_DIR}/Thirdparty/opengv/include
 )
 
 rosbuild_add_executable(${PROJECT_NAME}
@@ -54,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
 cholmod
+${PROJECT_SOURCE_DIR}/Thirdparty/opengv/build/lib/libopengv.a
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_core.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_solver_cholmod.so

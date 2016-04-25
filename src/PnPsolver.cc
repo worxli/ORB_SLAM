@@ -27,9 +27,11 @@
 #include <cmath>
 #include <opencv/cv.h>
 #include "Thirdparty/DBoW2/DUtils/Random.h"
-#include "Thirdparty/opengv/absolute_pose/methods.hpp"
 #include <ros/ros.h>
 #include <algorithm>
+#include <opengv/types.hpp>
+#include <opengv/absolute_pose/methods.hpp>
+#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
 
 using namespace std;
 
@@ -93,7 +95,9 @@ PnPsolver::~PnPsolver()
 
 void PnPsolver::gpnp()
 {
-    transformation_t gpnp_transformation = absolute_pose::gpnp(adapter);
+    opengv::bearingVectors_t bearingVectors;
+    opengv::points_t points;
+    opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(opengv::absolute_pose::CentralAbsoluteAdapter(bearingVectors, points));
 }
 
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)
