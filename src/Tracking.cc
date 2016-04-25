@@ -687,7 +687,7 @@ void Tracking::FirstInitialization()
         if(mpInitializer) {
             //cout << mState << endl;
             cout << "delete Initializer" << mpInitializer << endl;
-            delete mpInitializer;
+            //delete mpInitializer;
             cout << "deleted" << endl;
         }
 
