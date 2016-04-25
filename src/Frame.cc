@@ -46,13 +46,21 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
     :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(cameraFrames),mTimeStamp(timeStamp)
 {
     mnId=nNextId++;
+
+    cv::Mat descriptors[cameraFrames.size()];
     
     // loop all camera frames to extract plucker lines and ORB descriptors
     for(uint i = 0; i<cameraFrames.size(); i++)
     {
         pluckerLines.insert(pluckerLines.end(), cameraFrames[i].pluckerLines.begin(), cameraFrames[i].pluckerLines.end());
-        cout << "Add " << cameraFrames[0].pluckerLines.size() << " pluckerlines for frame " << i << " to base frame." << endl;
+        descriptors[i] = cameraFrames[i].mDescriptors;
+        cout << "Add " << cameraFrames[i].pluckerLines.size() << " pluckerlines and descriptors " << cameraFrames[i].mDescriptors.size().height << " for frame " << i << " to base frame." << endl;
     }
+
+    // concat all descriptors
+    cv::vconcat(descriptors, cameraFrames.size(), mDescriptors);
+
+    cout << "descriptors: " << mDescriptors.size() << endl;
     
     //Scale Levels Info
     mnScaleLevels = mpORBextractor->GetLevels();
