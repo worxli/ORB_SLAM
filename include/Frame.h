@@ -30,113 +30,119 @@
 
 #include <opencv2/opencv.hpp>
 
-namespace ORB_SLAM
-{
+namespace ORB_SLAM {
 #define FRAME_GRID_ROWS 48
 #define FRAME_GRID_COLS 64
 
-class tracking;
-class MapPoint;
-class KeyFrame;
-class KeyFrameDatabase;
+    class tracking;
 
-class Frame
-{
-public:
-    Frame();
-    Frame(const Frame &frame);
-    //Frame(vector<cv::Mat> &imgs, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
-    Frame(cv::Mat &im, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
+    class MapPoint;
 
-    ORBVocabulary* mpORBvocabulary;
-    ORBextractor* mpORBextractor;
+    class KeyFrame;
 
-    // Frame image
-    cv::Mat im;
+    class KeyFrameDatabase;
 
-    // Frame timestamp
-    double mTimeStamp;
+    class Frame {
+    public:
+        Frame();
 
-    // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
-    cv::Mat mK;
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
-    cv::Mat mDistCoef;
+        Frame(const Frame &frame);
 
-    // Number of KeyPoints
-    int N;
+        //Frame(vector<cv::Mat> &imgs, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef);
+        Frame(cv::Mat &im, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K,
+              cv::Mat &distCoef);
 
-    // Vector of keypoints (original for visualization) and undistorted (actually used by the system)
-    std::vector<cv::KeyPoint> mvKeys;
-    std::vector<cv::KeyPoint> mvKeysUn;
+        ORBVocabulary *mpORBvocabulary;
+        ORBextractor *mpORBextractor;
 
-    // Bag of Words Vector structures
-    DBoW2::BowVector mBowVec;
-    DBoW2::FeatureVector mFeatVec;
+        // Frame image
+        cv::Mat im;
 
-    // ORB descriptor, each row associated to a keypoint
-    cv::Mat mDescriptors;
+        // Frame timestamp
+        double mTimeStamp;
 
-    // MapPoints associated to keypoints, NULL pointer if not association
-    std::vector<MapPoint*> mvpMapPoints;
+        // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
+        cv::Mat mK;
+        static float fx;
+        static float fy;
+        static float cx;
+        static float cy;
+        cv::Mat mDistCoef;
 
-    // Flag to identify outlier associations
-    std::vector<bool> mvbOutlier;
+        // Number of KeyPoints
+        int N;
 
-    // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
-    float mfGridElementWidthInv;
-    float mfGridElementHeightInv;
-    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+        // Vector of keypoints (original for visualization) and undistorted (actually used by the system)
+        std::vector <cv::KeyPoint> mvKeys;
+        std::vector <cv::KeyPoint> mvKeysUn;
 
-    // Camera Pose
-    cv::Mat mTcw;
+        // Bag of Words Vector structures
+        DBoW2::BowVector mBowVec;
+        DBoW2::FeatureVector mFeatVec;
 
-    // Current and Next Frame id
-    static long unsigned int nNextId;
-    long unsigned int mnId;
+        // ORB descriptor, each row associated to a keypoint
+        cv::Mat mDescriptors;
 
-    KeyFrame* mpReferenceKF;
+        // MapPoints associated to keypoints, NULL pointer if not association
+        std::vector<MapPoint *> mvpMapPoints;
 
-    void ComputeBoW();
+        // Flag to identify outlier associations
+        std::vector<bool> mvbOutlier;
 
-    void UpdatePoseMatrices();
+        // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
+        float mfGridElementWidthInv;
+        float mfGridElementHeightInv;
+        std::vector <std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
 
-    // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
-    bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
+        // Camera Pose
+        cv::Mat mTcw;
 
-    // Compute the cell of a keypoint (return false if outside the grid)
-    bool PosInGrid(cv::KeyPoint &kp, int &posX, int &posY);
+        // Current and Next Frame id
+        static long unsigned int nNextId;
+        long unsigned int mnId;
 
-    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+        KeyFrame *mpReferenceKF;
 
-    // Scale Pyramid Info
-    int mnScaleLevels;
-    float mfScaleFactor;
-    vector<float> mvScaleFactors;
-    vector<float> mvLevelSigma2;
-    vector<float> mvInvLevelSigma2;
+        void ComputeBoW();
 
-    // Undistorted Image Bounds (computed once)
-    static int mnMinX;
-    static int mnMaxX;
-    static int mnMinY;
-    static int mnMaxY;
+        void UpdatePoseMatrices();
 
-    static bool mbInitialComputations;
+        // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
+        bool isInFrustum(MapPoint *pMP, float viewingCosLimit);
+
+        // Compute the cell of a keypoint (return false if outside the grid)
+        bool PosInGrid(cv::KeyPoint &kp, int &posX, int &posY);
+
+        vector <size_t> GetFeaturesInArea(const float &x, const float &y, const float &r, const int minLevel = -1,
+                                          const int maxLevel = -1) const;
+
+        // Scale Pyramid Info
+        int mnScaleLevels;
+        float mfScaleFactor;
+        vector<float> mvScaleFactors;
+        vector<float> mvLevelSigma2;
+        vector<float> mvInvLevelSigma2;
+
+        // Undistorted Image Bounds (computed once)
+        static int mnMinX;
+        static int mnMaxX;
+        static int mnMinY;
+        static int mnMaxY;
+
+        static bool mbInitialComputations;
 
 
-private:
+    private:
 
-    void UndistortKeyPoints();
-    void ComputeImageBounds();
+        void UndistortKeyPoints();
 
-    // Call UpdatePoseMatrices(), before using
-    cv::Mat mOw;
-    cv::Mat mRcw;
-    cv::Mat mtcw;
-};
+        void ComputeImageBounds();
+
+        // Call UpdatePoseMatrices(), before using
+        cv::Mat mOw;
+        cv::Mat mRcw;
+        cv::Mat mtcw;
+    };
 
 }// namespace ORB_SLAM
 
