@@ -33,8 +33,8 @@ Frame::Frame()
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
-     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines), mvpMapPoints(frame.mvpMapPoints),
-     mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
+     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines),
+     mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
      mDescriptors(frame.mDescriptors.clone())
@@ -86,6 +86,10 @@ Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextra
     {
         cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
     }
+
+    int N = pluckerLines.size();
+    mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+    mvbOutlier = vector<bool>(N,false);
 }
 
 void Frame::UpdatePoseMatrices()

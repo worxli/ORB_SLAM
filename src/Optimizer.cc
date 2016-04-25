@@ -181,7 +181,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     vector<float> vInvSigmas2;
     vector<size_t> vnIndexEdge;
 
-    const int N = pFrame->cameraFrames[0].mvpMapPoints.size();
+    const int N = pFrame->mvpMapPoints.size();
     vpEdges.reserve(N);
     vVertices.reserve(N);
     vInvSigmas2.reserve(N);
@@ -191,7 +191,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
     for(int i=0; i<N; i++)
     {
-        MapPoint* pMP = pFrame->cameraFrames[0].mvpMapPoints[i];
+        MapPoint* pMP = pFrame->mvpMapPoints[i];
         if(pMP)
         {
             g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
@@ -202,7 +202,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             vVertices.push_back(vPoint);
 
             nInitialCorrespondences++;
-            pFrame->cameraFrames[0].mvbOutlier[i] = false;
+            pFrame->mvbOutlier[i] = false;
 
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
@@ -257,18 +257,18 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
             const size_t idx = vnIndexEdge[i];
 
-            if(pFrame->cameraFrames[0].mvbOutlier[idx])
+            if(pFrame->mvbOutlier[idx])
                 e->computeError();
 
             if(e->chi2()>chi2[it])
             {                
-                pFrame->cameraFrames[0].mvbOutlier[idx]=true;
+                pFrame->mvbOutlier[idx]=true;
                 e->setLevel(1);
                 nBad++;
             }
             else if(e->chi2()<=chi2[it])
             {
-                pFrame->cameraFrames[0].mvbOutlier[idx]=false;
+                pFrame->mvbOutlier[idx]=false;
                 e->setLevel(0);
             }
         }

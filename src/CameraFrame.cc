@@ -39,7 +39,7 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
      mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()),
      mmapY(frame.mmapY.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mDescriptors(frame.mDescriptors.clone()),
-     mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), pluckerLines(frame.pluckerLines),
+     pluckerLines(frame.pluckerLines),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
      mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv)
 {
@@ -61,8 +61,6 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
 
     if(mvKeys.empty())
         return;
-
-    mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
 
     UndistortKeyPoints();
     
@@ -100,10 +98,6 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
         if(PosInGrid(kp,nGridPosX,nGridPosY))
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
-
-
-    mvbOutlier = vector<bool>(N,false);
-
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)

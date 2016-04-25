@@ -44,11 +44,11 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     mnIterations(0), mnBestInliers(0), N(0)
 {
     mvpMapPointMatches = vpMapPointMatches;
-    mvP2D.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvSigma2.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvP3Dw.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvKeyPointIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvAllIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvP2D.reserve(F.mvpMapPoints.size());
+    mvSigma2.reserve(F.mvpMapPoints.size());
+    mvP3Dw.reserve(F.mvpMapPoints.size());
+    mvKeyPointIndices.reserve(F.mvpMapPoints.size());
+    mvAllIndices.reserve(F.mvpMapPoints.size());
 
     int idx=0;
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)

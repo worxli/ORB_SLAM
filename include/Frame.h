@@ -66,6 +66,9 @@ namespace ORB_SLAM
         // MapPoints associated to keypoints, NULL pointer if not association
         std::vector<MapPoint*> mvpMapPoints;
 
+        // Flag to identify outlier associations
+        std::vector<bool> mvbOutlier;
+
         // Frame timestamp
         double mTimeStamp;
 
