@@ -34,6 +34,7 @@ Frame::Frame()
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
      mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines), mvpMapPoints(frame.mvpMapPoints),
+     mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
      mDescriptors(frame.mDescriptors.clone())
@@ -113,11 +114,10 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
 void Frame::ComputeBoW()
 {
-    if(cameraFrames[0].mBowVec.empty())
+    if(mBowVec.empty())
     {
-        /* TODO how to do this */
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
-        mpORBvocabulary->transform(vCurrentDesc,cameraFrames[0].mBowVec,cameraFrames[0].mFeatVec,4);
+        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+        mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
         
     }
 }

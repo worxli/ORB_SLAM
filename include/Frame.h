@@ -59,6 +59,10 @@ namespace ORB_SLAM
         // ORB descriptor, each row associated to a keypoint
         cv::Mat mDescriptors;
 
+        // Bag of Words Vector structures
+        DBoW2::BowVector mBowVec;
+        DBoW2::FeatureVector mFeatVec;
+
         // MapPoints associated to keypoints, NULL pointer if not association
         std::vector<MapPoint*> mvpMapPoints;
 

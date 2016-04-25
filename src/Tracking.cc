@@ -540,14 +540,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=0; i<2; i++) {
+        for(int i=2; i<4; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=0; i<2; i++) {
+        for(int i=2; i<4; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
@@ -676,7 +676,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    if(mCurrentFrame.cameraFrames[0].mvKeys.size()>100)
+    if(mCurrentFrame.pluckerLines.size()>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
@@ -684,10 +684,11 @@ void Tracking::FirstInitialization()
         for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
             mvbPrevMatched[i]=mCurrentFrame.cameraFrames[0].mvKeysUn[i].pt;
 
-        if(mpInitializer ) {
+        if(mpInitializer) {
             //cout << mState << endl;
             cout << "delete Initializer" << mpInitializer << endl;
             delete mpInitializer;
+            cout << "deleted" << endl;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);

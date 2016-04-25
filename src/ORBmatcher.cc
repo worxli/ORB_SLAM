@@ -169,9 +169,9 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
 
     // We perform the matching over ORB that belong to the same vocabulary node (at a certain level)
     DBoW2::FeatureVector::iterator KFit = vFeatVecKF.begin();
-    DBoW2::FeatureVector::iterator Fit = F.cameraFrames[0].mFeatVec.begin();
+    DBoW2::FeatureVector::iterator Fit = F.mFeatVec.begin();
     DBoW2::FeatureVector::iterator KFend = vFeatVecKF.end();
-    DBoW2::FeatureVector::iterator Fend = F.cameraFrames[0].mFeatVec.end();
+    DBoW2::FeatureVector::iterator Fend = F.mFeatVec.end();
 
     while(KFit != KFend && Fit != Fend)
     {
@@ -255,7 +255,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
         }
         else
         {
-            Fit = F.cameraFrames[0].mFeatVec.lower_bound(KFit->first);
+            Fit = F.mFeatVec.lower_bound(KFit->first);
         }
     }
 
