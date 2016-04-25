@@ -410,7 +410,7 @@ int ORBmatcher::SearchByProjection(KeyFrame* pKF, cv::Mat Scw, const vector<MapP
 int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoint *> &vpMapPointMatches2, int minScaleLevel, int maxScaleLevel)
 {
     int nmatches=0;
-    vpMapPointMatches2 = vector<MapPoint*>(F1.mvpMapPoints.size(),static_cast<MapPoint*>(NULL));
+    vpMapPointMatches2 = vector<MapPoint*>(F2.mvpMapPoints.size(),static_cast<MapPoint*>(NULL));
     vector<int> vnMatches21 = vector<int>(F2.cameraFrames[0].mvKeysUn.size(),-1);
 
     vector<int> rotHist[HISTO_LENGTH];
@@ -1723,7 +1723,6 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set
                         rotHist[bin].push_back(bestIdx2);
                     }
                 }
-
             }
         }
     }
@@ -1804,9 +1803,6 @@ int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
     const int *pa = a.ptr<int32_t>();
     const int *pb = b.ptr<int32_t>();
 
-   /* cout << "kp a " << *pa << endl;
-    cout << "kp b " << *pb << endl;
-*/
     int dist=0;
 
     for(int i=0; i<8; i++, pa++, pb++)
@@ -1816,8 +1812,6 @@ int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
         v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
         dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
     }
-
-   // cout << "dist " << dist << endl;
 
     return dist;
 }

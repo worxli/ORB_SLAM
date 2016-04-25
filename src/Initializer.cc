@@ -32,14 +32,9 @@ namespace ORB_SLAM
 
 Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
 {
-    cout << "initializing" << endl;
-    //TODO 
     mK = ReferenceFrame.cameraFrames[0].mK.clone();
-    cout << "clone mk" << endl;
 
     mvKeys1 = ReferenceFrame.cameraFrames[0].mvKeysUn;
-
-    cout << "copy keys" << endl;
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
@@ -49,7 +44,6 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
                              vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
-    cout << "initializer" << endl;
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
     mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn;

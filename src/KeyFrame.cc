@@ -99,11 +99,11 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
-/*cv::Mat KeyFrame::GetProjectionMatrix()
+cv::Mat KeyFrame::GetProjectionMatrix()
 {
     boost::mutex::scoped_lock lock(mMutexPose);
     return mK*Tcw.rowRange(0,3);
-}*/
+}
 
 cv::Mat KeyFrame::GetCameraCenter()
 {

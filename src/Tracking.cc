@@ -54,7 +54,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     vector<string> camera_name;
     vector<cv::Mat> R, T;
 
-    for(uint i=0; i < (strSettingPath.size()-1); i++)
+    for(int i=0; i < (strSettingPath.size()-1); i++)
     {
 	    cv::FileStorage fSettings(strSettingPath[i], cv::FileStorage::READ);
         camera_name.push_back(fSettings["camera_name"]);
