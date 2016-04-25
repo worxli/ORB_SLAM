@@ -165,6 +165,7 @@ bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 
 vector<size_t> CameraFrame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
 {
+    cout << "get features in area x:" << x << " y: " << y << " r: " << " minlevel: " << minLevel << " maxlevel: " << endl;
     vector<size_t> vIndices;
     vIndices.reserve(mvKeysUn.size());
 

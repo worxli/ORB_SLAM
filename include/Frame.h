@@ -47,7 +47,7 @@ namespace ORB_SLAM {
 
         // Camera
         vector <CameraFrame> cameraFrames;
-        std::vector <std::vector<Eigen::Vector3d>> pluckerLines;
+        std::vector <std::vector<Eigen::Vector3d> > pluckerLines;
 
         ORBVocabulary *mpORBvocabulary;
         ORBextractor *mpORBextractor;

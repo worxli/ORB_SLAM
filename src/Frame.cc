@@ -111,12 +111,11 @@ namespace ORB_SLAM {
         }
     }
 
-    vector <size_t> Frame::GetFeaturesInArea(const float &x, const float &y, const float &r, int minLevel,
-                                             int maxLevel) const {
+    vector <size_t> Frame::GetFeaturesInArea(const float &x, const float &y, const float &r, int minLevel, int maxLevel) const {
 
+        cout << "get features in area x:" << x << " y: " << y << " r: " << " minlevel: " << minLevel << " maxlevel: " << endl;
         vector <size_t> vIndices;
         for (uint i = 0; i < cameraFrames.size(); i++) {
-            //vIndices.push_back(cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel));
             vector <size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
             vIndices.insert(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
         }

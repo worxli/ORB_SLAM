@@ -676,7 +676,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    if(mCurrentFrame.pluckerLines.size()>100)
+    if(mCurrentFrame.cameraFrames[0].mvKeysUn.size()>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
@@ -687,7 +687,7 @@ void Tracking::FirstInitialization()
         if(mpInitializer) {
             //cout << mState << endl;
             cout << "delete Initializer" << mpInitializer << endl;
-            delete mpInitializer;
+            //delete mpInitializer;
             cout << "deleted" << endl;
         }
 
