@@ -47,7 +47,6 @@ namespace ORB_SLAM {
 
         // Camera
         vector <CameraFrame> cameraFrames;
-        std::vector <std::vector<Eigen::Vector3d> > pluckerLines;
 
         ORBVocabulary *mpORBvocabulary;
         ORBextractor *mpORBextractor;
@@ -58,9 +57,6 @@ namespace ORB_SLAM {
         // Bag of Words Vector structures
         DBoW2::BowVector mBowVec;
         DBoW2::FeatureVector mFeatVec;
-
-        // ORB descriptor, each row associated to a keypoint
-        cv::Mat mDescriptors;
 
         // MapPoints associated to keypoints, NULL pointer if not association
         std::vector<MapPoint *> mvpMapPoints;

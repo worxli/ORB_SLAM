@@ -31,8 +31,8 @@ namespace ORB_SLAM {
     //Copy Constructor
     Frame::Frame(const Frame &frame)
             : mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), mTimeStamp(frame.mTimeStamp),
-              cameraFrames(frame.cameraFrames), mnId(frame.mnId), pluckerLines(frame.pluckerLines),
-              mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
+              cameraFrames(frame.cameraFrames), mnId(frame.mnId),
+              mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
               mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
               mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
               mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
@@ -45,18 +45,6 @@ namespace ORB_SLAM {
             : mpORBvocabulary(voc), mpORBextractor(extractor), cameraFrames(cameraFrames), mTimeStamp(timeStamp)
     {
         mnId = nNextId++;
-
-        cv::Mat descriptors[cameraFrames.size()];
-
-        // loop all camera frames to extract plucker lines and ORB descriptors
-        for (uint i = 0; i < cameraFrames.size(); i++) {
-            pluckerLines.insert(pluckerLines.end(), cameraFrames[i].pluckerLines.begin(),
-                                cameraFrames[i].pluckerLines.end());
-            descriptors[i] = cameraFrames[i].mDescriptors;
-        }
-
-        // concat all descriptors
-        cv::vconcat(descriptors, cameraFrames.size(), mDescriptors);
 
         //Scale Levels Info
         mnScaleLevels = mpORBextractor->GetLevels();
@@ -80,7 +68,10 @@ namespace ORB_SLAM {
             cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
         }
 
-        int N = pluckerLines.size();
+        int N = 0;
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            N += cameraFrames[i].N;
+        }
         mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
         mvbOutlier = vector<bool>(N, false);
     }
@@ -106,7 +97,7 @@ namespace ORB_SLAM {
 
     void Frame::ComputeBoW() {
         if (mBowVec.empty()) {
-            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
             mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
         }
     }

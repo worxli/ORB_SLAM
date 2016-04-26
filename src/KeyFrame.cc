@@ -31,7 +31,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), cameraFrames(F.cameraFrames), mfGridElementWidthInv(F.cameraFrames[0].mfGridElementWidthInv),
     mfGridElementHeightInv(F.cameraFrames[0].mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
     mnLoopQuery(0), mnRelocQuery(0), mBowVec(F.mBowVec),
-    mvKeys(F.cameraFrames[0].mvKeys), mvKeysUn(F.cameraFrames[0].mvKeysUn), mDescriptors(F.mDescriptors.clone()),
+    mvKeys(F.cameraFrames[0].mvKeys), mvKeysUn(F.cameraFrames[0].mvKeysUn), mDescriptors(F.cameraFrames[0].mDescriptors.clone()),
     mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.mFeatVec),
     mbFirstConnection(true), mpParent(NULL), mbNotErase(false), mbToBeErased(false), mbBad(false),
     mnScaleLevels(F.mnScaleLevels), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),

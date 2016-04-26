@@ -91,7 +91,7 @@ int ORBmatcher::SearchByProjection(Frame &F, const vector<MapPoint*> &vpMapPoint
             if(F.mvpMapPoints[idx])
                 continue;
 
-            cv::Mat d=F.mDescriptors.row(idx);
+            cv::Mat d=F.cameraFrames[0].mDescriptors.row(idx);
 
             const int dist = DescriptorDistance(MPdescriptor,d);
 
@@ -205,7 +205,7 @@ int ORBmatcher::SearchByBoW(KeyFrame* pKF,Frame &F, vector<MapPoint*> &vpMapPoin
                     if(vpMapPointMatches[realIdxF])
                         continue;
 
-                    cv::Mat dF = F.mDescriptors.row(realIdxF).clone();
+                    cv::Mat dF = F.cameraFrames[0].mDescriptors.row(realIdxF).clone();
 
                     const int dist =  DescriptorDistance(dKF,dF);
 
@@ -446,7 +446,7 @@ int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoi
         if(vIndices2.empty())
             continue;
 
-        cv::Mat d1 = F1.mDescriptors.row(i1);
+        cv::Mat d1 = F1.cameraFrames[0].mDescriptors.row(i1);
 
         int bestDist = INT_MAX;
         int bestDist2 = INT_MAX;
@@ -459,7 +459,7 @@ int ORBmatcher::WindowSearch(Frame &F1, Frame &F2, int windowSize, vector<MapPoi
             if(vpMapPointMatches2[i2])
                 continue;
 
-            cv::Mat d2 = F2.mDescriptors.row(i2);
+            cv::Mat d2 = F2.cameraFrames[0].mDescriptors.row(i2);
 
             int dist = DescriptorDistance(d1,d2);
 
@@ -556,7 +556,7 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
         if(vIndices2.empty())
             continue;
 
-        cv::Mat d1 = F1.mDescriptors.row(i1);
+        cv::Mat d1 = F1.cameraFrames[0].mDescriptors.row(i1);
 
         int bestDist = INT_MAX;
         int bestDist2 = INT_MAX;
@@ -570,7 +570,7 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
             if(vpMapPointMatches2[i2])
                 continue;
 
-            cv::Mat d2 = F2.mDescriptors.row(i2);
+            cv::Mat d2 = F2.cameraFrames[0].mDescriptors.row(i2);
 
             int dist = DescriptorDistance(d1,d2);
 
@@ -623,7 +623,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         if(vIndices2.empty())
             continue;
 
-        cv::Mat d1 = F1.mDescriptors.row(i1);
+        cv::Mat d1 = F1.cameraFrames[0].mDescriptors.row(i1);
 
         int bestDist = INT_MAX;
         int bestDist2 = INT_MAX;
@@ -633,7 +633,7 @@ int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f
         {
             size_t i2 = *vit;
 
-            cv::Mat d2 = F2.mDescriptors.row(i2);
+            cv::Mat d2 = F2.cameraFrames[0].mDescriptors.row(i2);
 
             int dist = DescriptorDistance(d1,d2);
 
@@ -1558,7 +1558,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                 if(vIndices2.empty())
                     continue;
 
-                cv::Mat dMP = LastFrame.mDescriptors.row(i);
+                cv::Mat dMP = LastFrame.cameraFrames[0].mDescriptors.row(i);
 
                 int bestDist = INT_MAX;
                 int bestIdx2 = -1;
@@ -1569,7 +1569,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, 
                     if(CurrentFrame.mvpMapPoints[i2])
                         continue;
 
-                    cv::Mat d = CurrentFrame.mDescriptors.row(i2);
+                    cv::Mat d = CurrentFrame.cameraFrames[0].mDescriptors.row(i2);
 
                     int dist = DescriptorDistance(dMP,d);
 
@@ -1695,7 +1695,7 @@ int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const set
                     if(CurrentFrame.mvpMapPoints[i2])
                         continue;
 
-                    cv::Mat d = CurrentFrame.mDescriptors.row(i2);
+                    cv::Mat d = CurrentFrame.cameraFrames[0].mDescriptors.row(i2);
 
                     int dist = DescriptorDistance(dMP,d);
 
