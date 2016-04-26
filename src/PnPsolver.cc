@@ -95,6 +95,7 @@ PnPsolver::~PnPsolver()
 
 void PnPsolver::gpnp()
 {
+    //
     opengv::bearingVectors_t bearingVectors;
     opengv::points_t points;
     opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(opengv::absolute_pose::CentralAbsoluteAdapter(bearingVectors, points));
