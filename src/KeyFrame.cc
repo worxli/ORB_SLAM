@@ -30,9 +30,9 @@ long unsigned int KeyFrame::nNextId=0;
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), cameraFrames(F.cameraFrames), mfGridElementWidthInv(F.cameraFrames[0].mfGridElementWidthInv),
     mfGridElementHeightInv(F.cameraFrames[0].mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
-    mnLoopQuery(0), mnRelocQuery(0), mBowVec(F.cameraFrames[0].mBowVec),
-    mvKeys(F.cameraFrames[0].mvKeys), mvKeysUn(F.cameraFrames[0].mvKeysUn), mDescriptors(F.cameraFrames[0].mDescriptors.clone()), 
-    mvpMapPoints(F.cameraFrames[0].mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.cameraFrames[0].mFeatVec),
+    mnLoopQuery(0), mnRelocQuery(0), mBowVec(F.mBowVec),
+    mvKeys(F.cameraFrames[0].mvKeys), mvKeysUn(F.cameraFrames[0].mvKeysUn), mDescriptors(F.cameraFrames[0].mDescriptors.clone()),
+    mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB), mpORBvocabulary(F.mpORBvocabulary), mFeatVec(F.mFeatVec),
     mbFirstConnection(true), mpParent(NULL), mbNotErase(false), mbToBeErased(false), mbBad(false),
     mnScaleLevels(F.mnScaleLevels), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),
     mvInvLevelSigma2(F.mvInvLevelSigma2), mpMap(pMap)
@@ -99,11 +99,11 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
-/*cv::Mat KeyFrame::GetProjectionMatrix()
+cv::Mat KeyFrame::GetProjectionMatrix()
 {
     boost::mutex::scoped_lock lock(mMutexPose);
     return mK*Tcw.rowRange(0,3);
-}*/
+}
 
 cv::Mat KeyFrame::GetCameraCenter()
 {

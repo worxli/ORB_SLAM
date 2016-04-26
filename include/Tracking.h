@@ -152,10 +152,6 @@ protected:
     //Map
     Map* mpMap;
 
-    //Calibration matrix
-    //cv::Mat mK;
-    //cv::Mat mDistCoef;
-
     // Vector of Calibration matrices
     vector<cv::Mat> mK;
     vector<cv::Mat> mDistCoef;
