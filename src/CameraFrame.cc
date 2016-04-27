@@ -39,7 +39,7 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
      mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()),
      mmapY(frame.mmapY.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mDescriptors(frame.mDescriptors.clone()),
-     pluckerLines(frame.pluckerLines),
+     pluckerLines(frame.pluckerLines),vBearings(frame.vBearings),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
      mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv)
 {
@@ -64,7 +64,9 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
 
     UndistortKeyPoints();
 
-    PluckerLine();
+    //PluckerLine();
+    KeyfeatureBearings();
+
 
 
     // This is done for the first created Frame
@@ -389,6 +391,24 @@ void CameraFrame::PluckerLine()
 		pluckerLines.push_back(pluckerLine);
 	}
 
+}
+
+void CameraFrame::KeyfeatureBearings()
+{
+
+	for(unsigned int i=0; i<mvKeys.size(); i++)
+	{
+		Eigen::Vector2d p_in;
+		Eigen::Vector2d p_temp;
+		Eigen::Vector3d bearing;
+
+		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
+
+		UndistortPoint(p_in, p_temp, bearing);
+		std::vector<Eigen::Vector3d> pluckerLine;
+		bearing.normalize(); //needed?
+		vBearings.push_back(bearing);
+	}
 
 }
 
