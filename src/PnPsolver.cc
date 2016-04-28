@@ -29,6 +29,9 @@
 #include "Thirdparty/DBoW2/DUtils/Random.h"
 #include <ros/ros.h>
 #include <algorithm>
+#include <opengv/types.hpp>
+#include <opengv/absolute_pose/methods.hpp>
+#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
 
 using namespace std;
 
@@ -41,11 +44,11 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     mnIterations(0), mnBestInliers(0), N(0)
 {
     mvpMapPointMatches = vpMapPointMatches;
-    mvP2D.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvSigma2.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvP3Dw.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvKeyPointIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
-    mvAllIndices.reserve(F.cameraFrames[0].mvpMapPoints.size());
+    mvP2D.reserve(F.mvpMapPoints.size());
+    mvSigma2.reserve(F.mvpMapPoints.size());
+    mvP3Dw.reserve(F.mvpMapPoints.size());
+    mvKeyPointIndices.reserve(F.mvpMapPoints.size());
+    mvAllIndices.reserve(F.mvpMapPoints.size());
 
     int idx=0;
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
@@ -90,6 +93,12 @@ PnPsolver::~PnPsolver()
   delete [] pcs;
 }
 
+void PnPsolver::gpnp()
+{
+    opengv::bearingVectors_t bearingVectors;
+    opengv::points_t points;
+    opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(opengv::absolute_pose::CentralAbsoluteAdapter(bearingVectors, points));
+}
 
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)
 {

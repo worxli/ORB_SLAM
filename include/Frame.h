@@ -32,35 +32,37 @@
 #include <opencv2/opencv.hpp>
 #include<Eigen/Eigen>
 
-
-namespace ORB_SLAM
-{
-
+namespace ORB_SLAM {
     class tracking;
     class MapPoint;
     class KeyFrame;
     class KeyFrameDatabase;
     class CameraFrame;
 
-    class Frame
-    {
+    class Frame {
     public:
         Frame();
         Frame(const Frame &frame);
-        Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc);
-
-        ORBVocabulary* mpORBvocabulary;
-        ORBextractor* mpORBextractor;
+        Frame(vector <CameraFrame> cameraFrames, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc);
 
         // Camera
-        vector<CameraFrame> cameraFrames;
-        std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
+        vector <CameraFrame> cameraFrames;
 
-        // ORB descriptor, each row associated to a keypoint
-        cv::Mat mDescriptors;
+        ORBVocabulary *mpORBvocabulary;
+        ORBextractor *mpORBextractor;
 
         // Frame timestamp
         double mTimeStamp;
+
+        // Bag of Words Vector structures
+        DBoW2::BowVector mBowVec;
+        DBoW2::FeatureVector mFeatVec;
+
+        // MapPoints associated to keypoints, NULL pointer if not association
+        std::vector<MapPoint *> mvpMapPoints;
+
+        // Flag to identify outlier associations
+        std::vector<bool> mvbOutlier;
 
         // Camera Pose
         cv::Mat mTcw;
@@ -69,10 +71,17 @@ namespace ORB_SLAM
         static long unsigned int nNextId;
         long unsigned int mnId;
 
-        KeyFrame* mpReferenceKF;
+        KeyFrame *mpReferenceKF;
 
         void ComputeBoW();
+
         void UpdatePoseMatrices();
+
+        // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
+        bool isInFrustum(MapPoint *pMP, float viewingCosLimit);
+
+        vector <size_t> GetFeaturesInArea(const float &x, const float &y, const float &r, const int minLevel = -1,
+                                          const int maxLevel = -1) const;
 
         // Scale Pyramid Info
         int mnScaleLevels;
@@ -80,13 +89,6 @@ namespace ORB_SLAM
         vector<float> mvScaleFactors;
         vector<float> mvLevelSigma2;
         vector<float> mvInvLevelSigma2;
-
-	   // proxy to cameraFrames
-     	bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
-	   vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
-
-        // MapPoints associated to keypoints, NULL pointer if not association
-        //std::vector<MapPoint*> mvpMapPoints;
 
     private:
 

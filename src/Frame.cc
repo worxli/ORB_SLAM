@@ -23,107 +23,93 @@
 
 #include <ros/ros.h>
 
-namespace ORB_SLAM
-{
-long unsigned int Frame::nNextId=0;
+namespace ORB_SLAM {
+    long unsigned int Frame::nNextId = 0;
 
-Frame::Frame()
-{}
+    Frame::Frame() { }
 
-//Copy Constructor
-Frame::Frame(const Frame &frame)
-    :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), cameraFrames(frame.cameraFrames), 
-     mTimeStamp(frame.mTimeStamp), mnId(frame.mnId), pluckerLines(frame.pluckerLines),
-     mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
-     mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
-{
-    if(!frame.mTcw.empty())
-        mTcw = frame.mTcw.clone();
-}
-
-Frame::Frame(vector<CameraFrame> cameraFrames, const double &timeStamp, ORBextractor* extractor, ORBVocabulary* voc)
-    :mpORBvocabulary(voc),mpORBextractor(extractor),cameraFrames(cameraFrames),mTimeStamp(timeStamp)
-{
-    mnId=nNextId++;
-    
-    // loop all camera frames to extract plucker lines and ORB descriptors
-    for(uint i = 0; i<cameraFrames.size(); i++)
+    //Copy Constructor
+    Frame::Frame(const Frame &frame)
+            : mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), mTimeStamp(frame.mTimeStamp),
+              cameraFrames(frame.cameraFrames), mnId(frame.mnId),
+              mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
+              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
+              mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
+              mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
     {
-        pluckerLines.insert(pluckerLines.end(), cameraFrames[i].pluckerLines.begin(), cameraFrames[i].pluckerLines.end());
-        cout << "Add " << cameraFrames[0].pluckerLines.size() << " pluckerlines for frame " << i << " to base frame." << endl;
-    }
-    
-    //Scale Levels Info
-    mnScaleLevels = mpORBextractor->GetLevels();
-    mfScaleFactor = mpORBextractor->GetScaleFactor();
-
-    mvScaleFactors.resize(mnScaleLevels);
-    mvLevelSigma2.resize(mnScaleLevels);
-    mvScaleFactors[0]=1.0f;
-    mvLevelSigma2[0]=1.0f;
-    for(int i=1; i<mnScaleLevels; i++)
-    {
-        mvScaleFactors[i]=mvScaleFactors[i-1]*mfScaleFactor;        
-        mvLevelSigma2[i]=mvScaleFactors[i]*mvScaleFactors[i];
+        if (!frame.mTcw.empty())
+            mTcw = frame.mTcw.clone();
     }
 
-    mvInvLevelSigma2.resize(mvLevelSigma2.size());
-    for(int i=0; i<mnScaleLevels; i++)
-        mvInvLevelSigma2[i]=1/mvLevelSigma2[i];
-
-    // set params to camera frames
-    for(uint i = 0; i<cameraFrames.size(); i++)
+    Frame::Frame(vector <CameraFrame> cameraFrames, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc)
+            : mpORBvocabulary(voc), mpORBextractor(extractor), cameraFrames(cameraFrames), mTimeStamp(timeStamp)
     {
-        cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
+        mnId = nNextId++;
+
+        //Scale Levels Info
+        mnScaleLevels = mpORBextractor->GetLevels();
+        mfScaleFactor = mpORBextractor->GetScaleFactor();
+
+        mvScaleFactors.resize(mnScaleLevels);
+        mvLevelSigma2.resize(mnScaleLevels);
+        mvScaleFactors[0] = 1.0f;
+        mvLevelSigma2[0] = 1.0f;
+        for (int i = 1; i < mnScaleLevels; i++) {
+            mvScaleFactors[i] = mvScaleFactors[i - 1] * mfScaleFactor;
+            mvLevelSigma2[i] = mvScaleFactors[i] * mvScaleFactors[i];
+        }
+
+        mvInvLevelSigma2.resize(mvLevelSigma2.size());
+        for (int i = 0; i < mnScaleLevels; i++)
+            mvInvLevelSigma2[i] = 1 / mvLevelSigma2[i];
+
+        // set params to camera frames
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            cameraFrames[i].SetScaleParams(mnScaleLevels, mvScaleFactors, mvLevelSigma2, mvInvLevelSigma2);
+        }
+
+        int N = 0;
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            N += cameraFrames[i].N;
+        }
+        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(NULL));
+        mvbOutlier = vector<bool>(N, false);
     }
-}
 
-void Frame::UpdatePoseMatrices()
-{ 
-    mRcw = mTcw.rowRange(0,3).colRange(0,3);
-    mtcw = mTcw.rowRange(0,3).col(3);
-    mOw = -mRcw.t()*mtcw;
+    void Frame::UpdatePoseMatrices() {
+        mRcw = mTcw.rowRange(0, 3).colRange(0, 3);
+        mtcw = mTcw.rowRange(0, 3).col(3);
+        mOw = -mRcw.t() * mtcw;
 
-    // set params to camera frames
-    for(uint i = 0; i<cameraFrames.size(); i++)
-    {
-        cameraFrames[i].SetPoseMatrices(mRcw, mtcw, mOw);
+        // set params to camera frames // TODO are they needed?
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            cameraFrames[i].SetPoseMatrices(mRcw, mtcw, mOw);
+        }
     }
-}
 
-bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
-{
-    for(uint i = 0; i<cameraFrames.size(); i++)
-    {
-	if(cameraFrames[i].isInFrustum(pMP, viewingCosLimit)) 
-	    return true;
-	return false;
+    bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) {
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            if (cameraFrames[i].isInFrustum(pMP, viewingCosLimit))
+                return true;
+        }
+        return false;
     }
-	return false;
-}
 
-void Frame::ComputeBoW()
-{
-    if(cameraFrames[0].mBowVec.empty())
-    {
-        /* TODO for all camera frames */
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
-        mpORBvocabulary->transform(vCurrentDesc,cameraFrames[0].mBowVec,cameraFrames[0].mFeatVec,4);
-        
+    void Frame::ComputeBoW() {
+        if (mBowVec.empty()) {
+            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
+            mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
+        }
     }
-}
 
-vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, int minLevel, int maxLevel) const
-{
+    vector <size_t> Frame::GetFeaturesInArea(const float &x, const float &y, const float &r, int minLevel, int maxLevel) const {
 
-    vector<size_t> vIndices;
-    for(uint i = 0; i<cameraFrames.size(); i++)
-    {
-    	//vIndices.push_back(cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel));
-    	vector<size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
-    	vIndices.insert(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
+        vector <size_t> vIndices;
+        for (uint i = 0; i < cameraFrames.size(); i++) {
+            vector <size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
+            vIndices.insert(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
+        }
+        return vIndices;
     }
-    return vIndices;
-}
 
 } //namespace ORB_SLAM
