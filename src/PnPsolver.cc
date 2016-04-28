@@ -95,9 +95,13 @@ PnPsolver::~PnPsolver()
 
 void PnPsolver::gpnp()
 {
-    //
+    // vectors for key features
     opengv::bearingVectors_t bearingVectors;
+
+    // map points
     opengv::points_t points;
+
+    // returns rotation and translation
     opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(opengv::absolute_pose::CentralAbsoluteAdapter(bearingVectors, points));
 }
 
