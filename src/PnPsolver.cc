@@ -81,12 +81,12 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
 
     // Set camera calibration parameters
     // TODO
-    fu = F.cameraFrames[0].fx;
-    fv = F.cameraFrames[0].fy;
-    uc = F.cameraFrames[0].cx;
-    vc = F.cameraFrames[0].cy;
+//    fu = F.cameraFrames[0].fx;
+//    fv = F.cameraFrames[0].fy;
+//    uc = F.cameraFrames[0].cx;
+//    vc = F.cameraFrames[0].cy;
 
-    SetRansacParameters();
+    //SetRansacParameters();
 }
 
 PnPsolver::~PnPsolver()
@@ -104,7 +104,7 @@ cv::Mat PnPsolver::gpnp()
 
     for(uint i=0; i<mvpMapPointMatches.size(); i++) {
         Eigen::Vector3d worldPos;
-        cv::cv2eigen(mvpMapPointMatches[0]->GetWorldPos(), worldPos);
+        cv::cv2eigen(mvpMapPointMatches[i]->GetWorldPos(), worldPos); //TODO check for good mapPoints first
         points.push_back(worldPos);
     }
 
