@@ -712,10 +712,14 @@ void Tracking::Initialize()
     ORBmatcher matcher(0.9,true);
     vector<int> nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
-    // Check if there are enough correspondences
-    if(nmatches<100)
+    // Check if there are enough correspondences in each cameraframe
+
+    //int minNmatches =std::min_element(nmatches, 0);
+    int minNmatches=nmatches[0];
+
+    if(minNmatches<100)
     {
-        cout << "number of correspondences " << nmatches << endl;
+        cout << "number of correspondences " << minNmatches << endl;
         cout << "set state not init" << endl;
         mState = NOT_INITIALIZED;
         return;
@@ -732,7 +736,8 @@ void Tracking::Initialize()
             if(mvIniMatches[i]>=0 && !vbTriangulated[i])
             {
                 mvIniMatches[i]=-1;
-                nmatches--;
+                minNmatches--;
+                //nmatches--;
             }           
         }
 

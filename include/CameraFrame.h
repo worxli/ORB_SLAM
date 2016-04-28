@@ -53,7 +53,7 @@ public:
     std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
     std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
-    std::vector< std::vector<Eigen::Vector3d> > vBearings;
+    std::vector<Eigen::Vector3d> vBearings;
 
     // Number of KeyPoints
     int N;
