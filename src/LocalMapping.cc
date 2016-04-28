@@ -135,6 +135,7 @@ void LocalMapping::ProcessNewKeyFrame()
         return;
 
     // Associate MapPoints to the new keyframe and update normal and descriptor
+    // Associate MapPoints to the new keyframe and update normal and descriptor
     vector<MapPoint*> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
     if(mpCurrentKeyFrame->mnId>1) //This operations are already done in the tracking for the first two keyframes
     {
@@ -217,6 +218,12 @@ void LocalMapping::CreateNewMapPoints()
     tcw1.copyTo(Tcw1.col(3));
     cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
+    Eigen::Matrix3d R1;
+    Eigen::Vector3d t1;
+    // Needed for calculation of 3point triangulation with pluckerlines
+    cv::cv2eigen(Rcw1, R1);
+    cv::cv2eigen(tcw1, t1);
+
     // TODO
     const float fx1 = mpCurrentKeyFrame->cameraFrames[0].fx;
     const float fy1 = mpCurrentKeyFrame->cameraFrames[0].fy;
@@ -275,6 +282,24 @@ void LocalMapping::CreateNewMapPoints()
 
             const cv::KeyPoint &kp1 = vMatchedKeysUn1[ikp];
             const cv::KeyPoint &kp2 = vMatchedKeysUn2[ikp];
+
+            /////////////////////////////// Plucker line triangulation /////////////////////////////
+
+            // TODO
+            // Retrieve Plucker lines of matched keypoints
+            std::vector<Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[0].pluckerLines[idx1];
+            std::vector<Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[0].pluckerLines[idx2];
+
+            std::cout << "ma_pl_line1: " << matched_plucker_line1[0] << " | " << matched_plucker_line1[1] << std::endl;
+
+            // Create 3d point
+            Eigen::Vector3d* P3d;
+
+            // Trinangulate 3d point (P3d) with plucker lines
+            PluckerLineTriangulation(matched_plucker_line1, matched_plucker_line2, R1, t1, P3d);
+
+            //////////////////////// END Plucker Line triangulation ///////////////////////////////////
+
 
             // Check parallax between rays
             cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx1)*invfx1, (kp1.pt.y-cy1)*invfy1, 1.0 );
@@ -370,6 +395,38 @@ void LocalMapping::CreateNewMapPoints()
             mlpRecentAddedMapPoints.push_back(pMP);
         }
     }
+}
+
+void LocalMapping::PluckerLineTriangulation(const std::vector<Eigen::Vector3d> &matched_plucker_line1,
+                                            const std::vector<Eigen::Vector3d> &matched_plucker_line2,
+                                            const Eigen::Matrix3d &R1, const Eigen::Vector3d &t1,
+                                            Eigen::Vector3d* point_3d)
+{
+    Eigen::Vector3d q1 = matched_plucker_line1[0];
+    Eigen::Vector3d q1_dash = matched_plucker_line1[1];
+    Eigen::Vector3d q2 = matched_plucker_line2[0];
+    Eigen::Vector3d q2_dash = matched_plucker_line2[1];
+
+    double matmult0 = R1(0,0)*q1[0] + R1(0,1)*q1[1] + R1(0,2)*q1[2];
+    double matmult1 = R1(1,0)*q1[0] + R1(1,1)*q1[1] + R1(1,2)*q1[2];
+
+    double denom = matmult1 - ((q2[1]/q2[0])*matmult0);
+    double term1 = -(q2[1]*q2_dash[2]-q2[2]*q2_dash[1]);
+    double term2 = (q2[2]*q2_dash[0]-q2[0]*q2_dash[2]);
+    double matmult2 = R1.row(0)*(q1.cross(q1_dash));
+    double matmult3 = R1.row(1)*(q1.cross(q1_dash));
+
+    double part1 = (q2[1]/q2[0]) * (term1 + matmult2 + t1(0));
+    double part2 = term2 - matmult3 - t1(1);
+
+    double alpha1 = (1/denom) * (part1 + part2);
+
+    Eigen::Vector3d point_closest_to_origin = q1.cross(q1_dash);
+    Eigen::Vector3d vector_p3d_to_point_closest_origin = alpha1 * q1;
+
+    *point_3d = point_closest_to_origin + vector_p3d_to_point_closest_origin;
+
+    std::cout << "P3d: " << (*point_3d)(0) << " | " << (*point_3d)(1) << " | " << (*point_3d)(2) << std::endl;
 }
 
 void LocalMapping::SearchInNeighbors()
