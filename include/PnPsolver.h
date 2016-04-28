@@ -25,6 +25,7 @@
 #include <opencv/cv.h>
 #include "MapPoint.h"
 #include "Frame.h"
+#include <opengv/types.hpp>
 
 namespace ORB_SLAM
 {
@@ -42,9 +43,9 @@ class PnPsolver {
 
   cv::Mat iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers);
 
- private:
+  cv::Mat gpnp();
 
-  void gpnp();
+ private:
 
   void CheckInliers();
   bool Refine();
@@ -108,6 +109,9 @@ class PnPsolver {
   double cws_determinant;
 
   vector<MapPoint*> mvpMapPointMatches;
+
+  // vectors for key features
+  opengv::bearingVectors_t vBearings;
 
   // 2D Points
   vector<cv::Point2f> mvP2D;

@@ -405,7 +405,6 @@ void CameraFrame::KeyfeatureBearings()
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
 		UndistortPoint(p_in, p_temp, bearing);
-		std::vector<Eigen::Vector3d> pluckerLine;
 		bearing.normalize(); //needed?
 		vBearings.push_back(bearing);
 	}

@@ -29,9 +29,9 @@
 #include "Thirdparty/DBoW2/DUtils/Random.h"
 #include <ros/ros.h>
 #include <algorithm>
-#include <opengv/types.hpp>
 #include <opengv/absolute_pose/methods.hpp>
 #include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+#include <opencv2/core/eigen.hpp>
 
 using namespace std;
 
@@ -49,6 +49,10 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     mvP3Dw.reserve(F.mvpMapPoints.size());
     mvKeyPointIndices.reserve(F.mvpMapPoints.size());
     mvAllIndices.reserve(F.mvpMapPoints.size());
+
+    for(uint i = 0; i<F.cameraFrames.size(); i++) {
+        vBearings.insert(vBearings.end(), F.cameraFrames[i].vBearings.begin(), F.cameraFrames[i].vBearings.end());
+    }
 
     int idx=0;
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
@@ -93,16 +97,27 @@ PnPsolver::~PnPsolver()
   delete [] pcs;
 }
 
-void PnPsolver::gpnp()
+cv::Mat PnPsolver::gpnp()
 {
-    // vectors for key features
-    opengv::bearingVectors_t bearingVectors;
-
     // map points
     opengv::points_t points;
 
+    for(uint i=0; i<mvpMapPointMatches.size(); i++) {
+        Eigen::Vector3d worldPos;
+        cv::cv2eigen(mvpMapPointMatches[0]->GetWorldPos(), worldPos);
+        points.push_back(worldPos);
+    }
+
+    // absolute central pose
+    const opengv::absolute_pose::CentralAbsoluteAdapter* pose = new opengv::absolute_pose::CentralAbsoluteAdapter(vBearings, points);
+
     // returns rotation and translation
-    opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(opengv::absolute_pose::CentralAbsoluteAdapter(bearingVectors, points));
+    opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(*pose);
+
+    // convert back to return value
+    cv::Mat Tcw;
+    cv::eigen2cv(gpnp_transformation, Tcw);
+    return Tcw;
 }
 
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)

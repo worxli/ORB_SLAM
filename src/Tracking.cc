@@ -713,9 +713,9 @@ void Tracking::Initialize()
     vector<int> nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
     // Check if there are enough correspondences
-    if(nmatches<100)
+    if(nmatches[0]<100)
     {
-        cout << "number of correspondences " << nmatches << endl;
+        cout << "number of correspondences " << nmatches[0] << endl;
         cout << "set state not init" << endl;
         mState = NOT_INITIALIZED;
         return;
@@ -732,7 +732,7 @@ void Tracking::Initialize()
             if(mvIniMatches[i]>=0 && !vbTriangulated[i])
             {
                 mvIniMatches[i]=-1;
-                nmatches--;
+                nmatches[0]--;
             }           
         }
 
@@ -1206,7 +1206,7 @@ void Tracking::UpdateReferenceKeyFrames()
 bool Tracking::Relocalisation()
 {
     // Compute Bag of Words Vector
-    mCurrentFrame.ComputeBoW();
+    mCurrentFrame.ComputeBoW(); //TODO does it do it for everything?
 
     // Relocalisation is performed when tracking is lost and forced at some stages during loop closing
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
@@ -1284,81 +1284,83 @@ bool Tracking::Relocalisation()
 
             // TODO 3d-2d reloc.
             PnPsolver* pSolver = vpPnPsolvers[i];
-            cv::Mat Tcw = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
+            //cv::Mat Tcw = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
 
-            // If Ransac reachs max. iterations discard keyframe
-            if(bNoMore)
-            {
-                vbDiscarded[i]=true;
-                nCandidates--;
-            }
+            cv::Mat Tcw = pSolver->gpnp();
 
-            // If a Camera Pose is computed, optimize
-            if(!Tcw.empty())
-            {
-                Tcw.copyTo(mCurrentFrame.mTcw);
-
-                set<MapPoint*> sFound;
-
-                for(size_t j=0; j<vbInliers.size(); j++)
-                {
-                    if(vbInliers[j])
-                    {
-                        mCurrentFrame.mvpMapPoints[j]=vvpMapPointMatches[i][j];
-                        sFound.insert(vvpMapPointMatches[i][j]);
-                    }
-                    else
-                        mCurrentFrame.mvpMapPoints[j]=NULL;
-                }
-
-                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                if(nGood<10)
-                    continue;
-
-                for(size_t io =0, ioend=mCurrentFrame.mvbOutlier.size(); io<ioend; io++)
-                    if(mCurrentFrame.mvbOutlier[io])
-                        mCurrentFrame.mvpMapPoints[io]=NULL;
-
-                // If few inliers, search by projection in a coarse window and optimize again
-                if(nGood<50)
-                {
-                    int nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,10,100);
-
-                    if(nadditional+nGood>=50)
-                    {
-                        nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                        // If many inliers but still not enough, search by projection again in a narrower window
-                        // the camera has been already optimized with many points
-                        if(nGood>30 && nGood<50)
-                        {
-                            sFound.clear();
-                            for(size_t ip =0, ipend=mCurrentFrame.mvpMapPoints.size(); ip<ipend; ip++)
-                                if(mCurrentFrame.mvpMapPoints[ip])
-                                    sFound.insert(mCurrentFrame.mvpMapPoints[ip]);
-                            nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,3,64);
-
-                            // Final optimization
-                            if(nGood+nadditional>=50)
-                            {
-                                nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-
-                                for(size_t io =0; io<mCurrentFrame.mvbOutlier.size(); io++)
-                                    if(mCurrentFrame.mvbOutlier[io])
-                                        mCurrentFrame.mvpMapPoints[io]=NULL;
-                            }
-                        }
-                    }
-                }
-
-                // If the pose is supported by enough inliers stop ransacs and continue
-                if(nGood>=50)
-                {                    
-                    bMatch = true;
-                    break;
-                }
-            }
+//            // If Ransac reachs max. iterations discard keyframe
+//            if(bNoMore)
+//            {
+//                vbDiscarded[i]=true;
+//                nCandidates--;
+//            }
+//
+//            // If a Camera Pose is computed, optimize
+//            if(!Tcw.empty())
+//            {
+//                Tcw.copyTo(mCurrentFrame.mTcw);
+//
+//                set<MapPoint*> sFound;
+//
+//                for(size_t j=0; j<vbInliers.size(); j++)
+//                {
+//                    if(vbInliers[j])
+//                    {
+//                        mCurrentFrame.mvpMapPoints[j]=vvpMapPointMatches[i][j];
+//                        sFound.insert(vvpMapPointMatches[i][j]);
+//                    }
+//                    else
+//                        mCurrentFrame.mvpMapPoints[j]=NULL;
+//                }
+//
+//                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+//
+//                if(nGood<10)
+//                    continue;
+//
+//                for(size_t io =0, ioend=mCurrentFrame.mvbOutlier.size(); io<ioend; io++)
+//                    if(mCurrentFrame.mvbOutlier[io])
+//                        mCurrentFrame.mvpMapPoints[io]=NULL;
+//
+//                // If few inliers, search by projection in a coarse window and optimize again
+//                if(nGood<50)
+//                {
+//                    int nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,10,100);
+//
+//                    if(nadditional+nGood>=50)
+//                    {
+//                        nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+//
+//                        // If many inliers but still not enough, search by projection again in a narrower window
+//                        // the camera has been already optimized with many points
+//                        if(nGood>30 && nGood<50)
+//                        {
+//                            sFound.clear();
+//                            for(size_t ip =0, ipend=mCurrentFrame.mvpMapPoints.size(); ip<ipend; ip++)
+//                                if(mCurrentFrame.mvpMapPoints[ip])
+//                                    sFound.insert(mCurrentFrame.mvpMapPoints[ip]);
+//                            nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,3,64);
+//
+//                            // Final optimization
+//                            if(nGood+nadditional>=50)
+//                            {
+//                                nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+//
+//                                for(size_t io =0; io<mCurrentFrame.mvbOutlier.size(); io++)
+//                                    if(mCurrentFrame.mvbOutlier[io])
+//                                        mCurrentFrame.mvpMapPoints[io]=NULL;
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                // If the pose is supported by enough inliers stop ransacs and continue
+//                if(nGood>=50)
+//                {
+//                    bMatch = true;
+//                    break;
+//                }
+//            }
         }
     }
 
