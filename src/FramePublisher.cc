@@ -82,7 +82,7 @@ cv::Mat FramePublisher::DrawFrame()
         {
             vCurrentKeys = mvCurrentKeys;
             vIniKeys = mvIniKeys;
-            vMatches = mvIniMatches;
+            vMatches = mvIniMatches[0]; //TODO
         }
         else if(mState==Tracking::WORKING)
         {
