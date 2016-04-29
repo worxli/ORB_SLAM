@@ -598,18 +598,17 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
 
 
 
-vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector<int> &vnMatches12Frame, int windowSize)
+vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector< vector<int> > &vnMatches12Frame, int windowSize)
 {
 	std::vector<int> nmatchesFrame;
 
-    //for(int nCam=0;nCam<cameraFrames.size();i++)
-    for(int nCam=0;nCam<1;nCam++)
+    for(int nCam=0;nCam<F1.cameraFrames.size();nCam++)
 
     {
     	int nmatches=0;
     	std::vector<int> vnMatches12;
         //TODO fill correctly
-    	vnMatches12 = vector< vector<int> >(F1.cameraFrames[nCam].mvKeysUn.size(),(-1,-1));
+    	vnMatches12 = vector< vector<int> >(F1.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1) );
 
 		vector<int> rotHist[HISTO_LENGTH];
 		for(int i=0;i<HISTO_LENGTH;i++)
