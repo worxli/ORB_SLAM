@@ -65,6 +65,8 @@ cv::Mat FramePublisher::DrawFrame()
     vector<MapPoint*> vMatchedMapPoints; // Tracked MapPoints in current frame
     int state; // Tracking state
 
+    //TODO loop over n frames
+
     //Copy variable to be used within scoped mutex
     {
         boost::mutex::scoped_lock lock(mMutex);
