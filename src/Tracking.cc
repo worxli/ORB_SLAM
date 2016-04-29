@@ -731,15 +731,15 @@ void Tracking::Initialize()
 
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
-        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
-        {
-            if(mvIniMatches[i]>=0 && !vbTriangulated[i])
-            {
-                mvIniMatches[i]=-1;
-                minNmatches--;
-                //nmatches--;
-            }           
-        }
+//        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
+//        {
+//            if(mvIniMatches[i]>=0 && !vbTriangulated[i])
+//            {
+//                mvIniMatches[i]=-1;
+//                minNmatches--;
+//                //nmatches--;
+//            }
+//        }
 
         CreateInitialMap(Rcw,tcw);
     }

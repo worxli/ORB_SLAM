@@ -607,9 +607,7 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 
     {
     	int nmatches=0;
-    	std::vector<int> vnMatches12;
-        //TODO fill correctly
-    	vnMatches12 = vector< vector<int> >(F1.cameraFrames[nCam].mvKeysUn.size(),(-1,-1));
+        vector<vector<int> > vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1) );
 
 		vector<int> rotHist[HISTO_LENGTH];
 		for(int i=0;i<HISTO_LENGTH;i++)
@@ -617,7 +615,7 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 		const float factor = 1.0f/HISTO_LENGTH;
 
 		vector<int> vMatchedDistance(F2.cameraFrames[nCam].mvKeysUn.size(),INT_MAX);
-		vector<int> vnMatches21(F2.cameraFrames[nCam].mvKeysUn.size(),-1);
+		vector<vector<int> > vnMatches21(F2.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1));
 
 		for(size_t i1=0, iend1=F1.cameraFrames[nCam].mvKeysUn.size(); i1<iend1; i1++)
 		{
@@ -664,14 +662,17 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 			{
 				if(bestDist<(float)bestDist2*mfNNratio)
 				{
-					if(vnMatches21[bestIdx2]>=0)
+					if(vnMatches21[bestIdx2][0]>=0)
 					{
-						vnMatches12[vnMatches21[bestIdx2]][0]=-1;
+						vnMatches12[vnMatches21[bestIdx2][0]][0]=-1;
 						nmatches--;
 					}
 					vnMatches12[i1][0]=bestIdx2;
-                    vnMatches12[i1][0]=nCam;
-					vnMatches21[bestIdx2]=i1;
+                    vnMatches12[i1][1]=nCam;
+                    vnMatches12[i1][2]=nCam;
+					vnMatches21[bestIdx2][0]=i1;
+                    vnMatches21[bestIdx2][1]=nCam;
+                    vnMatches21[bestIdx2][2]=nCam;
 					vMatchedDistance[bestIdx2]=bestDist;
 					nmatches++;
 
@@ -706,9 +707,9 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 				for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
 				{
 					int idx1 = rotHist[i][j];
-					if(vnMatches12[idx1]>=0)
+					if(vnMatches12[idx1][0]>=0)
 					{
-						vnMatches12[idx1]=-1;
+						vnMatches12[idx1][0]=-1;
 						nmatches--;
 					}
 				}
@@ -718,10 +719,10 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 
 		//Update prev matched
 		for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
-			if(vnMatches12[i1]>=0)
-				vbPrevMatched[i1]=F2.cameraFrames[nCam].mvKeysUn[vnMatches12[i1]].pt;
+			if(vnMatches12[i1][0]>=0)   
+				vbPrevMatched[i1]=F2.cameraFrames[nCam].mvKeysUn[vnMatches12[i1][0]].pt;
 
-		vnMatches12Frame.push_back(vnMatches12);
+		vnMatches12Frame.insert(vnMatches12Frame.end(), vnMatches12.begin(), vnMatches12.end());
 		nmatchesFrame.push_back(nmatches);
     }
 
