@@ -714,8 +714,8 @@ void Tracking::Initialize()
 
     // Check if there are enough correspondences in each cameraframe
 
-    //int minNmatches =std::min_element(nmatches, 0);
-    int minNmatches=nmatches[0];
+    int minNmatches = *min_element(nmatches.begin(),nmatches.end());
+    //int minNmatches=nmatches[0];
 
     if(minNmatches<100)
     {
