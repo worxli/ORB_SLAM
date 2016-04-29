@@ -732,6 +732,8 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
         if(vnMatches12Frame[i][0]>-1)
             cout << "vnMatches12Frame[" << i << "] = " << vnMatches12Frame[i][0] << " , " << vnMatches12Frame[i][1] << " , " << vnMatches12Frame[i][2] << endl;
     }
+
+    cout << "end matcher" << endl;
     
     return nmatchesFrame;
 }

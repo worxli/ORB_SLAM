@@ -723,7 +723,8 @@ void Tracking::Initialize()
         cout << "set state not init" << endl;
         mState = NOT_INITIALIZED;
         return;
-    }  
+    }
+    cout << "matches: " << minNmatches  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
