@@ -603,7 +603,9 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 	std::vector<int> nmatchesFrame;
 
     for(int nCam=0;nCam<F1.cameraFrames.size();nCam++)
-    {
+    //for(int nCam=0;nCam<2;nCam++)
+
+        {
     	int nmatches=0;
         vector<vector<int> > vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1) );
 
@@ -722,10 +724,15 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 
 		vnMatches12Frame.insert(vnMatches12Frame.end(), vnMatches12.begin(), vnMatches12.end());
 		nmatchesFrame.push_back(nmatches);
+
     }
 
-    cout << "vnmatches12Frame " << vnmatches12Frame << endl;
-
+    for(int i =0; i<vnMatches12Frame.size();i++)
+    {
+        if(vnMatches12Frame[i][0]>-1)
+            cout << "vnMatches12Frame[" << i << "] = " << vnMatches12Frame[i][0] << " , " << vnMatches12Frame[i][1] << " , " << vnMatches12Frame[i][2] << endl;
+    }
+    
     return nmatchesFrame;
 }
 
