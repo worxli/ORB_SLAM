@@ -603,7 +603,6 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 	std::vector<int> nmatchesFrame;
 
     for(int nCam=0;nCam<F1.cameraFrames.size();nCam++)
-
     {
     	int nmatches=0;
         vector<vector<int> > vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1) );

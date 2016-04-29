@@ -703,7 +703,7 @@ void Tracking::Initialize()
     if(mCurrentFrame.cameraFrames[0].mvKeys.size()<=100)
     {
         cout << "not enough keys" << endl;
-        fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+        fill(mvIniMatches.begin(),mvIniMatches.end(), vector<int>(3,-1));
         mState = NOT_INITIALIZED;
         return;
     }
@@ -731,15 +731,15 @@ void Tracking::Initialize()
 
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
-//        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
-//        {
-//            if(mvIniMatches[i]>=0 && !vbTriangulated[i])
-//            {
-//                mvIniMatches[i]=-1;
-//                minNmatches--;
-//                //nmatches--;
-//            }
-//        }
+        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
+        {
+            if(mvIniMatches[i][0]>=0 && !vbTriangulated[i])
+            {
+                mvIniMatches[i][0]=-1;
+                minNmatches--;
+                //nmatches--;
+            }
+        }
 
         CreateInitialMap(Rcw,tcw);
     }
@@ -768,7 +768,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     // Create MapPoints and asscoiate to keyframes
     for(size_t i=0; i<mvIniMatches.size();i++)
     {
-        if(mvIniMatches[i]<0)
+        if(mvIniMatches[i][0]<0)
             continue;
 
         //Create MapPoint.
@@ -777,16 +777,16 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
         MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
 
         pKFini->AddMapPoint(pMP,i);
-        pKFcur->AddMapPoint(pMP,mvIniMatches[i]);
+        pKFcur->AddMapPoint(pMP,mvIniMatches[i][0]);
 
         pMP->AddObservation(pKFini,i);
-        pMP->AddObservation(pKFcur,mvIniMatches[i]);
+        pMP->AddObservation(pKFcur,mvIniMatches[i][0]);
 
         pMP->ComputeDistinctiveDescriptors();
         pMP->UpdateNormalAndDepth();
 
         //Fill Current Frame structure
-        mCurrentFrame.mvpMapPoints[mvIniMatches[i]] = pMP;
+        mCurrentFrame.mvpMapPoints[mvIniMatches[i][0]] = pMP;
 
         //Add to Map
         mpMap->AddMapPoint(pMP);

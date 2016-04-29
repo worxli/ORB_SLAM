@@ -65,7 +65,7 @@ protected:
     vector<MapPoint*> mvpMatchedMapPoints;
     int mnTracked;
     vector<cv::KeyPoint> mvIniKeys;
-    vector<int> mvIniMatches;
+    vector<vector<int> > mvIniMatches;
 
     ros::NodeHandle mNH;
     ros::Publisher mImagePub;
