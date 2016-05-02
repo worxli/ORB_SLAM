@@ -1087,7 +1087,7 @@ void Tracking::UpdateReferenceKeyFrames()
 bool Tracking::Relocalisation()
 {
     // Compute Bag of Words Vector
-    mCurrentFrame.ComputeBoW(); //TODO does it do it for everything?
+    mCurrentFrame.ComputeBoW(); //TODO does it do it for everything? -> now, yes
 
     // Relocalisation is performed when tracking is lost and forced at some stages during loop closing
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
@@ -1139,7 +1139,7 @@ bool Tracking::Relocalisation()
             else
             {
                 PnPsolver* pSolver = new PnPsolver(mCurrentFrame,vvpMapPointMatches[i]);
-                pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);
+                //pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);
                 vpPnPsolvers[i] = pSolver;
                 nCandidates++;
             }
@@ -1176,34 +1176,34 @@ bool Tracking::Relocalisation()
 //                nCandidates--;
 //            }
 //
-//            // If a Camera Pose is computed, optimize
-//            if(!Tcw.empty())
-//            {
-//                Tcw.copyTo(mCurrentFrame.mTcw);
-//
-//                set<MapPoint*> sFound;
-//
-//                for(size_t j=0; j<vbInliers.size(); j++)
-//                {
-//                    if(vbInliers[j])
-//                    {
-//                        mCurrentFrame.mvpMapPoints[j]=vvpMapPointMatches[i][j];
-//                        sFound.insert(vvpMapPointMatches[i][j]);
-//                    }
-//                    else
-//                        mCurrentFrame.mvpMapPoints[j]=NULL;
-//                }
-//
-//                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
-//
-//                if(nGood<10)
-//                    continue;
-//
-//                for(size_t io =0, ioend=mCurrentFrame.mvbOutlier.size(); io<ioend; io++)
-//                    if(mCurrentFrame.mvbOutlier[io])
-//                        mCurrentFrame.mvpMapPoints[io]=NULL;
-//
-//                // If few inliers, search by projection in a coarse window and optimize again
+            // If a Camera Pose is computed, optimize
+            if(!Tcw.empty())
+            {
+                Tcw.copyTo(mCurrentFrame.mTcw);
+
+                set<MapPoint*> sFound;
+
+                for(size_t j=0; j<vbInliers.size(); j++)
+                {
+                    if(vbInliers[j])
+                    {
+                        mCurrentFrame.mvpMapPoints[j]=vvpMapPointMatches[i][j];
+                        sFound.insert(vvpMapPointMatches[i][j]);
+                    }
+                    else
+                        mCurrentFrame.mvpMapPoints[j]=NULL;
+                }
+
+                int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+
+                if(nGood<10)
+                    continue;
+
+                for(size_t io =0, ioend=mCurrentFrame.mvbOutlier.size(); io<ioend; io++)
+                    if(mCurrentFrame.mvbOutlier[io])
+                        mCurrentFrame.mvpMapPoints[io]=NULL;
+
+                // If few inliers, search by projection in a coarse window and optimize again
 //                if(nGood<50)
 //                {
 //                    int nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,10,100);
@@ -1234,14 +1234,14 @@ bool Tracking::Relocalisation()
 //                        }
 //                    }
 //                }
-//
-//                // If the pose is supported by enough inliers stop ransacs and continue
-//                if(nGood>=50)
-//                {
-//                    bMatch = true;
-//                    break;
-//                }
-//            }
+
+                // If the pose is supported by enough inliers stop ransacs and continue
+                if(nGood>=50)
+                {
+                    bMatch = true;
+                    break;
+                }
+            }
         }
     }
 

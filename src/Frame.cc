@@ -97,7 +97,12 @@ namespace ORB_SLAM {
 
     void Frame::ComputeBoW() {
         if (mBowVec.empty()) {
-            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
+            vector <cv::Mat> vCurrentDesc;
+            for(uint i = 0; i <= cameraFrames.size(); i++) {
+                vector <cv::Mat> vCurrentDescT = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
+                vCurrentDesc.insert(vCurrentDesc.end(), vCurrentDescT.begin(), vCurrentDescT.end());
+            }
+
             mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
         }
     }

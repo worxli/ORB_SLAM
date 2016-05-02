@@ -100,7 +100,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
 
-    mvbOutlier = vector<bool>(N,false);
+    //mvbOutlier = vector<bool>(N,false);
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
@@ -384,12 +384,11 @@ void CameraFrame::KeyfeatureBearings()
 	for(unsigned int i=0; i<mvKeys.size(); i++)
 	{
 		Eigen::Vector2d p_in;
-		Eigen::Vector2d p_temp;
 		Eigen::Vector3d bearing;
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
-		UndistortPoint(p_in, p_temp, bearing);
+        LiftToSphere(p_in, bearing);
 		bearing.normalize(); //needed?
 		vBearings.push_back(bearing);
 	}

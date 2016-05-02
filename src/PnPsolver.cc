@@ -120,6 +120,7 @@ cv::Mat PnPsolver::gpnp()
     return Tcw;
 }
 
+    /*
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)
 {
     mRansacProb = probability;
@@ -157,13 +158,17 @@ void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxI
     for(size_t i=0; i<mvSigma2.size(); i++)
         mvMaxError[i] = mvSigma2[i]*th2;
 }
+     */
 
+    /*
 cv::Mat PnPsolver::find(vector<bool> &vbInliers, int &nInliers)
 {
     bool bFlag;
-    return iterate(mRansacMaxIts,bFlag,vbInliers,nInliers);    
+    return iterate(mRansacMaxIts,bFlag,vbInliers,nInliers);
 }
+     */
 
+    /*
 cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers)
 {
     bNoMore = false;
@@ -258,7 +263,9 @@ cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInlie
 
     return cv::Mat();
 }
+    */
 
+    /*
 bool PnPsolver::Refine()
 {
     vector<int> vIndices;
@@ -305,8 +312,9 @@ bool PnPsolver::Refine()
 
     return false;
 }
+    */
 
-
+/*
 void PnPsolver::CheckInliers()
 {
     mnInliersi=0;
@@ -339,8 +347,9 @@ void PnPsolver::CheckInliers()
         }
     }
 }
+ */
 
-
+/*
 void PnPsolver::set_maximum_number_of_correspondences(int n)
 {
   if (maximum_number_of_correspondences < n) {
@@ -356,6 +365,7 @@ void PnPsolver::set_maximum_number_of_correspondences(int n)
     pcs = new double[3 * maximum_number_of_correspondences];
   }
 }
+
 
 void PnPsolver::reset_correspondences(void)
 {
@@ -1020,5 +1030,6 @@ void PnPsolver::mat_to_quat(const double R[3][3], double q[4])
   q[2] *= scale;
   q[3] *= scale;
 }
+ */
 
 } //namespace ORB_SLAM
