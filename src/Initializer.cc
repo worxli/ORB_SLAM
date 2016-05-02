@@ -34,9 +34,12 @@ namespace ORB_SLAM
 
 Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
 {
-    mK = ReferenceFrame.cameraFrames[0].mK.clone();
+    cameras = ReferenceFrame.cameraFrames.size();
 
-    mvKeys1 = ReferenceFrame.cameraFrames[0].mvKeysUn;
+    for(uint i = 0; i<cameras; i++) {
+        mK = ReferenceFrame.cameraFrames[i].mK.clone();
+        mvKeys1.push_back(ReferenceFrame.cameraFrames[i].mvKeysUn);
+    }
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
@@ -75,28 +78,26 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Reference Frame: 1, Current Frame: 2
 
     //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
-    for(int i =0; i<CurrentFrame.cameraFrames.size();i++)
-        mvKeys2.insert(mvKeys2.end(), CurrentFrame.cameraFrames[i].mvKeysUn.begin(), CurrentFrame.cameraFrames[i].mvKeysUn.end());
+    for(int j =0; j<cameras; j++) {
+        mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
 
-    mvMatches12.clear();
-    cout << "Initializer::Initialize vMatches12.size(): " << vMatches12.size() << endl;
-    cout << "Initializer::Initialize vMatches12[0].size(): " << vMatches12[0].size() << endl;
-    cout << "Initializer::Initialize mvMatches12.size(): " << mvMatches12.size() << endl;
-    cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
-    mvMatches12.reserve(mvKeys2.size());
-    mvbMatched1.resize(mvKeys1.size());
-    for(size_t i=0, iend=vMatches12.size();i<iend; i++)
-    {
-        if(vMatches12[i][0]>=0)
+        mvMatches12[j].clear();
+        cout << "Initializer::Initialize vMatches12[j].size(): " << vMatches12[j].size() << endl;
+        cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
+        mvMatches12[j].reserve(mvKeys2[j].size());
+        mvbMatched1[j].resize(mvKeys1[j].size());
+        for (size_t i = 0, iend = vMatches12.size(); i < iend; i++)
         {
-            mvMatches12.push_back(make_pair(i,vMatches12[i][0]));
-            mvbMatched1[i]=true;
+            if (vMatches12[i][j] >= 0) {
+                mvMatches12.push_back(make_pair(i, vMatches12[j][i]));
+                mvbMatched1[j][i] = true;
+            }
+            else
+                mvbMatched1[j][i] = false;
         }
-        else
-            mvbMatched1[i]=false;
-    }
 
-    const int N = mvMatches12.size();
+        const vector<int> N = mvMatches12.size();
+    }
 
     // Indices for minimum set selection
     vector<size_t> vAllIndices;
@@ -128,30 +129,36 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         }
     }
 
-    // Launch threads to compute in parallel a fundamental matrix and a homography
-    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
-    float SH, SF;
-    cv::Mat H, F;
+//    // Launch threads to compute in parallel a fundamental matrix and a homography
+//    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
+//    float SH, SF;
+//    cv::Mat H, F;
+//
+//    boost::thread threadH(&Initializer::FindHomography,this,boost::ref(vbMatchesInliersH), boost::ref(SH), boost::ref(H));
+//    boost::thread threadF(&Initializer::FindFundamental,this,boost::ref(vbMatchesInliersF), boost::ref(SF), boost::ref(F));
+//
+//    // Wait until both threads have finished
+//    threadH.join();
+//    threadF.join();
+//
+//    // Compute ratio of scores
+//    float RH = SH/(SH+SF);
+//
+//    // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
+//    if(RH>0.40)
+//        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+//    else //if(pF_HF>0.6)
+//        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+//
+//    return false;
 
-    boost::thread threadH(&Initializer::FindHomography,this,boost::ref(vbMatchesInliersH), boost::ref(SH), boost::ref(H));
-    boost::thread threadF(&Initializer::FindFundamental,this,boost::ref(vbMatchesInliersF), boost::ref(SF), boost::ref(F));
+    // compute R,t using opengv
+    // adapter comes here
 
-    // Wait until both threads have finished
-    threadH.join();
-    threadF.join();
-
-    // Compute ratio of scores
-    float RH = SH/(SH+SF);
-
-    // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
-    if(RH>0.40)
-        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-    else //if(pF_HF>0.6)
-        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-
-    return false;
+    //
 }
 
+    /*
 bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
                                    vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
@@ -180,7 +187,8 @@ bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vecto
             relative_pose::sixpt( adapter, indices )
 
 }
-
+     */
+/*
 void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
 {
     // Number of putative matches
@@ -526,7 +534,21 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
 
     return score;
 }
+ */
 
+float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t)
+{
+    // reproject points and check score
+    for(uint i = 0; i<cameras; i++) {
+        float parallaxi;
+        vector<cv::Point3f> vP3Di;
+        vector<bool> vbTriangulatedi;
+        int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+    }
+
+}
+
+    /*
 bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
                             cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
 {
@@ -987,5 +1009,6 @@ void Initializer::DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat
     if(cv::determinant(R2)<0)
         R2=-R2;
 }
+     */
 
 } //namespace ORB_SLAM

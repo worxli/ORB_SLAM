@@ -598,16 +598,14 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
 
 
 
-vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector< vector<int> > &vnMatches12Frame, int windowSize)
+vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<vector<cv::Point2f> > &vbPrevMatched, vector<vector<int> > &vnMatches12Frame, int windowSize)
 {
 	std::vector<int> nmatchesFrame;
 
     for(int nCam=0;nCam<F1.cameraFrames.size();nCam++)
-    //for(int nCam=0;nCam<2;nCam++)
-
-        {
+    {
     	int nmatches=0;
-        vector<vector<int> > vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1) );
+        vector<int> vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), -1);
 
 		vector<int> rotHist[HISTO_LENGTH];
 		for(int i=0;i<HISTO_LENGTH;i++)
@@ -615,7 +613,7 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 		const float factor = 1.0f/HISTO_LENGTH;
 
 		vector<int> vMatchedDistance(F2.cameraFrames[nCam].mvKeysUn.size(),INT_MAX);
-		vector<vector<int> > vnMatches21(F2.cameraFrames[nCam].mvKeysUn.size(), vector<int>(3,-1));
+		vector<int> vnMatches21(F2.cameraFrames[nCam].mvKeysUn.size(), -1);
 
 		for(size_t i1=0, iend1=F1.cameraFrames[nCam].mvKeysUn.size(); i1<iend1; i1++)
 		{
@@ -624,7 +622,7 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 			if(level1>0)
 				continue;
 
-			vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,vbPrevMatched[i1].y, windowSize,level1,level1);
+			vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[nCam][i1].x,vbPrevMatched[nCam][i1].y, windowSize,level1,level1);
 
 			if(vIndices2.empty())
 				continue;
@@ -662,17 +660,13 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 			{
 				if(bestDist<(float)bestDist2*mfNNratio)
 				{
-					if(vnMatches21[bestIdx2][0]>=0)
+					if(vnMatches21[bestIdx2]>=0)
 					{
-						vnMatches12[vnMatches21[bestIdx2][0]][0]=-1;
+						vnMatches12[vnMatches21[bestIdx2]]=-1;
 						nmatches--;
 					}
-					vnMatches12[i1][0]=bestIdx2;
-                    vnMatches12[i1][1]=nCam;
-                    vnMatches12[i1][2]=nCam;
-					vnMatches21[bestIdx2][0]=i1;
-                    vnMatches21[bestIdx2][1]=nCam;
-                    vnMatches21[bestIdx2][2]=nCam;
+					vnMatches12[i1]=bestIdx2;
+					vnMatches21[bestIdx2]=i1;
 					vMatchedDistance[bestIdx2]=bestDist;
 					nmatches++;
 
@@ -689,7 +683,6 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 					}
 				}
 			}
-
 		}
 
 		if(mbCheckOrientation)
@@ -707,9 +700,9 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 				for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
 				{
 					int idx1 = rotHist[i][j];
-					if(vnMatches12[idx1][0]>=0)
+					if(vnMatches12[idx1]>=0)
 					{
-						vnMatches12[idx1][0]=-1;
+						vnMatches12[idx1]=-1;
 						nmatches--;
 					}
 				}
@@ -719,18 +712,12 @@ vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv:
 
 		//Update prev matched
 		for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
-			if(vnMatches12[i1][0]>=0)   
-				vbPrevMatched[i1]=F2.cameraFrames[nCam].mvKeysUn[vnMatches12[i1][0]].pt;
+			if(vnMatches12[i1]>=0)
+				vbPrevMatched[nCam][i1]=F2.cameraFrames[nCam].mvKeysUn[vnMatches12[i1]].pt;
 
-		vnMatches12Frame.insert(vnMatches12Frame.end(), vnMatches12.begin(), vnMatches12.end());
+        vnMatches12Frame.push_back(vnMatches12);
 		nmatchesFrame.push_back(nmatches);
 
-    }
-
-    for(int i =0; i<vnMatches12Frame.size();i++)
-    {
-        if(vnMatches12Frame[i][0]>-1)
-            cout << "vnMatches12Frame[" << i << "] = " << vnMatches12Frame[i][0] << " , " << vnMatches12Frame[i][1] << " , " << vnMatches12Frame[i][2] << endl;
     }
 
     cout << "frames in F1: " << F1.cameraFrames.size() << endl;

@@ -74,17 +74,17 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint> mvKeys1;
+    vector<vector<cv::KeyPoint> > mvKeys1;
 
     // Keypoints from Current Frame (Frame 2)
-    vector<cv::KeyPoint> mvKeys2;
+    vector<vector<cv::KeyPoint> > mvKeys2;
 
     // Current Matches from Reference to Current
-    vector<Match> mvMatches12;
-    vector<bool> mvbMatched1;
+    vector<vector<Match> > mvMatches12;
+    vector<vector<bool> > mvbMatched1;
 
     // Calibration
-    cv::Mat mK;
+    vector<cv::Mat> mK;
 
     // Standard Deviation and Variance
     float mSigma, mSigma2;
@@ -94,6 +94,9 @@ private:
 
     // Ransac sets
     vector<vector<size_t> > mvSets;
+
+    // # of cameras
+    int cameras;
 
     // sample data
     vector<cv::Mat> v1c1;

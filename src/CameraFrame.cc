@@ -356,28 +356,28 @@ void CameraFrame::LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P)
     }
 }
 
-void CameraFrame::PluckerLine()
-{
-	for(unsigned int i=0; i<mvKeys.size(); i++)
-	{
-		Eigen::Vector2d p_in;
-
-		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
-		Eigen::Vector3d P;
-		Eigen::Matrix3d R;
-		Eigen::Vector3d t;
-		cv::cv2eigen(mR,R);
-		cv::cv2eigen(mt,t);
-		LiftToSphere(p_in, P);
-		std::vector<Eigen::Vector3d> pluckerLine;
-		Eigen::Vector3d q = R.inverse()*(P-t);
-		q.normalize();
-		pluckerLine.push_back(q);
-		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
-		pluckerLines.push_back(pluckerLine);
-	}
-
-}
+//void CameraFrame::PluckerLine()
+//{
+//	for(unsigned int i=0; i<mvKeys.size(); i++)
+//	{
+//		Eigen::Vector2d p_in;
+//
+//		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
+//		Eigen::Vector3d P;
+//		Eigen::Matrix3d R;
+//		Eigen::Vector3d t;
+//		cv::cv2eigen(mR,R);
+//		cv::cv2eigen(mt,t);
+//		LiftToSphere(p_in, P);
+//		std::vector<Eigen::Vector3d> pluckerLine;
+//		Eigen::Vector3d q = R.inverse()*(P-t);
+//		q.normalize();
+//		pluckerLine.push_back(q);
+//		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
+//		pluckerLines.push_back(pluckerLine);
+//	}
+//
+//}
 
 void CameraFrame::KeyfeatureBearings()
 {
@@ -390,8 +390,8 @@ void CameraFrame::KeyfeatureBearings()
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
-		UndistortPoint(p_in, p_temp, bearing);
-		bearing.normalize(); //needed?
+        LiftToSphere(p_in, bearing);
+//		bearing.normalize(); //needed?
 		vBearings.push_back(bearing);
 	}
 

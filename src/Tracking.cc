@@ -557,13 +557,21 @@ void Tracking::ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    if(mCurrentFrame.cameraFrames[0].mvKeysUn.size()>100)
+    int features = 0;
+    for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
+        features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+
+    if(features>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
-        mvbPrevMatched.resize(mCurrentFrame.cameraFrames[0].mvKeysUn.size());
-        for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
-            mvbPrevMatched[i]=mCurrentFrame.cameraFrames[0].mvKeysUn[i].pt;
+        mvbPrevMatched.clear();
+        for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++) {
+            vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size(), cv::Point2f());
+            for (size_t i = 0; i < mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
+                matches[i] = mCurrentFrame.cameraFrames[j].mvKeysUn[i].pt;
+            mvbPrevMatched.push_back(matches);
+        }
 
         if(mpInitializer) {
             //cout << mState << endl;
@@ -581,10 +589,14 @@ void Tracking::FirstInitialization()
 void Tracking::Initialize()
 {
     // Check if current frame has enough keypoints, otherwise reset initialization process
-    if(mCurrentFrame.cameraFrames[0].mvKeys.size()<=100)
+    int features = 0;
+    for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
+        features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+
+    if(features<100)
     {
         cout << "not enough keys" << endl;
-        fill(mvIniMatches.begin(),mvIniMatches.end(), vector<int>(3,-1));
+        mvIniMatches.clear();
         mState = NOT_INITIALIZED;
         return;
     }
@@ -594,9 +606,7 @@ void Tracking::Initialize()
     vector<int> nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
 
     // Check if there are enough correspondences in each cameraframe
-
     int minNmatches = *min_element(nmatches.begin(),nmatches.end());
-    //int minNmatches=nmatches[0];
 
     if(minNmatches<100)
     {
