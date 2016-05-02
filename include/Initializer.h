@@ -98,6 +98,8 @@ private:
     // sample data
     vector<cv::Mat> v1c1;
     vector<cv::Mat> v2c1;
+    vector<cv::Mat> v1c1norm;
+    vector<cv::Mat> v2c1norm;
     cv::Mat gR;
     cv::Mat gt;
     cv::Mat c1R;

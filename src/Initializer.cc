@@ -27,6 +27,8 @@
 
 #include<boost/thread.hpp>
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
+#include<opengv/relative_pose/NoncentralRelativeAdapter.hpp>
+#include<opengv/relative_pose>
 
 
 namespace ORB_SLAM
@@ -64,6 +66,13 @@ void Initializer::generateSampleData()
 //        cout << "pc1: " << v1c1[i] << endl;
         v2c1.push_back(c1R*(gR*p+gt)+c1t);
 //        cout << "pc2: " << v2c1[i] << endl;
+    }
+
+    for(int i =0; i<v1c1.size(); i++)
+    {
+        //v1c1norm = v1c1[i]/cv::norm(v1c1[i],cv::NORM_L2);
+        cv::divide(cv::norm(v1c1[i]), v1c1[i], v1c1norm, -1);
+        cv::divide(cv::norm(v2c1[i]), v2c1[i], v2c1norm, -1);
     }
 }
 
@@ -155,29 +164,45 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
                                    vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
-    //RANSAC iteration up to 100 times
+    //Transform Sample Data into Eigen Matrices
     //fill adapter with 6 random bearing points
-    //check after each iteration the score of the pose estimation
 
-    for(int i =1,i<vMatches12.size(),i++)
+    opengv::bearingVectors_t mv1c1;
+    opengv::bearingVectors_t mv2c1;
+
+    for(int i=0; i<6; i++)
     {
-        if(vMatches12[i][0]>0)
-        {
-            F1.camerFrame.P[i]
-        }
+        Eigen::Matrix<double, 3, 1> mv1;
+        Eigen::Matrix<double, 3, 1> mv2;
+        cv::cv2eigen(v1c1norm[i], mv1);
+        cv::cv2eigen(v2c1norm[i], mv2);
+        mv1c1.push_back(mv1);
+        mv2c1.push_back(mv2);
     }
 
+    std::vector<int> camcorr1(6);
+    std::vector<int> camcorr2(6);
+    camcorr1 << { 0,0,0,0,0,0 };
+    camcorr2 << { 0,0,0,0,0,0 };
+
+    Eigen::Matrix3d mc1R;
+    Eigen::Vector3d mc1t;
+    cv::cv2eigen(c1R, mc1R);
+    cv::cv2eigen(c1t, mc1t);
+
+    opengv::rotations_t cameraR;
+    opengv::translations_t cameraT;
+    cameraR.push_back(mc1R);
+    cameraT.push_back(mc1t);
+
+    //check after each iteration the score of the pose estimation
+
+
     // create the non-central relative adapter
-    relative_pose::NoncentralRelativeAdapter adapter(
-            bearingVectors1,
-            bearingVectors2,
-            camCorrespondences1,
-            camCorrespondences2,
-            camOffsets,
-            camRotations );
+    opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1c1, mv2c1, camcorr1, camcorr2, cameraT, cameraR );
+
     // 6-point algorithm
-    rotations_t sixpt_rotations =
-            relative_pose::sixpt( adapter, indices )
+    opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
 
 }
 
