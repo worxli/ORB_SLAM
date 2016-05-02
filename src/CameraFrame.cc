@@ -98,7 +98,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
 
-    mvbOutlier = vector<bool>(N,false);
+  //  mvbOutlier = vector<bool>(N,false);
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
