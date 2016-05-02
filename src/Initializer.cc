@@ -87,6 +87,8 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
+    vector<int> N;
+
     //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
     for(int j =0; j<cameras; j++) {
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
@@ -96,18 +98,19 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
         mvMatches12[j].reserve(mvKeys2[j].size());
         mvbMatched1[j].resize(mvKeys1[j].size());
-        for (size_t i = 0, iend = vMatches12.size(); i < iend; i++)
+        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++)
         {
-            if (vMatches12[i][j] >= 0) {
-                mvMatches12.push_back(make_pair(i, vMatches12[j][i]));
+            if (vMatches12[j][i] >= 0) {
+                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
                 mvbMatched1[j][i] = true;
             }
             else
                 mvbMatched1[j][i] = false;
         }
 
-        const vector<int> N = mvMatches12.size();
+        N.push_back(mvMatches12.size());
     }
+    /*
 
     // Indices for minimum set selection
     vector<size_t> vAllIndices;
@@ -138,6 +141,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
             vAvailableIndices.pop_back();
         }
     }
+    */
 
 //    // Launch threads to compute in parallel a fundamental matrix and a homography
 //    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
@@ -570,7 +574,7 @@ float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t)
         float parallaxi;
         vector<cv::Point3f> vP3Di;
         vector<bool> vbTriangulatedi;
-        int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+        //int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
     }
 
 }
