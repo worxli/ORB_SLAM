@@ -390,7 +390,7 @@ void CameraFrame::KeyfeatureBearings()
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
-		UndistortPoint(p_in, p_temp, bearing);
+        LiftToSphere(p_in, bearing);
 		bearing.normalize(); //needed?
 		vBearings.push_back(bearing);
 	}

@@ -28,7 +28,7 @@
 #include<boost/thread.hpp>
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
 #include<opengv/relative_pose/NoncentralRelativeAdapter.hpp>
-#include<opengv/relative_pose>
+#include<opengv/relative_pose/methods.hpp>
 
 
 namespace ORB_SLAM
@@ -44,6 +44,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
     generateSampleData();
+    InitializeGenCam();
 }
 
 void Initializer::generateSampleData()
@@ -161,8 +162,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     return false;
 }
 
-bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
-                                   vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
+void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
     //fill adapter with 6 random bearing points
@@ -182,8 +182,8 @@ bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vecto
 
     std::vector<int> camcorr1(6);
     std::vector<int> camcorr2(6);
-    camcorr1 << { 0,0,0,0,0,0 };
-    camcorr2 << { 0,0,0,0,0,0 };
+    camcorr1 << 0,0,0,0,0,0;
+    camcorr2 << 0,0,0,0,0,0;
 
     Eigen::Matrix3d mc1R;
     Eigen::Vector3d mc1t;
