@@ -131,7 +131,10 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
                                    vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
-    //create bearing vectors
+    //RANSAC iteration up to 100 times
+    //fill adapter with 6 random bearing points
+    //check after each iteration the score of the pose estimation
+
     for(int i =1,i<vMatches12.size(),i++)
     {
         if(vMatches12[i][0]>0)
