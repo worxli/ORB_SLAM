@@ -391,7 +391,7 @@ void CameraFrame::KeyfeatureBearings()
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
         LiftToSphere(p_in, bearing);
-//		bearing.normalize(); //needed?
+		bearing.normalize(); //needed?
 		vBearings.push_back(bearing);
 	}
 
