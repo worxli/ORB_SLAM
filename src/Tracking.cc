@@ -401,14 +401,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=camera; i<camera+2; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=camera; i<camera+2; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
@@ -561,22 +561,24 @@ void Tracking::FirstInitialization()
     for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
         features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
 
+    cout << "features " << features << endl;
+
     if(features>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
         mvbPrevMatched.clear();
+        cout << "copy matches" << endl;
         for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++) {
-            vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size(), cv::Point2f());
-            for (size_t i = 0; i < mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
+            vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size());
+            for (size_t i = 0; i < mCurrentFrame.cameraFrames[j].mvKeysUn.size(); i++)
                 matches[i] = mCurrentFrame.cameraFrames[j].mvKeysUn[i].pt;
             mvbPrevMatched.push_back(matches);
         }
 
         if(mpInitializer) {
-            //cout << mState << endl;
             cout << "delete Initializer" << mpInitializer << endl;
-            //delete mpInitializer;
+            delete mpInitializer;
             cout << "deleted" << endl;
         }
 
@@ -592,6 +594,8 @@ void Tracking::Initialize()
     int features = 0;
     for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
         features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+
+    cout << "features " << features << endl;
 
     if(features<100)
     {
@@ -623,17 +627,17 @@ void Tracking::Initialize()
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
-    vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
+    vector<vector<bool> > vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
-        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
-        {
-            if(mvIniMatches[i][0]>=0 && !vbTriangulated[i])
-            {
-                mvIniMatches[i][0]=-1;
-                minNmatches--;
-                //nmatches--;
+        for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+            for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
+                cout << i << endl;
+                if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
+                    mvIniMatches[j][i] = -1;
+                    minNmatches--;
+                }
             }
         }
 
@@ -662,32 +666,33 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mpMap->AddKeyFrame(pKFini);
     mpMap->AddKeyFrame(pKFcur);
 
-    // Create MapPoints and asscoiate to keyframes
-    for(size_t i=0; i<mvIniMatches.size();i++)
-    {
-        if(mvIniMatches[i][0]<0)
-            continue;
+    for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+        // Create MapPoints and asscoiate to keyframes
+        for (size_t i = 0; i < mvIniMatches.size(); i++) {
+            if (mvIniMatches[j][i] < 0)
+                continue;
 
-        //Create MapPoint.
-        cv::Mat worldPos(mvIniP3D[i]);
+            //Create MapPoint.
+            cv::Mat worldPos(mvIniP3D[j][i]);
 
-        MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
+            MapPoint *pMP = new MapPoint(worldPos, pKFcur, mpMap);
 
-        pKFini->AddMapPoint(pMP,i);
-        pKFcur->AddMapPoint(pMP,mvIniMatches[i][0]);
+            pKFini->AddMapPoint(pMP, i);
+            pKFcur->AddMapPoint(pMP, mvIniMatches[j][i]);
 
-        pMP->AddObservation(pKFini,i);
-        pMP->AddObservation(pKFcur,mvIniMatches[i][0]);
+            pMP->AddObservation(pKFini, i);
+            pMP->AddObservation(pKFcur, mvIniMatches[j][i]);
 
-        pMP->ComputeDistinctiveDescriptors();
-        pMP->UpdateNormalAndDepth();
+            pMP->ComputeDistinctiveDescriptors();
+            pMP->UpdateNormalAndDepth();
 
-        //Fill Current Frame structure
-        mCurrentFrame.mvpMapPoints[mvIniMatches[i][0]] = pMP;
+            //Fill Current Frame structure
+            mCurrentFrame.mvpMapPoints[mvIniMatches[j][i]] = pMP;
 
-        //Add to Map
-        mpMap->AddMapPoint(pMP);
+            //Add to Map
+            mpMap->AddMapPoint(pMP);
 
+        }
     }
 
     // Update Connections

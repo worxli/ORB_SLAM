@@ -39,15 +39,15 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     cameras = ReferenceFrame.cameraFrames.size();
 
     for(uint i = 0; i<cameras; i++) {
-        mK = ReferenceFrame.cameraFrames[i].mK.clone();
+        mK.push_back(ReferenceFrame.cameraFrames[i].mK.clone());
         mvKeys1.push_back(ReferenceFrame.cameraFrames[i].mvKeysUn);
     }
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
-    generateSampleData();
-    InitializeGenCam();
+    //generateSampleData();
+    //InitializeGenCam();
 }
 
 void Initializer::generateSampleData()
@@ -82,24 +82,26 @@ void Initializer::generateSampleData()
 
 
 bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
-                             vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
+                             vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
-    vector<int> N;
+    mvMatches12.clear();
+    vector<vector<size_t> > vAllIndices;
 
     //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
     for(int j =0; j<cameras; j++) {
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
 
-        mvMatches12[j].clear();
         cout << "Initializer::Initialize vMatches12[j].size(): " << vMatches12[j].size() << endl;
         cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
-        mvMatches12[j].reserve(mvKeys2[j].size());
-        mvbMatched1[j].resize(mvKeys1[j].size());
-        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++)
-        {
+
+        vector<Match> matches;
+        matches.reserve(mvKeys2[j].size());
+        mvMatches12.push_back(matches);
+        mvbMatched1.push_back(vector<bool>(mvKeys1[j].size()));
+        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
             if (vMatches12[j][i] >= 0) {
                 mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
                 mvbMatched1[j][i] = true;
@@ -108,40 +110,45 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
                 mvbMatched1[j][i] = false;
         }
 
-        N.push_back(mvMatches12.size());
-    }
-    /*
+        const int N = mvMatches12[j].size();
 
-    // Indices for minimum set selection
-    vector<size_t> vAllIndices;
-    vAllIndices.reserve(N);
-    vector<size_t> vAvailableIndices;
+        // Indices for minimum set selection
+        vector<size_t> vIndices;
+        vIndices.reserve(N);
 
-    for(int i=0; i<N; i++)
-    {
-        vAllIndices.push_back(i);
-    }
-
-    // Generate sets of 8 points for each RANSAC iteration
-    mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
-
-    for(int it=0; it<mMaxIterations; it++)
-    {
-        vAvailableIndices = vAllIndices;
-
-        // Select a minimum set
-        for(size_t j=0; j<8; j++)
-        {
-            int randi = DUtils::Random::RandomInt(0,vAvailableIndices.size()-1);
-            int idx = vAvailableIndices[randi];
-
-            mvSets[it][j] = idx;
-
-            vAvailableIndices[randi] = vAvailableIndices.back();
-            vAvailableIndices.pop_back();
+        for (int i = 0; i < N; i++) {
+            vIndices.push_back(i);
         }
+        vAllIndices.push_back(vIndices);
     }
-    */
+
+    cout << "copied matches" << endl;
+
+//    // Generate sets of 8 points for each RANSAC iteration
+//    mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
+//
+//    vector<vector <size_t> > vAvailableIndices;
+//    for(int it=0; it<mMaxIterations; it++)
+//    {
+//        vAvailableIndices = vAllIndices;
+//
+//        // Select a minimum set
+//        for(int i =0; i<cameras; i++) {// because there are 8 points in the min set, we can take 2 (or 4) points per camera
+//            for (size_t j = 0; j < 8 / cameras; j++) // only works if we have 2 or 4 cameras
+//            {
+//                int randi = DUtils::Random::RandomInt(0, vAvailableIndices[i].size() - 1);
+//                int idx = vAvailableIndices[i][randi];
+//
+//                mvSets[it][i*8/cameras+j] = idx;
+//
+//                vAvailableIndices[i][randi] = vAvailableIndices[i].back();
+//                vAvailableIndices[i].pop_back();
+//            }
+//        }
+//    }
+//    // TODO do we need this code above?
+//    InitializeGenCam();
+    return true;
 
 //    // Launch threads to compute in parallel a fundamental matrix and a homography
 //    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
@@ -172,9 +179,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     //
 }
 
-    /*
-bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
-                                   vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
+
 void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
@@ -193,10 +198,8 @@ void Initializer::InitializeGenCam()
         mv2c1.push_back(mv2);
     }
 
-    std::vector<int> camcorr1(6);
-    std::vector<int> camcorr2(6);
-    camcorr1 << 0,0,0,0,0,0;
-    camcorr2 << 0,0,0,0,0,0;
+    std::vector<int> camcorr1(6,0);
+    std::vector<int> camcorr2(6,0);
 
     Eigen::Matrix3d mc1R;
     Eigen::Vector3d mc1t;
@@ -212,13 +215,26 @@ void Initializer::InitializeGenCam()
 
 
     // create the non-central relative adapter
+    cout << "create adapter" << endl;
     opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1c1, mv2c1, camcorr1, camcorr2, cameraT, cameraR );
 
     // 6-point algorithm
+    cout << "sixp" << endl;
     opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
 
 }
-     */
+
+float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t)
+{
+    // reproject points and check score
+    for(uint i = 0; i<cameras; i++) {
+        float parallaxi;
+        vector<vector<cv::Point3f> > vP3Di;
+        vector<vector<bool> > vbTriangulatedi;
+        //int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+    }
+}
+
 /*
 void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
 {
@@ -567,17 +583,6 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
 }
  */
 
-float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t)
-{
-    // reproject points and check score
-    for(uint i = 0; i<cameras; i++) {
-        float parallaxi;
-        vector<cv::Point3f> vP3Di;
-        vector<bool> vbTriangulatedi;
-        //int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
-    }
-
-}
 
     /*
 bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
