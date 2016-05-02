@@ -41,6 +41,30 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
+    generateSampleData();
+}
+
+void Initializer::generateSampleData()
+{
+    gR = (cv::Mat_<double>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
+    gt = (cv::Mat_<double>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+    c1R = (cv::Mat_<double>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    c1t = (cv::Mat_<double>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+
+    for(uint i = 0; i<200; i++) {
+        cv::Mat p = (cv::Mat_<double>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
+//        cout << "p: " << p << endl;
+//        cout << "p shape: " << p.size() << endl;
+//        cout << "gR shape: " << gR.size() << endl;
+//        cout << "gt shape: " << gt.size() << endl;
+//        cout << "c1R shape: " << c1R.size() << endl;
+//        cout << "c1t shape: " << c1t.size() << endl;
+//        cout << "c1R*p: " << c1R*p << (c1R*p).size() << endl;
+        v1c1.push_back(c1R*p+c1t);
+//        cout << "pc1: " << v1c1[i] << endl;
+        v2c1.push_back(c1R*(gR*p+gt)+c1t);
+//        cout << "pc2: " << v2c1[i] << endl;
+    }
 }
 
 

@@ -93,7 +93,18 @@ private:
     int mMaxIterations;
 
     // Ransac sets
-    vector<vector<size_t> > mvSets;   
+    vector<vector<size_t> > mvSets;
+
+    // sample data
+    vector<cv::Mat> v1c1;
+    vector<cv::Mat> v2c1;
+    cv::Mat gR;
+    cv::Mat gt;
+    cv::Mat c1R;
+    cv::Mat c1t;
+
+
+    void generateSampleData();
 
 };
 
