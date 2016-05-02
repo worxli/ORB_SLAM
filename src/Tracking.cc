@@ -724,7 +724,11 @@ void Tracking::Initialize()
         mState = NOT_INITIALIZED;
         return;
     }
-    cout << "matches: " << minNmatches  << endl;
+
+    // test output
+    cout << "matches 1-1: " << nmatches[0]  << endl;
+    cout << "matches 2-2: " << nmatches[1]  << endl;
+    cout << "nmatches.size(): " << nmatches.size()  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
@@ -743,6 +747,7 @@ void Tracking::Initialize()
         }
 
         CreateInitialMap(Rcw,tcw);
+        cout << "Initial Map created" << endl;
     }
 
 }

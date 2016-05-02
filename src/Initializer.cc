@@ -26,6 +26,8 @@
 #include "ORBmatcher.h"
 
 #include<boost/thread.hpp>
+#include<opengv/relative_pose/RelativeAdapterBase.hpp>
+
 
 namespace ORB_SLAM
 {
@@ -41,14 +43,22 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mMaxIterations = iterations;
 }
 
+
 bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
                              vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
-    mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn;
+
+    //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
+    for(int i =0; i<CurrentFrame.cameraFrames.size();i++)
+        mvKeys2.insert(mvKeys2.end(), CurrentFrame.cameraFrames[i].mvKeysUn.begin(), CurrentFrame.cameraFrames[i].mvKeysUn.end());
 
     mvMatches12.clear();
+    cout << "Initializer::Initialize vMatches12.size(): " << vMatches12.size() << endl;
+    cout << "Initializer::Initialize vMatches12[0].size(): " << vMatches12[0].size() << endl;
+    cout << "Initializer::Initialize mvMatches12.size(): " << mvMatches12.size() << endl;
+    cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
     mvMatches12.reserve(mvKeys2.size());
     mvbMatched1.resize(mvKeys1.size());
     for(size_t i=0, iend=vMatches12.size();i<iend; i++)
@@ -118,6 +128,31 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     return false;
 }
 
+bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
+                                   vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
+{
+    //create bearing vectors
+    for(int i =1,i<vMatches12.size(),i++)
+    {
+        if(vMatches12[i][0]>0)
+        {
+            F1.camerFrame.P[i]
+        }
+    }
+
+    // create the non-central relative adapter
+    relative_pose::NoncentralRelativeAdapter adapter(
+            bearingVectors1,
+            bearingVectors2,
+            camCorrespondences1,
+            camCorrespondences2,
+            camOffsets,
+            camRotations );
+    // 6-point algorithm
+    rotations_t sixpt_rotations =
+            relative_pose::sixpt( adapter, indices )
+
+}
 
 void Initializer::FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21)
 {
