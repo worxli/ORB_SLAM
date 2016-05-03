@@ -29,6 +29,8 @@
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
 #include<opengv/relative_pose/NoncentralRelativeAdapter.hpp>
 #include<opengv/relative_pose/methods.hpp>
+//#include <opengv/sac/Ransac.hpp>
+//#include <opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp>
 
 
 namespace ORB_SLAM
@@ -151,12 +153,14 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 //        }
 //    }
 //    // TODO do we need this code above?
-//    InitializeGenCam();
 
     generateSampleData();
     R21 = gR;
     t21 = gt;
     cout << "pose " << CheckRelativePose(R21,t21,vbTriangulated) << endl;
+
+    InitializeGenCam();
+
     return true;
 
 //    // Launch threads to compute in parallel a fundamental matrix and a homography
@@ -188,24 +192,32 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     //
 }
 
-/*
+
 void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
     //fill adapter with 6 random bearing points
 
+    cout << "InitializeGenCam started" << endl;
+
     opengv::bearingVectors_t mv1c1;
     opengv::bearingVectors_t mv2c1;
 
+    cout << "bearing vectors created" << endl;
+
     for(int i=0; i<6; i++)
     {
-        Eigen::Matrix<double, 3, 1> mv1;
-        Eigen::Matrix<double, 3, 1> mv2;
-        cv::cv2eigen(v1c1norm[i], mv1);
-        cv::cv2eigen(v2c1norm[i], mv2);
-        mv1c1.push_back(mv1);
-        mv2c1.push_back(mv2);
+        Eigen::Matrix<double, 3, 1> mv1c1point;
+        Eigen::Matrix<double, 3, 1> mv2c1point;
+        //cout << "mv1c1point created" << endl;
+        cv::cv2eigen(v1c1[i], mv1c1point);
+        cv::cv2eigen(v2c1[i], mv2c1point);
+        //cout << "c1 vectors transformed to eigen" << endl;
+        mv1c1.push_back(mv1c1point);
+        mv2c1.push_back(mv2c1point);
     }
+
+    cout << "bearing vectors filled" << endl;
 
     std::vector<int> camcorr1(6,0);
     std::vector<int> camcorr2(6,0);
@@ -230,9 +242,30 @@ void Initializer::InitializeGenCam()
     // 6-point algorithm
     cout << "sixp" << endl;
     opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
+    cout << "calculated R from sixpt: " << sixpt_rotations[0] << endl;
+
+    /*
+     * //TODO fill ransac model correctly with all data
+    // create a RANSAC object
+    opengv::sac::Ransac<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
+            ransac;
+// create a NoncentralRelativePoseSacProblem
+    std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
+            relposeproblem_ptr(
+            new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
+                    adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
+    );
+// run ransac
+    ransac.sac_model_ = relposeproblem_ptr;
+    ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
+    ransac.max_iterations_ = 10;
+    ransac.computeModel();
+// get the result
+    opengv::transformation_t best_transformation = ransac.model_coefficients_;
+    */
+
 
 }
- */
 
 float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<bool> > &vbTriangulated)
 {
