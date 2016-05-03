@@ -52,13 +52,13 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 
 void Initializer::generateSampleData()
 {
-    gR = (cv::Mat_<double>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
-    gt = (cv::Mat_<double>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
-    c1R = (cv::Mat_<double>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
-    c1t = (cv::Mat_<double>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+    gR = (cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
+    gt = (cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+    c1R = (cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    c1t = (cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
 
     for(uint i = 0; i<200; i++) {
-        cv::Mat p = (cv::Mat_<double>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
+        cv::Mat p = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
 //        cout << "p: " << p << endl;
 //        cout << "p shape: " << p.size() << endl;
 //        cout << "gR shape: " << gR.size() << endl;
@@ -70,14 +70,18 @@ void Initializer::generateSampleData()
 //        cout << "pc1: " << v1c1[i] << endl;
         v2c1.push_back(c1R*(gR*p+gt)+c1t);
 //        cout << "pc2: " << v2c1[i] << endl;
+        v1c1[i] = v1c1[i]/cv::norm(v1c1[i]);
+        v2c1[i] = v2c1[i]/cv::norm(v2c1[i]);
     }
 
-    for(int i =0; i<v1c1.size(); i++)
-    {
-        //v1c1norm = v1c1[i]/cv::norm(v1c1[i],cv::NORM_L2);
-        cv::divide(cv::norm(v1c1[i]), v1c1[i], v1c1norm, -1);
-        cv::divide(cv::norm(v2c1[i]), v2c1[i], v2c1norm, -1);
-    }
+    cout << "done generating sample data" << endl;
+
+//    for(int i =0; i<v1c1.size(); i++)
+//    {
+//        //v1c1norm = v1c1[i]/cv::norm(v1c1[i],cv::NORM_L2);
+//        cv::divide(cv::norm(v1c1[i]), v1c1[i], v1c1norm, -1);
+//        cv::divide(cv::norm(v2c1[i]), v2c1[i], v2c1norm, -1);
+//    }
 }
 
 
@@ -148,6 +152,11 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 //    }
 //    // TODO do we need this code above?
 //    InitializeGenCam();
+
+    generateSampleData();
+    R21 = gR;
+    t21 = gt;
+    cout << "pose " << CheckRelativePose(R21,t21,vbTriangulated) << endl;
     return true;
 
 //    // Launch threads to compute in parallel a fundamental matrix and a homography
@@ -179,7 +188,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     //
 }
 
-
+/*
 void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
@@ -223,16 +232,26 @@ void Initializer::InitializeGenCam()
     opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
 
 }
+ */
 
-float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t)
+float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<bool> > &vbTriangulated)
 {
+    vector<vector<cv::Point3f> > vP3Di;
+
     // reproject points and check score
     for(uint i = 0; i<cameras; i++) {
         float parallaxi;
-        vector<vector<cv::Point3f> > vP3Di;
-        vector<vector<bool> > vbTriangulatedi;
-        //int nGood = CheckRT(vR[i],vt[i],mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K,vP3Di, 4.0*mSigma2, vbTriangulatedi, parallaxi);
+        vector <cv::Point3f> mvP3Di;
+        vector<bool> mvbTriangulated;
+        vector<bool> vbMatchesInliers; //TODO
+        cout << i << endl;
+        int nGood = CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
+                            4.0 * mSigma2, mvbTriangulated, parallaxi);
+        vP3Di.push_back(mvP3Di);
+        vbTriangulated.push_back(mvbTriangulated);
+        cout << "ngood " << nGood << endl;
     }
+    return 0.0;
 }
 
 /*
@@ -336,8 +355,8 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
         }
     }
 }
-
-
+*/
+/*
 cv::Mat Initializer::ComputeH21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2)
 {
     const int N = vP1.size();
@@ -416,7 +435,9 @@ cv::Mat Initializer::ComputeF21(const vector<cv::Point2f> &vP1,const vector<cv::
 
     return  u*cv::Mat::diag(w)*vt;
 }
+ */
 
+    /*
 float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma)
 {   
     const int N = mvMatches12.size();
@@ -581,9 +602,7 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
 
     return score;
 }
- */
-
-
+*/
     /*
 bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
                             cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated)
@@ -848,6 +867,7 @@ bool Initializer::ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv:
 
     return false;
 }
+ */
 
 void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D)
 {
@@ -864,6 +884,7 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
 }
 
+    /*
 void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T)
 {
     float meanX = 0;
@@ -911,7 +932,7 @@ void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2
     T.at<float>(0,2) = -meanX*sX;
     T.at<float>(1,2) = -meanY*sY;
 }
-
+*/
 
 int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
                        const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
@@ -947,8 +968,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
     for(size_t i=0, iend=vMatches12.size();i<iend;i++)
     {
-        if(!vbMatchesInliers[i])
-            continue;
+//        if(!vbMatchesInliers[i])
+//            continue;
 
         const cv::KeyPoint &kp1 = vKeys1[vMatches12[i].first];
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
@@ -965,7 +986,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         // Check parallax
         cv::Mat normal1 = p3dC1 - O1;
         float dist1 = cv::norm(normal1);
-
         cv::Mat normal2 = p3dC1 - O2;
         float dist2 = cv::norm(normal2);
 
@@ -974,7 +994,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
             continue;
-
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         cv::Mat p3dC2 = R*p3dC1+t;
 
@@ -1024,6 +1043,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     return nGood;
 }
 
+    /*
 void Initializer::DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat &t)
 {
     cv::Mat u,w,vt;
@@ -1045,6 +1065,6 @@ void Initializer::DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat
     if(cv::determinant(R2)<0)
         R2=-R2;
 }
-     */
+*/
 
 } //namespace ORB_SLAM
