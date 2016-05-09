@@ -29,8 +29,8 @@
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
 #include<opengv/relative_pose/NoncentralRelativeAdapter.hpp>
 #include<opengv/relative_pose/methods.hpp>
-//#include <opengv/sac/Ransac.hpp>
-//#include <opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp>
+#include <opengv/sac/Ransac.hpp>
+#include <opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp>
 
 
 namespace ORB_SLAM
@@ -232,37 +232,40 @@ void Initializer::InitializeGenCam()
     cameraR.push_back(mc1R);
     cameraT.push_back(mc1t);
 
-    //check after each iteration the score of the pose estimation
-
-
     // create the non-central relative adapter
     cout << "create adapter" << endl;
     opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1c1, mv2c1, camcorr1, camcorr2, cameraT, cameraR );
+//
+//    // 6-point algorithm
+//    cout << "sixp" << endl;
+//    opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
+//    cout << "calculated R from sixpt: " << sixpt_rotations[0] << endl;
 
-    // 6-point algorithm
-    cout << "sixp" << endl;
-    opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
-    cout << "calculated R from sixpt: " << sixpt_rotations[0] << endl;
 
-    /*
-     * //TODO fill ransac model correctly with all data
+    //TODO fill ransac model correctly with all data
     // create a RANSAC object
+    cout << "create ransac" << endl;
     opengv::sac::Ransac<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
             ransac;
-// create a NoncentralRelativePoseSacProblem
+
+    // create a NoncentralRelativePoseSacProblem
+    cout << "create NoncentralRelativePoseSacProblem" << endl;
     std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
             relposeproblem_ptr(
             new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
                     adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
     );
-// run ransac
+    // run ransac
+    cout << "run ransac" << endl;
     ransac.sac_model_ = relposeproblem_ptr;
     ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
     ransac.max_iterations_ = 10;
+    cout << "compute model" << endl;
     ransac.computeModel();
-// get the result
+    // get the result
+    cout << "get result" << endl;
     opengv::transformation_t best_transformation = ransac.model_coefficients_;
-    */
+
 
 
 }
