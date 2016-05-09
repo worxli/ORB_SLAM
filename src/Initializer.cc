@@ -50,8 +50,6 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
-    //generateSampleData();
-    //InitializeGenCam();
 }
 
 void Initializer::generateSampleData()
@@ -87,41 +85,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
-//    mvMatches12.clear();
-//    vector<vector<size_t> > vAllIndices;
-//
-//    //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
-//    for(int j =0; j<cameras; j++) {
-//        mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
-//
-//        cout << "Initializer::Initialize vMatches12[j].size(): " << vMatches12[j].size() << endl;
-//        cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
-//
-//        vector<Match> matches;
-//        matches.reserve(mvKeys2[j].size());
-//        mvMatches12.push_back(matches);
-//        mvbMatched1.push_back(vector<bool>(mvKeys1[j].size()));
-//        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
-//            if (vMatches12[j][i] >= 0) {
-//                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
-//                mvbMatched1[j][i] = true;
-//            }
-//            else
-//                mvbMatched1[j][i] = false;
-//        }
-//
-//        const int N = mvMatches12[j].size();
-//
-//        // Indices for minimum set selection
-//        vector<size_t> vIndices;
-//        vIndices.reserve(N);
-//
-//        for (int i = 0; i < N; i++) {
-//            vIndices.push_back(i);
-//        }
-//        vAllIndices.push_back(vIndices);
-//    }
-
+    /*
     // generalized camera
     opengv::bearingVectors_t mvBearings1Adapter;
     opengv::bearingVectors_t mvBearings2Adapter;
@@ -132,9 +96,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 
     for(int j =0; j<cameras; j++) {
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
-//
-//        std::vector<int> mvCorr1;
-//        std::vector<int> mvCorr2;
+
         // check for matches and get the bearing vectors
         for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
             if (vMatches12[j][i] >= 0) {
@@ -142,10 +104,10 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
                 mvBearings2Adapter.push_back(CurrentFrame.cameraFrames[j].vBearings[vMatches12[j][i]]);
                 mvCorr1.push_back(j);
                 mvCorr2.push_back(j); // because we're only correlating camera 1 to camera 1
-            } else {
-                cout << "match " << i << " in camera " << j << " is not taken!" << endl;
             }
         }
+
+        cout << "correspondnces " << mvBearings1Adapter.size() << endl;
 
         Eigen::Matrix3d mR;
         Eigen::Vector3d mt;
@@ -155,13 +117,61 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         mvT.push_back(mt);
     }
 
-    cout << "copied matches" << endl;
+    // create the non-central relative adapter
+    opengv::relative_pose::NoncentralRelativeAdapter adapter(mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvT, mvR );
+
+    // create a RANSAC object
+    opengv::sac::Ransac<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
+            ransac;
+
+    // create a NoncentralRelativePoseSacProblem
+    cout << "create NoncentralRelativePoseSacProblem" << endl;
+    std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
+            relposeproblem_ptr(
+            new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
+                    adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
+    );
+    // run ransac
+    cout << "run ransac" << endl;
+    ransac.sac_model_ = relposeproblem_ptr;
+    ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
+    ransac.max_iterations_ = 10;
+    cout << "compute model" << endl;
+    ransac.computeModel();
+    // get the result
+    cout << "get result" << endl;
+    opengv::transformation_t best_transformation = ransac.model_coefficients_;
+
+    cv::Mat Tcw;
+    cv::eigen2cv(best_transformation, Tcw);
+    cv::Mat Rcw;
+    cv::Mat tcw;
+    Tcw.rowRange(0,3).colRange(0,3).copyTo(Rcw);
+    Tcw.rowRange(0,3).col(3).copyTo(tcw);
+    cout << "Rcw " << Rcw << endl;
+    cout << "Tcw " << tcw << endl;
+
+    Rcw.convertTo(Rcw, CV_32F);
+    tcw.convertTo(tcw, CV_32F);
+    R21 = Rcw;
+    t21 = tcw;
+
+    // fill old matches structure
+    mvMatches12.clear();
+    for(int j =0; j<cameras; j++) {
+        vector<Match> matches;
+        matches.reserve(mvKeys2[j].size());
+        mvMatches12.push_back(matches);
+        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
+            if (vMatches12[j][i] >= 0)
+                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
+        }
+    }
+
+    float check = CheckRelativePose(R21,t21,vbTriangulated);
+     */
 
     generateSampleData();
-    R21 = gR;
-    t21 = gt;
-    cout << "pose " << CheckRelativePose(R21,t21,vbTriangulated) << endl;
-
     InitializeGenCam();
 
     return true;
@@ -270,8 +280,8 @@ void Initializer::InitializeGenCam()
     cv::Mat tcw;
     Tcw.rowRange(0,3).colRange(0,3).copyTo(Rcw);
     Tcw.rowRange(0,3).col(3).copyTo(tcw);
-    cout << "coeff " << Rcw << endl;
-    cout << "tcw " << tcw << endl;
+    cout << "Rcw " << Rcw << endl;
+    cout << "Tcw " << tcw << endl;
         cout << "Global R: " << gR << endl;
         cout << "Global t: " << gt << endl;
 //    if(best_transformation) {
@@ -290,7 +300,7 @@ float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<
         vector <cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
         vector<bool> vbMatchesInliers; //TODO
-        //cout << i << endl;
+        cout << i << endl;
         int nGood = CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
         vP3Di.push_back(mvP3Di);
