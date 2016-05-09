@@ -102,12 +102,14 @@ private:
     // sample data
     vector<cv::Mat> v1c1;
     vector<cv::Mat> v2c1;
-    vector<cv::Mat> v1c1norm;
-    vector<cv::Mat> v2c1norm;
+    vector<cv::Mat> v1c2;
+    vector<cv::Mat> v2c2;
     cv::Mat gR;
     cv::Mat gt;
     cv::Mat c1R;
     cv::Mat c1t;
+    cv::Mat c2R;
+    cv::Mat c2t;
 
 
     void generateSampleData();
