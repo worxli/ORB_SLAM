@@ -101,7 +101,7 @@ private:
     int cameras;
 
     //
-    opengv::bearingVectors_t mvBearings1;
+    vector<vector<Eigen::Vector3d> > mvBearings1;
 
     // sample data
     vector<cv::Mat> v1c1;

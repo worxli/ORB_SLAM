@@ -134,7 +134,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         // check for matches and get the bearing vectors
         for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
             if (vMatches12[j][i] >= 0) {
-                mvBearings1Adapter.push_back(mvBearings1[i]);
+                mvBearings1Adapter.push_back(mvBearings1[j][i]);
                 mvBearings2Adapter.push_back(CurrentFrame.cameraFrames[j].vBearings[vMatches12[j][i]]);
                 mvCorr1.push_back(j);
                 mvCorr2.push_back(j); // because we're only correlating camera 1 to camera 1
@@ -142,8 +142,13 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
                 cout << "match " << i << " in camera " << j << " is not taken!" << endl;
             }
         }
-        mvR.push_back(CurrentFrame.cameraFrames[j].mR);
-        mvT.push_back(CurrentFrame.cameraFrames[j].mt);
+
+        Eigen::Matrix3d mR;
+        Eigen::Vector3d mt;
+        cv::cv2eigen(CurrentFrame.cameraFrames[j].mR, mR);
+        cv::cv2eigen(CurrentFrame.cameraFrames[j].mt, mt);
+        mvR.push_back(mR);
+        mvT.push_back(mt);
     }
 
     cout << "copied matches" << endl;
