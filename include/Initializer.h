@@ -23,6 +23,7 @@
 
 #include<opencv2/opencv.hpp>
 #include "Frame.h"
+#include <opengv/types.hpp>
 
 
 namespace ORB_SLAM
@@ -99,11 +100,12 @@ private:
     // # of cameras
     int cameras;
 
+    //
+    opengv::bearingVectors_t mvBearings1;
+
     // sample data
     vector<cv::Mat> v1c1;
     vector<cv::Mat> v2c1;
-    vector<cv::Mat> v1c1norm;
-    vector<cv::Mat> v2c1norm;
     cv::Mat gR;
     cv::Mat gt;
     cv::Mat c1R;

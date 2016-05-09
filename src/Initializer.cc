@@ -44,6 +44,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     for(uint i = 0; i<cameras; i++) {
         mK.push_back(ReferenceFrame.cameraFrames[i].mK.clone());
         mvKeys1.push_back(ReferenceFrame.cameraFrames[i].mvKeysUn);
+        mvBearings1.push_back(ReferenceFrame.cameraFrames[i].vBearings);
     }
 
     mSigma = sigma;
@@ -82,66 +83,70 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
-    mvMatches12.clear();
-    vector<vector<size_t> > vAllIndices;
+//    mvMatches12.clear();
+//    vector<vector<size_t> > vAllIndices;
+//
+//    //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
+//    for(int j =0; j<cameras; j++) {
+//        mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
+//
+//        cout << "Initializer::Initialize vMatches12[j].size(): " << vMatches12[j].size() << endl;
+//        cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
+//
+//        vector<Match> matches;
+//        matches.reserve(mvKeys2[j].size());
+//        mvMatches12.push_back(matches);
+//        mvbMatched1.push_back(vector<bool>(mvKeys1[j].size()));
+//        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
+//            if (vMatches12[j][i] >= 0) {
+//                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
+//                mvbMatched1[j][i] = true;
+//            }
+//            else
+//                mvbMatched1[j][i] = false;
+//        }
+//
+//        const int N = mvMatches12[j].size();
+//
+//        // Indices for minimum set selection
+//        vector<size_t> vIndices;
+//        vIndices.reserve(N);
+//
+//        for (int i = 0; i < N; i++) {
+//            vIndices.push_back(i);
+//        }
+//        vAllIndices.push_back(vIndices);
+//    }
 
-    //mvKeys2 = CurrentFrame.cameraFrames[0].mvKeysUn; //monocamera case
+    // generalized camera
+    opengv::bearingVectors_t mvBearings1Adapter;
+    opengv::bearingVectors_t mvBearings2Adapter;
+    std::vector<int> mvCorr1;
+    std::vector<int> mvCorr2;
+    opengv::rotations_t mvR;
+    opengv::translations_t mvT;
+
     for(int j =0; j<cameras; j++) {
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
-
-        cout << "Initializer::Initialize vMatches12[j].size(): " << vMatches12[j].size() << endl;
-        cout << "Initializer::Initialize mvKeys2.size(): " << mvKeys2.size() << endl;
-
-        vector<Match> matches;
-        matches.reserve(mvKeys2[j].size());
-        mvMatches12.push_back(matches);
-        mvbMatched1.push_back(vector<bool>(mvKeys1[j].size()));
+//
+//        std::vector<int> mvCorr1;
+//        std::vector<int> mvCorr2;
+        // check for matches and get the bearing vectors
         for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
             if (vMatches12[j][i] >= 0) {
-                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
-                mvbMatched1[j][i] = true;
+                mvBearings1Adapter.push_back(mvBearings1[i]);
+                mvBearings2Adapter.push_back(CurrentFrame.cameraFrames[j].vBearings[vMatches12[j][i]]);
+                mvCorr1.push_back(j);
+                mvCorr2.push_back(j); // because we're only correlating camera 1 to camera 1
+            } else {
+                cout << "match " << i << " in camera " << j << " is not taken!" << endl;
             }
-            else
-                mvbMatched1[j][i] = false;
         }
-
-        const int N = mvMatches12[j].size();
-
-        // Indices for minimum set selection
-        vector<size_t> vIndices;
-        vIndices.reserve(N);
-
-        for (int i = 0; i < N; i++) {
-            vIndices.push_back(i);
-        }
-        vAllIndices.push_back(vIndices);
+        mvR.push_back(CurrentFrame.cameraFrames[j].mR);
+        mvT.push_back(CurrentFrame.cameraFrames[j].mt);
     }
 
     cout << "copied matches" << endl;
-
-//    // Generate sets of 8 points for each RANSAC iteration
-//    mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
-//
-//    vector<vector <size_t> > vAvailableIndices;
-//    for(int it=0; it<mMaxIterations; it++)
-//    {
-//        vAvailableIndices = vAllIndices;
-//
-//        // Select a minimum set
-//        for(int i =0; i<cameras; i++) {// because there are 8 points in the min set, we can take 2 (or 4) points per camera
-//            for (size_t j = 0; j < 8 / cameras; j++) // only works if we have 2 or 4 cameras
-//            {
-//                int randi = DUtils::Random::RandomInt(0, vAvailableIndices[i].size() - 1);
-//                int idx = vAvailableIndices[i][randi];
-//
-//                mvSets[it][i*8/cameras+j] = idx;
-//
-//                vAvailableIndices[i][randi] = vAvailableIndices[i].back();
-//                vAvailableIndices[i].pop_back();
-//            }
-//        }
-//    }
-//    // TODO do we need this code above?
 
     generateSampleData();
     R21 = gR;
@@ -151,34 +156,6 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     InitializeGenCam();
 
     return true;
-
-//    // Launch threads to compute in parallel a fundamental matrix and a homography
-//    vector<bool> vbMatchesInliersH, vbMatchesInliersF;
-//    float SH, SF;
-//    cv::Mat H, F;
-//
-//    boost::thread threadH(&Initializer::FindHomography,this,boost::ref(vbMatchesInliersH), boost::ref(SH), boost::ref(H));
-//    boost::thread threadF(&Initializer::FindFundamental,this,boost::ref(vbMatchesInliersF), boost::ref(SF), boost::ref(F));
-//
-//    // Wait until both threads have finished
-//    threadH.join();
-//    threadF.join();
-//
-//    // Compute ratio of scores
-//    float RH = SH/(SH+SF);
-//
-//    // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
-//    if(RH>0.40)
-//        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-//    else //if(pF_HF>0.6)
-//        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-//
-//    return false;
-
-    // compute R,t using opengv
-    // adapter comes here
-
-    //
 }
 
 //bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
