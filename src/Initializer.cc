@@ -56,21 +56,25 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 
 void Initializer::generateSampleData()
 {
-    gR = (cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
-    gt = (cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
-    c1R = (cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
-    //c1R = (cv::Mat_<float>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-    c1t = (cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
-    //c1t = (cv::Mat_<float>(3,1) << 0, 0, 0);
+    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
+    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+    c1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+    c2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
+    c2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
 
     for(uint i = 0; i<1000; i++) {
-        cv::Mat p = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
-        v1c1.push_back(c1R*p+c1t);
-//        cout << "pc1: " << v1c1[i] << endl;
-        v2c1.push_back(c1R*(gR*p+gt)+c1t);
+        cv::Mat p1 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
+        cv::Mat p2 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
+        v1c1.push_back(c1R*p1+c1t);
+        v2c1.push_back(c1R*(gR*p1+gt)+c1t);
+        v1c2.push_back(c2R*p2+c2t);
+        v2c2.push_back(c2R*(gR*p2+gt)+c2t);
 //        cout << "pc2: " << v2c1[i] << endl;
         v1c1[i] = v1c1[i]/cv::norm(v1c1[i]);
         v2c1[i] = v2c1[i]/cv::norm(v2c1[i]);
+        v1c2[i] = v1c2[i]/cv::norm(v1c2[i]);
+        v2c2[i] = v2c2[i]/cv::norm(v2c2[i]);
     }
 
     cout << "done generating sample data" << endl;
@@ -172,12 +176,14 @@ void Initializer::InitializeGenCam()
 
     cout << "InitializeGenCam started" << endl;
 
-    opengv::bearingVectors_t mv1c1;
-    opengv::bearingVectors_t mv2c1;
+    opengv::bearingVectors_t mv1;
+    opengv::bearingVectors_t mv2;
+    //opengv::bearingVectors_t mv1c1;
+    //opengv::bearingVectors_t mv2c1;
 
     cout << "bearing vectors created" << endl;
 
-    for(int i=0; i<400; i++)
+/*    for(int i=0; i<400; i++)
     {
         Eigen::Matrix<double, 3, 1> mv1c1point;
         Eigen::Matrix<double, 3, 1> mv2c1point;
@@ -192,26 +198,46 @@ void Initializer::InitializeGenCam()
     cout << "bearing vectors filled" << endl;
 
     std::vector<int> camcorr1(400,0);
-    std::vector<int> camcorr2(400,0);
+    std::vector<int> camcorr2(400,0);*/
+
+        std::vector<int> camcorr(400,rand() %2); //select randomly cam 0 or 1
+
+    for(int i=0; i<400; i++)
+    {
+        Eigen::Matrix<double, 3, 1> mv1point;
+        Eigen::Matrix<double, 3, 1> mv2point;
+
+        if(camcorr[i]==0) {
+            cv::cv2eigen(v1c1[i], mv1point);
+            cv::cv2eigen(v2c1[i], mv2point);
+        }
+        else {
+            cv::cv2eigen(v1c2[i], mv1point);
+            cv::cv2eigen(v2c2[i], mv2point);
+        }
+
+        mv1.push_back(mv1point);
+        mv2.push_back(mv2point);
+    }
 
     Eigen::Matrix3d mc1R;
     Eigen::Vector3d mc1t;
+        Eigen::Matrix3d mc2R;
+        Eigen::Vector3d mc2t;
     cv::cv2eigen(c1R, mc1R);
     cv::cv2eigen(c1t, mc1t);
+        cv::cv2eigen(c2R, mc2R);
+        cv::cv2eigen(c2t, mc2t);
 
     opengv::rotations_t cameraR;
     opengv::translations_t cameraT;
     cameraR.push_back(mc1R);
+        cameraR.push_back(mc2R);
     cameraT.push_back(mc1t);
-
+        cameraT.push_back(mc2t);
     // create the non-central relative adapter
     cout << "create adapter" << endl;
-    opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1c1, mv2c1, camcorr1, camcorr2, cameraT, cameraR );
-//
-//    // 6-point algorithm
-//    cout << "sixp" << endl;
-//    opengv::rotations_t sixpt_rotations = opengv::relative_pose::sixpt( adapter );
-//    cout << "calculated R from sixpt: " << sixpt_rotations[0] << endl;
+    opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1, mv2, camcorr, camcorr, cameraT, cameraR );
 
 
     //TODO fill ransac model correctly with all data
@@ -246,6 +272,8 @@ void Initializer::InitializeGenCam()
     Tcw.rowRange(0,3).col(3).copyTo(tcw);
     cout << "coeff " << Rcw << endl;
     cout << "tcw " << tcw << endl;
+        cout << "Global R: " << gR << endl;
+        cout << "Global t: " << gt << endl;
 //    if(best_transformation) {
 //        return true;
 //    }
