@@ -24,6 +24,7 @@
 
 #include "Optimizer.h"
 #include "ORBmatcher.h"
+#include "../Thirdparty/opengv/include/opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp"
 
 #include<boost/thread.hpp>
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
@@ -57,17 +58,12 @@ void Initializer::generateSampleData()
     gR = (cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
     gt = (cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
     c1R = (cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    //c1R = (cv::Mat_<float>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
     c1t = (cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+    //c1t = (cv::Mat_<float>(3,1) << 0, 0, 0);
 
-    for(uint i = 0; i<200; i++) {
+    for(uint i = 0; i<1000; i++) {
         cv::Mat p = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
-//        cout << "p: " << p << endl;
-//        cout << "p shape: " << p.size() << endl;
-//        cout << "gR shape: " << gR.size() << endl;
-//        cout << "gt shape: " << gt.size() << endl;
-//        cout << "c1R shape: " << c1R.size() << endl;
-//        cout << "c1t shape: " << c1t.size() << endl;
-//        cout << "c1R*p: " << c1R*p << (c1R*p).size() << endl;
         v1c1.push_back(c1R*p+c1t);
 //        cout << "pc1: " << v1c1[i] << endl;
         v2c1.push_back(c1R*(gR*p+gt)+c1t);
@@ -77,13 +73,6 @@ void Initializer::generateSampleData()
     }
 
     cout << "done generating sample data" << endl;
-
-//    for(int i =0; i<v1c1.size(); i++)
-//    {
-//        //v1c1norm = v1c1[i]/cv::norm(v1c1[i],cv::NORM_L2);
-//        cv::divide(cv::norm(v1c1[i]), v1c1[i], v1c1norm, -1);
-//        cv::divide(cv::norm(v2c1[i]), v2c1[i], v2c1norm, -1);
-//    }
 }
 
 
@@ -192,7 +181,8 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     //
 }
 
-
+//bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
+//                                   vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
 void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
@@ -205,7 +195,7 @@ void Initializer::InitializeGenCam()
 
     cout << "bearing vectors created" << endl;
 
-    for(int i=0; i<6; i++)
+    for(int i=0; i<400; i++)
     {
         Eigen::Matrix<double, 3, 1> mv1c1point;
         Eigen::Matrix<double, 3, 1> mv2c1point;
@@ -219,8 +209,8 @@ void Initializer::InitializeGenCam()
 
     cout << "bearing vectors filled" << endl;
 
-    std::vector<int> camcorr1(6,0);
-    std::vector<int> camcorr2(6,0);
+    std::vector<int> camcorr1(400,0);
+    std::vector<int> camcorr2(400,0);
 
     Eigen::Matrix3d mc1R;
     Eigen::Vector3d mc1t;
@@ -266,8 +256,18 @@ void Initializer::InitializeGenCam()
     cout << "get result" << endl;
     opengv::transformation_t best_transformation = ransac.model_coefficients_;
 
-
-
+    cv::Mat Tcw;
+    cv::eigen2cv(best_transformation, Tcw);
+    cv::Mat Rcw;
+    cv::Mat tcw;
+    Tcw.rowRange(0,3).colRange(0,3).copyTo(Rcw);
+    Tcw.rowRange(0,3).col(3).copyTo(tcw);
+    cout << "coeff " << Rcw << endl;
+    cout << "tcw " << tcw << endl;
+//    if(best_transformation) {
+//        return true;
+//    }
+//    return false;
 }
 
 float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<bool> > &vbTriangulated)
@@ -280,7 +280,7 @@ float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<
         vector <cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
         vector<bool> vbMatchesInliers; //TODO
-        cout << i << endl;
+        //cout << i << endl;
         int nGood = CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
         vP3Di.push_back(mvP3Di);
