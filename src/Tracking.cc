@@ -367,13 +367,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
 
     // TODO
-    int camera = 2;
+    int start = 0;
+    int end = 4;
 
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
     {
         cout << "mState==NO_IMAGES_YET: " << (mState==NO_IMAGES_YET) << endl;
 
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=start; i<end; i++) {
             Tracking::initUndistortMap(mmapX[i], mmapY[i], i);
 
             // TODO
@@ -401,14 +402,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=camera; i<camera+2; i++) {
+        for(int i=start; i<end; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=camera; i<camera+2; i++) {
+        for(int i=start; i<end; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
@@ -568,7 +569,6 @@ void Tracking::FirstInitialization()
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
         mvbPrevMatched.clear();
-        cout << "copy matches" << endl;
         for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++) {
             vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size());
             for (size_t i = 0; i < mCurrentFrame.cameraFrames[j].mvKeysUn.size(); i++)
@@ -577,9 +577,9 @@ void Tracking::FirstInitialization()
         }
 
         if(mpInitializer) {
-            cout << "delete Initializer" << mpInitializer << endl;
+            //cout << "delete Initializer" << mpInitializer << endl;
             delete mpInitializer;
-            cout << "deleted" << endl;
+            //cout << "deleted" << endl;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
@@ -599,7 +599,6 @@ void Tracking::Initialize()
 
     if(features<100)
     {
-        cout << "not enough keys" << endl;
         mvIniMatches.clear();
         mState = NOT_INITIALIZED;
         return;
@@ -611,11 +610,13 @@ void Tracking::Initialize()
 
     // Check if there are enough correspondences in each cameraframe
     int minNmatches = *min_element(nmatches.begin(),nmatches.end());
+    int maxNmatches = *max_element(nmatches.begin(),nmatches.end());
 
-    if(minNmatches<100)
+    cout << "min number of correspondences " << minNmatches << endl;
+    cout << "max number of correspondences " << maxNmatches << endl;
+
+    if(maxNmatches<50)
     {
-        cout << "number of correspondences " << minNmatches << endl;
-        cout << "set state not init" << endl;
         mState = NOT_INITIALIZED;
         return;
     }
@@ -623,7 +624,6 @@ void Tracking::Initialize()
     // test output
     cout << "matches 1-1: " << nmatches[0]  << endl;
     cout << "matches 2-2: " << nmatches[1]  << endl;
-    cout << "nmatches.size(): " << nmatches.size()  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
@@ -632,7 +632,10 @@ void Tracking::Initialize()
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+            cout << "camera " << j << endl;
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
+                if (mvIniMatches[j][i]>0)
+                    cout << vbTriangulated[j][i] << endl;
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
                     minNmatches--;
@@ -670,6 +673,9 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
         for (size_t i = 0; i < mvIniMatches.size(); i++) {
             if (mvIniMatches[j][i] < 0)
                 continue;
+
+            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
+            cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
 
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[j][i]);

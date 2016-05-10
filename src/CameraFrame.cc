@@ -57,8 +57,6 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
 
     N = mvKeys.size();
 
-    cout << "# features: " << N << endl;
-
     if(mvKeys.empty())
         return;
 

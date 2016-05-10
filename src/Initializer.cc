@@ -85,7 +85,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
-    /*
+
     // generalized camera
     opengv::bearingVectors_t mvBearings1Adapter;
     opengv::bearingVectors_t mvBearings2Adapter;
@@ -168,13 +168,11 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         }
     }
 
-    float check = CheckRelativePose(R21,t21,vbTriangulated);
-     */
+    return CheckRelativePose(R21, t21, vP3D, vbTriangulated);
 
-    generateSampleData();
-    InitializeGenCam();
 
-    return true;
+//    generateSampleData();
+//    InitializeGenCam();
 }
 
 //bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
@@ -290,9 +288,9 @@ void Initializer::InitializeGenCam()
 //    return false;
 }
 
-float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<bool> > &vbTriangulated)
+bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
 {
-    vector<vector<cv::Point3f> > vP3Di;
+    int nGood = 0;
 
     // reproject points and check score
     for(uint i = 0; i<cameras; i++) {
@@ -301,13 +299,13 @@ float Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<
         vector<bool> mvbTriangulated;
         vector<bool> vbMatchesInliers; //TODO
         cout << i << endl;
-        int nGood = CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
+        nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
-        vP3Di.push_back(mvP3Di);
+        vP3D.push_back(mvP3Di);
         vbTriangulated.push_back(mvbTriangulated);
         cout << "ngood " << nGood << endl;
     }
-    return 0.0;
+    return nGood > 5; //TODO
 }
 
 /*
@@ -934,10 +932,16 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     A.row(2) = kp2.pt.x*P2.row(2)-P2.row(0);
     A.row(3) = kp2.pt.y*P2.row(2)-P2.row(1);
 
+//    cout << "triangulation" << endl;
+//    cout << kp1.pt << endl;
+//    cout << kp2.pt << endl;
+//    cout << P1 << endl;
+
     cv::Mat u,w,vt;
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     x3D = vt.row(3).t();
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+    //cout << x3D << endl;
 }
 
     /*
@@ -1032,6 +1036,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         cv::Mat p3dC1;
 
         Triangulate(kp1,kp2,P1,P2,p3dC1);
+        cout << "p3dC1" << p3dC1 << endl;
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
@@ -1080,6 +1085,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         vCosParallax.push_back(cosParallax);
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
+        cout << vP3D[vMatches12[i].first] << endl;
         nGood++;
 
         if(cosParallax<0.99998)
