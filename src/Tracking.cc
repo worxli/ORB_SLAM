@@ -635,7 +635,7 @@ void Tracking::Initialize()
             cout << "camera " << j << endl;
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
                 if (mvIniMatches[j][i]>0)
-                    cout << vbTriangulated[j][i] << endl;
+                   // cout << "vbTriangulated " << vbTriangulated[j][i] << endl;
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
                     minNmatches--;

@@ -107,7 +107,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
             }
         }
 
-        cout << "correspondnces " << mvBearings1Adapter.size() << endl;
+        cout << "correspondences " << mvBearings1Adapter.size() << endl;
 
         Eigen::Matrix3d mR;
         Eigen::Vector3d mt;
@@ -1036,7 +1036,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         cv::Mat p3dC1;
 
         Triangulate(kp1,kp2,P1,P2,p3dC1);
-        cout << "p3dC1" << p3dC1 << endl;
+        //cout << "p3dC1" << p3dC1 << endl;
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
