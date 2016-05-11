@@ -457,15 +457,4 @@ bool SE3rayXYZ::write(std::ostream& os) const {
   return os.good();
 }
 
-/*
-Vector3d SE3rayXYZ::cam_project(const Vector3d & trans_xyz) const{
-  Vector2d proj = project2d(trans_xyz);
-  Vector3d res;
-  res[0] = proj[0]*fx + cx;
-  res[1] = proj[1]*fy + cy;
-  res[2] = 1;
-  return res;
-}
-*/
-
 } // end namespace

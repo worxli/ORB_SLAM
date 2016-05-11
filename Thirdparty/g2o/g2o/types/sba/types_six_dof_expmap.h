@@ -216,11 +216,6 @@ class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBA
     return (v1->estimate().map(v2->estimate()))(2)>0.0;
   }
 
-
-  //virtual void linearizeOplus();
-
-  //Vector3d cam_project(const Vector3d & trans_xyz) const;
-
   double fx, fy, cx, cy;
 };
 
