@@ -205,6 +205,7 @@ class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBA
     const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
     Vector3d obs(_measurement);
     Vector3d estimated_unit_feature_ray = v1->estimate().map(v2->estimate());
+    estimated_unit_feature_ray.normalize();
     // _error is Vector3d even though we only need scalar
     _error << 1-obs.dot(estimated_unit_feature_ray), 0, 0;
 //    _error = obs-cam_project(v1->estimate().map(v2->estimate()));
