@@ -99,9 +99,15 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             KeyFrame* pKF = mit->first;
             if(pKF->isBad())
                 continue;
+
+            // TODO: Delete when ray implementation done and working
             Eigen::Matrix<double,2,1> obs;
             cv::KeyPoint kpUn = pKF->GetKeyPointUn(mit->second);
             obs << kpUn.pt.x, kpUn.pt.y;
+
+            // TODO: ray implementation
+            //Eigen::Matrix<double,3,1> obs;
+            //Eigen::Vector3d pL_dir = pKF->cameraFrames[0].pluckerLines[mit->second][0];
 
             g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
 
@@ -204,6 +210,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             nInitialCorrespondences++;
             pFrame->mvbOutlier[i] = false;
 
+            // TODO
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
             cv::KeyPoint kpUn = pFrame->cameraFrames[0].mvKeysUn[i];
@@ -537,8 +544,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         pMP->UpdateNormalAndDepth();
     }
 }
-
-
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF, g2o::Sim3 &Scurw,
                                        LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
