@@ -190,6 +190,39 @@ public:
   double fx, fy, cx, cy;
 };
 
+class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>{
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  SE3rayXYZ();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    Vector3d obs(_measurement);
+    Vector3d estimated_unit_feature_ray = v1->estimate().map(v2->estimate());
+    // _error is Vector3d even though we only need scalar
+    _error << 1-obs.dot(estimated_unit_feature_ray), 0, 0;
+//    _error = obs-cam_project(v1->estimate().map(v2->estimate()));
+  }
+
+  bool isDepthPositive() {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    return (v1->estimate().map(v2->estimate()))(2)>0.0;
+  }
+
+
+  //virtual void linearizeOplus();
+
+  //Vector3d cam_project(const Vector3d & trans_xyz) const;
+
+  double fx, fy, cx, cy;
+};
 
 class G2O_TYPES_SBA_API EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2d>
 {

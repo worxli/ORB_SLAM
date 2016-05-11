@@ -428,5 +428,44 @@ Vector2d EdgeSE3ProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
 }
 
 
+SE3rayXYZ::SE3rayXYZ() : BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>() {
+}
+
+bool SE3rayXYZ::read(std::istream& is){
+  for (int i=0; i<3; i++){
+    is >> _measurement[i];
+  }
+  for (int i=0; i<3; i++)
+    for (int j=i; j<3; j++) {
+      is >> information()(i,j);
+      if (i!=j)
+        information()(j,i)=information()(i,j);
+    }
+  return true;
+}
+
+bool SE3rayXYZ::write(std::ostream& os) const {
+
+  for (int i=0; i<3; i++){
+    os << measurement()[i] << " ";
+  }
+
+  for (int i=0; i<3; i++)
+    for (int j=i; j<3; j++){
+      os << " " <<  information()(i,j);
+    }
+  return os.good();
+}
+
+/*
+Vector3d SE3rayXYZ::cam_project(const Vector3d & trans_xyz) const{
+  Vector2d proj = project2d(trans_xyz);
+  Vector3d res;
+  res[0] = proj[0]*fx + cx;
+  res[1] = proj[1]*fy + cy;
+  res[2] = 1;
+  return res;
+}
+*/
 
 } // end namespace
