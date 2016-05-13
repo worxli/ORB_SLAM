@@ -428,6 +428,44 @@ Vector2d EdgeSE3ProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
 }
 
 
+EdgeSE3GProjectXYZ::EdgeSE3GProjectXYZ() : BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>() {
+}
+
+bool EdgeSE3GProjectXYZ::read(std::istream& is){
+  for (int i=0; i<2; i++){
+    is >> _measurement[i];
+  }
+  for (int i=0; i<2; i++)
+    for (int j=i; j<2; j++) {
+      is >> information()(i,j);
+      if (i!=j)
+        information()(j,i)=information()(i,j);
+    }
+  return true;
+}
+
+bool EdgeSE3GProjectXYZ::write(std::ostream& os) const {
+
+  for (int i=0; i<2; i++){
+    os << measurement()[i] << " ";
+  }
+
+  for (int i=0; i<2; i++)
+    for (int j=i; j<2; j++){
+      os << " " <<  information()(i,j);
+    }
+  return os.good();
+}
+
+Vector2d EdgeSE3GProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
+  Vector2d proj = project2d(trans_xyz);
+  Vector2d res;
+  res[0] = proj[0]*fx + cx;
+  res[1] = proj[1]*fy + cy;
+  return res;
+}
+
+// TODO: SE3rayXYZ can be deleted after BA/ Optimization fully done
 SE3rayXYZ::SE3rayXYZ() : BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>() {
 }
 
