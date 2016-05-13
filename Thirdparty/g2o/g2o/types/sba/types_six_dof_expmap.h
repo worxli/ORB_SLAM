@@ -204,8 +204,8 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
     const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
     const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
     Vector2d obs(_measurement);
-    //Vector3d xyz = Tcb.rotation()*xyz + Tcb.translation(); //_r*xyz + _t with _
-    _error = obs-cam_project(Tcb.map(v1->estimate().map(v2->estimate())));//v1->estimate().map(v2->estimate())
+    g2o::SE3Quat Tc = Tcb*v1->estimate(); // Tcb*Tb
+    _error = obs-cam_project(Tc.map(v2->estimate()));// obs-cam_project(Tc.map(map_point))
   }
 
   bool isDepthPositive() {
