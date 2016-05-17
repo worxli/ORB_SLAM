@@ -190,6 +190,70 @@ public:
   double fx, fy, cx, cy;
 };
 
+class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>{
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  EdgeSE3GProjectXYZ();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    Vector2d obs(_measurement);
+    g2o::SE3Quat Tc = Tcb*v1->estimate(); // Tcb*Tb
+    _error = obs-cam_project(Tc.map(v2->estimate()));// obs-cam_project(Tc.map(map_point))
+  }
+
+  bool isDepthPositive() {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    return (v1->estimate().map(v2->estimate()))(2)>0.0;
+  }
+
+  void setT(g2o::SE3Quat T) {
+    Tcb = T;
+  }
+
+  Vector2d cam_project(const Vector3d & trans_xyz) const;
+
+  double fx, fy, cx, cy;
+  g2o::SE3Quat Tcb; // R and t matrices for transformation from base frame to camera frame
+};
+
+// TODO: SE3rayXYZ can be deleted after BA/ Optimization completely works
+class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>{
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  SE3rayXYZ();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    Vector3d obs(_measurement);
+    Vector3d estimated_unit_feature_ray = v1->estimate().map(v2->estimate());
+    estimated_unit_feature_ray.normalize();
+    // _error is Vector3d even though we only need scalar
+    _error << 1-obs.dot(estimated_unit_feature_ray), 0, 0;
+//    _error = obs-cam_project(v1->estimate().map(v2->estimate()));
+  }
+
+  bool isDepthPositive() {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    return (v1->estimate().map(v2->estimate()))(2)>0.0;
+  }
+
+  double fx, fy, cx, cy;
+};
 
 class G2O_TYPES_SBA_API EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2d>
 {
