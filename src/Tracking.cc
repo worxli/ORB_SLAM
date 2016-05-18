@@ -624,6 +624,8 @@ void Tracking::Initialize()
     // test output
     cout << "matches 1-1: " << nmatches[0]  << endl;
     cout << "matches 2-2: " << nmatches[1]  << endl;
+    cout << "matches 2-2: " << nmatches[2]  << endl;
+    cout << "matches 2-2: " << nmatches[3]  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
