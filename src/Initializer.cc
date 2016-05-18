@@ -265,7 +265,7 @@ void Initializer::InitializeGenCam()
     cout << "run ransac" << endl;
     ransac.sac_model_ = relposeproblem_ptr;
     ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.max_iterations_ = 10;
+    ransac.max_iterations_ = 100;
     cout << "compute model" << endl;
     ransac.computeModel();
     // get the result
@@ -1044,6 +1044,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
             continue;
         }
 
+        cout << p3dC1 << endl;
+
         // Check parallax
         cv::Mat normal1 = p3dC1 - O1;
         float dist1 = cv::norm(normal1);
@@ -1068,6 +1070,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         im1y = fy*p3dC1.at<float>(1)*invZ1+cy;
 
         float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
+
+        cout << "error" << squareError1 << endl;
 
         if(squareError1>th2)
             continue;
