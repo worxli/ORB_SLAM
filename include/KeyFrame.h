@@ -198,6 +198,10 @@ protected:
     std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
     cv::Mat mDescriptors;
+    //TODO ?
+//    vector<std::vector<cv::KeyPoint> > mvKeys;
+//    vector<std::vector<cv::KeyPoint> > mvKeysUn;
+//    vector<cv::Mat> mDescriptors;
     std::vector<MapPoint*> mvpMapPoints;
 
     // BoW
