@@ -680,7 +680,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[j][i]);
 
-            MapPoint *pMP = new MapPoint(worldPos, pKFcur, mpMap);
+            MapPoint *pMP = new MapPoint(worldPos, pKFcur, mpMap, j);
 
             pKFini->AddMapPoint(pMP, i);
             pKFcur->AddMapPoint(pMP, mvIniMatches[j][i]);

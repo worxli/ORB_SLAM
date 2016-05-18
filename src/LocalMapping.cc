@@ -224,175 +224,176 @@ void LocalMapping::CreateNewMapPoints()
     cv::cv2eigen(Rcw1, R1);
     cv::cv2eigen(tcw1, t1);
 
-    // TODO
-    const float fx1 = mpCurrentKeyFrame->cameraFrames[0].fx;
-    const float fy1 = mpCurrentKeyFrame->cameraFrames[0].fy;
-    const float cx1 = mpCurrentKeyFrame->cameraFrames[0].cx;
-    const float cy1 = mpCurrentKeyFrame->cameraFrames[0].cy;
-    const float invfx1 = 1.0f/fx1;
-    const float invfy1 = 1.0f/fy1;
+    for(int j=0;j<mpCurrentKeyFrame->cameraFrames.size();j++) {
 
-    const float ratioFactor = 1.5f*mpCurrentKeyFrame->GetScaleFactor();
+        const float fx1 = mpCurrentKeyFrame->cameraFrames[j].fx;
+        const float fy1 = mpCurrentKeyFrame->cameraFrames[j].fy;
+        const float cx1 = mpCurrentKeyFrame->cameraFrames[j].cx;
+        const float cy1 = mpCurrentKeyFrame->cameraFrames[j].cy;
+        const float invfx1 = 1.0f / fx1;
+        const float invfy1 = 1.0f / fy1;
 
-    // Search matches with epipolar restriction and triangulate
-    for(size_t i=0; i<vpNeighKFs.size(); i++)
-    {
-        KeyFrame* pKF2 = vpNeighKFs[i];
+        const float ratioFactor = 1.5f * mpCurrentKeyFrame->GetScaleFactor();
 
-        // Check first that baseline is not too short
-        // Small translation errors for short baseline keyframes make scale to diverge
-        cv::Mat Ow2 = pKF2->GetCameraCenter();
-        cv::Mat vBaseline = Ow2-Ow1;
-        const float baseline = cv::norm(vBaseline);
-        const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
-        const float ratioBaselineDepth = baseline/medianDepthKF2;
+        // Search matches with epipolar restriction and triangulate
+        for (size_t i = 0; i < vpNeighKFs.size(); i++) {
+            KeyFrame *pKF2 = vpNeighKFs[i];
 
-        if(ratioBaselineDepth<0.01)
-            continue;
+            // Check first that baseline is not too short
+            // Small translation errors for short baseline keyframes make scale to diverge
+            cv::Mat Ow2 = pKF2->GetCameraCenter();
+            cv::Mat vBaseline = Ow2 - Ow1;
+            const float baseline = cv::norm(vBaseline);
+            const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+            const float ratioBaselineDepth = baseline / medianDepthKF2;
 
-        // Compute Fundamental Matrix
-        cv::Mat F12 = ComputeF12(mpCurrentKeyFrame,pKF2);
-
-        // Search matches that fulfil epipolar constraint
-        vector<cv::KeyPoint> vMatchedKeysUn1;
-        vector<cv::KeyPoint> vMatchedKeysUn2;
-        vector<pair<size_t,size_t> > vMatchedIndices;
-        matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedKeysUn1,vMatchedKeysUn2,vMatchedIndices);
-
-        cv::Mat Rcw2 = pKF2->GetRotation();
-        cv::Mat Rwc2 = Rcw2.t();
-        cv::Mat tcw2 = pKF2->GetTranslation();
-        cv::Mat Tcw2(3,4,CV_32F);
-        Rcw2.copyTo(Tcw2.colRange(0,3));
-        tcw2.copyTo(Tcw2.col(3));
-
-        // TODO
-        const float fx2 = pKF2->cameraFrames[0].fx;
-        const float fy2 = pKF2->cameraFrames[0].fy;
-        const float cx2 = pKF2->cameraFrames[0].cx;
-        const float cy2 = pKF2->cameraFrames[0].cy;
-        const float invfx2 = 1.0f/fx2;
-        const float invfy2 = 1.0f/fy2;
-
-        // Triangulate each match
-        for(size_t ikp=0, iendkp=vMatchedKeysUn1.size(); ikp<iendkp; ikp++)
-        {
-            const int idx1 = vMatchedIndices[ikp].first;
-            const int idx2 = vMatchedIndices[ikp].second;
-
-            const cv::KeyPoint &kp1 = vMatchedKeysUn1[ikp];
-            const cv::KeyPoint &kp2 = vMatchedKeysUn2[ikp];
-
-            /////////////////////////////// Plucker line triangulation /////////////////////////////
-
-            // TODO
-            // Retrieve Plucker lines of matched keypoints
-            std::vector<Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[0].pluckerLines[idx1];
-            std::vector<Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[0].pluckerLines[idx2];
-
-            std::cout << "ma_pl_line1: " << matched_plucker_line1[0] << " | " << matched_plucker_line1[1] << std::endl;
-
-            // Create 3d point
-            Eigen::Vector3d* P3d;
-
-            // Trinangulate 3d point (P3d) with plucker lines
-            PluckerLineTriangulation(matched_plucker_line1, matched_plucker_line2, R1, t1, P3d);
-
-            //////////////////////// END Plucker Line triangulation ///////////////////////////////////
-
-
-            // Check parallax between rays
-            cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx1)*invfx1, (kp1.pt.y-cy1)*invfy1, 1.0 );
-            cv::Mat ray1 = Rwc1*xn1;
-            cv::Mat xn2 = (cv::Mat_<float>(3,1) << (kp2.pt.x-cx2)*invfx2, (kp2.pt.y-cy2)*invfy2, 1.0 );
-            cv::Mat ray2 = Rwc2*xn2;
-            const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
-
-            if(cosParallaxRays<0 || cosParallaxRays>0.9998)
+            if (ratioBaselineDepth < 0.01)
                 continue;
 
-            // Linear Triangulation Method
-            cv::Mat A(4,4,CV_32F);
-            A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
-            A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
-            A.row(2) = xn2.at<float>(0)*Tcw2.row(2)-Tcw2.row(0);
-            A.row(3) = xn2.at<float>(1)*Tcw2.row(2)-Tcw2.row(1);
+            // Compute Fundamental Matrix
+            cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2);
 
-            cv::Mat w,u,vt;
-            cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
+            // Search matches that fulfil epipolar constraint
+            vector<cv::KeyPoint> vMatchedKeysUn1;
+            vector<cv::KeyPoint> vMatchedKeysUn2;
+            vector<pair<size_t, size_t> > vMatchedIndices;
+            matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedKeysUn1, vMatchedKeysUn2,
+                                           vMatchedIndices);
 
-            cv::Mat x3D = vt.row(3).t();
+            cv::Mat Rcw2 = pKF2->GetRotation();
+            cv::Mat Rwc2 = Rcw2.t();
+            cv::Mat tcw2 = pKF2->GetTranslation();
+            cv::Mat Tcw2(3, 4, CV_32F);
+            Rcw2.copyTo(Tcw2.colRange(0, 3));
+            tcw2.copyTo(Tcw2.col(3));
 
-            if(x3D.at<float>(3)==0)
-                continue;
+            const float fx2 = pKF2->cameraFrames[j].fx;
+            const float fy2 = pKF2->cameraFrames[j].fy;
+            const float cx2 = pKF2->cameraFrames[j].cx;
+            const float cy2 = pKF2->cameraFrames[j].cy;
+            const float invfx2 = 1.0f / fx2;
+            const float invfy2 = 1.0f / fy2;
 
-            // Euclidean coordinates
-            x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-            cv::Mat x3Dt = x3D.t();
+            // Triangulate each match
+            for (size_t ikp = 0, iendkp = vMatchedKeysUn1.size(); ikp < iendkp; ikp++) {
+                const int idx1 = vMatchedIndices[ikp].first;
+                const int idx2 = vMatchedIndices[ikp].second;
 
-            //Check triangulation in front of cameras
-            float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);
-            if(z1<=0)
-                continue;
+                const cv::KeyPoint &kp1 = vMatchedKeysUn1[ikp];
+                const cv::KeyPoint &kp2 = vMatchedKeysUn2[ikp];
 
-            float z2 = Rcw2.row(2).dot(x3Dt)+tcw2.at<float>(2);
-            if(z2<=0)
-                continue;
+                /////////////////////////////// Plucker line triangulation /////////////////////////////
 
-            //Check reprojection error in first keyframe
-            float sigmaSquare1 = mpCurrentKeyFrame->GetSigma2(kp1.octave);
-            float x1 = Rcw1.row(0).dot(x3Dt)+tcw1.at<float>(0);
-            float y1 = Rcw1.row(1).dot(x3Dt)+tcw1.at<float>(1);
-            float invz1 = 1.0/z1;
-            float u1 = fx1*x1*invz1+cx1;
-            float v1 = fy1*y1*invz1+cy1;
-            float errX1 = u1 - kp1.pt.x;
-            float errY1 = v1 - kp1.pt.y;
-            if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1)
-                continue;
+                // TODO
+                // Retrieve Plucker lines of matched keypoints
+//                std::vector <Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[0].pluckerLines[idx1];
+//                std::vector <Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[0].pluckerLines[idx2];
+//
+//                std::cout << "ma_pl_line1: " << matched_plucker_line1[0] << " | " << matched_plucker_line1[1] <<
+//                std::endl;
+//
+//                // Create 3d point
+//                Eigen::Vector3d *P3d;
+//
+//                // Trinangulate 3d point (P3d) with plucker lines
+//                PluckerLineTriangulation(matched_plucker_line1, matched_plucker_line2, R1, t1, P3d);
 
-            //Check reprojection error in second keyframe
-            float sigmaSquare2 = pKF2->GetSigma2(kp2.octave);
-            float x2 = Rcw2.row(0).dot(x3Dt)+tcw2.at<float>(0);
-            float y2 = Rcw2.row(1).dot(x3Dt)+tcw2.at<float>(1);
-            float invz2 = 1.0/z2;
-            float u2 = fx2*x2*invz2+cx2;
-            float v2 = fy2*y2*invz2+cy2;
-            float errX2 = u2 - kp2.pt.x;
-            float errY2 = v2 - kp2.pt.y;
-            if((errX2*errX2+errY2*errY2)>5.991*sigmaSquare2)
-                continue;
+                //////////////////////// END Plucker Line triangulation ///////////////////////////////////
 
-            //Check scale consistency
-            cv::Mat normal1 = x3D-Ow1;
-            float dist1 = cv::norm(normal1);
 
-            cv::Mat normal2 = x3D-Ow2;
-            float dist2 = cv::norm(normal2);
+                // Check parallax between rays
+                cv::Mat xn1 = (cv::Mat_<float>(3, 1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.0);
+                cv::Mat ray1 = Rwc1 * xn1;
+                cv::Mat xn2 = (cv::Mat_<float>(3, 1) << (kp2.pt.x - cx2) * invfx2, (kp2.pt.y - cy2) * invfy2, 1.0);
+                cv::Mat ray2 = Rwc2 * xn2;
+                const float cosParallaxRays = ray1.dot(ray2) / (cv::norm(ray1) * cv::norm(ray2));
 
-            if(dist1==0 || dist2==0)
-                continue;
+                if (cosParallaxRays < 0 || cosParallaxRays > 0.9998)
+                    continue;
 
-            float ratioDist = dist1/dist2;
-            float ratioOctave = mpCurrentKeyFrame->GetScaleFactor(kp1.octave)/pKF2->GetScaleFactor(kp2.octave);
-            if(ratioDist*ratioFactor<ratioOctave || ratioDist>ratioOctave*ratioFactor)
-                continue;
+                // Linear Triangulation Method
+                cv::Mat A(4, 4, CV_32F);
+                A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);
+                A.row(1) = xn1.at<float>(1) * Tcw1.row(2) - Tcw1.row(1);
+                A.row(2) = xn2.at<float>(0) * Tcw2.row(2) - Tcw2.row(0);
+                A.row(3) = xn2.at<float>(1) * Tcw2.row(2) - Tcw2.row(1);
 
-            // Triangulation is succesfull
-            MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
+                cv::Mat w, u, vt;
+                cv::SVD::compute(A, w, u, vt, cv::SVD::MODIFY_A | cv::SVD::FULL_UV);
 
-            pMP->AddObservation(pKF2,idx2);
-            pMP->AddObservation(mpCurrentKeyFrame,idx1);
+                cv::Mat x3D = vt.row(3).t();
 
-            mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
-            pKF2->AddMapPoint(pMP,idx2);
+                if (x3D.at<float>(3) == 0)
+                    continue;
 
-            pMP->ComputeDistinctiveDescriptors();
+                // Euclidean coordinates
+                x3D = x3D.rowRange(0, 3) / x3D.at<float>(3);
+                cv::Mat x3Dt = x3D.t();
 
-            pMP->UpdateNormalAndDepth();
+                //Check triangulation in front of cameras
+                float z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
+                if (z1 <= 0)
+                    continue;
 
-            mpMap->AddMapPoint(pMP);
-            mlpRecentAddedMapPoints.push_back(pMP);
+                float z2 = Rcw2.row(2).dot(x3Dt) + tcw2.at<float>(2);
+                if (z2 <= 0)
+                    continue;
+
+                //Check reprojection error in first keyframe
+                float sigmaSquare1 = mpCurrentKeyFrame->GetSigma2(kp1.octave);
+                float x1 = Rcw1.row(0).dot(x3Dt) + tcw1.at<float>(0);
+                float y1 = Rcw1.row(1).dot(x3Dt) + tcw1.at<float>(1);
+                float invz1 = 1.0 / z1;
+                float u1 = fx1 * x1 * invz1 + cx1;
+                float v1 = fy1 * y1 * invz1 + cy1;
+                float errX1 = u1 - kp1.pt.x;
+                float errY1 = v1 - kp1.pt.y;
+                if ((errX1 * errX1 + errY1 * errY1) > 5.991 * sigmaSquare1)
+                    continue;
+
+                //Check reprojection error in second keyframe
+                float sigmaSquare2 = pKF2->GetSigma2(kp2.octave);
+                float x2 = Rcw2.row(0).dot(x3Dt) + tcw2.at<float>(0);
+                float y2 = Rcw2.row(1).dot(x3Dt) + tcw2.at<float>(1);
+                float invz2 = 1.0 / z2;
+                float u2 = fx2 * x2 * invz2 + cx2;
+                float v2 = fy2 * y2 * invz2 + cy2;
+                float errX2 = u2 - kp2.pt.x;
+                float errY2 = v2 - kp2.pt.y;
+                if ((errX2 * errX2 + errY2 * errY2) > 5.991 * sigmaSquare2)
+                    continue;
+
+                //Check scale consistency
+                cv::Mat normal1 = x3D - Ow1;
+                float dist1 = cv::norm(normal1);
+
+                cv::Mat normal2 = x3D - Ow2;
+                float dist2 = cv::norm(normal2);
+
+                if (dist1 == 0 || dist2 == 0)
+                    continue;
+
+                float ratioDist = dist1 / dist2;
+                float ratioOctave = mpCurrentKeyFrame->GetScaleFactor(kp1.octave) / pKF2->GetScaleFactor(kp2.octave);
+                if (ratioDist * ratioFactor < ratioOctave || ratioDist > ratioOctave * ratioFactor)
+                    continue;
+
+                // Triangulation is succesfull
+                MapPoint *pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpMap, j);
+
+                pMP->AddObservation(pKF2, idx2);
+                pMP->AddObservation(mpCurrentKeyFrame, idx1);
+
+                mpCurrentKeyFrame->AddMapPoint(pMP, idx1);
+                pKF2->AddMapPoint(pMP, idx2);
+
+                pMP->ComputeDistinctiveDescriptors();
+
+                pMP->UpdateNormalAndDepth();
+
+                mpMap->AddMapPoint(pMP);
+                mlpRecentAddedMapPoints.push_back(pMP);
+            }
         }
     }
 }
