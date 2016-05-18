@@ -53,6 +53,7 @@ public:
     std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
     std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
+    std::vector<Eigen::Vector3d> vBearings;
 
     // Number of KeyPoints
     int N;
@@ -117,6 +118,7 @@ private:
 
     void UndistortKeyPoints();
     void PluckerLine();
+    void KeyfeatureBearings();
     void ComputeImageBounds();
     void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
     void LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P);

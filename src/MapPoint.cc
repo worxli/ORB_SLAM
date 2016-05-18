@@ -28,10 +28,10 @@ namespace ORB_SLAM
 long unsigned int MapPoint::nNextId=0;
 
 
-MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
+MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap, int camera):
     mnFirstKFid(pRefKF->mnId), mnTrackReferenceForFrame(0), mnLastFrameSeen(0), mnBALocalForKF(0),
     mnLoopPointForKF(0), mnCorrectedByKF(0),mnCorrectedReference(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1),
-    mbBad(false), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap)
+    mbBad(false), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap), camera(camera)
 {
     Pos.copyTo(mWorldPos);
     mnId=nNextId++;

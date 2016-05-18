@@ -598,121 +598,132 @@ int ORBmatcher::SearchByProjection(Frame &F1, Frame &F2, int windowSize, vector<
 
 
 
-int ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<cv::Point2f> &vbPrevMatched, vector<int> &vnMatches12, int windowSize)
+vector<int> ORBmatcher::SearchForInitialization(Frame &F1, Frame &F2, vector<vector<cv::Point2f> > &vbPrevMatched, vector<vector<int> > &vnMatches12Frame, int windowSize)
 {
-    int nmatches=0;
-    vnMatches12 = vector<int>(F1.cameraFrames[0].mvKeysUn.size(),-1);
+	std::vector<int> nmatchesFrame;
 
-    vector<int> rotHist[HISTO_LENGTH];
-    for(int i=0;i<HISTO_LENGTH;i++)
-        rotHist[i].reserve(500);
-    const float factor = 1.0f/HISTO_LENGTH;
-
-    vector<int> vMatchedDistance(F2.cameraFrames[0].mvKeysUn.size(),INT_MAX);
-    vector<int> vnMatches21(F2.cameraFrames[0].mvKeysUn.size(),-1);
-
-    for(size_t i1=0, iend1=F1.cameraFrames[0].mvKeysUn.size(); i1<iend1; i1++)
+    for(int nCam=0;nCam<F1.cameraFrames.size();nCam++)
     {
-        cv::KeyPoint kp1 = F1.cameraFrames[0].mvKeysUn[i1];
-        int level1 = kp1.octave;
-        if(level1>0)
-            continue;
+    	int nmatches=0;
+        vector<int> vnMatches12(F1.cameraFrames[nCam].mvKeysUn.size(), -1);
 
-        vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[i1].x,vbPrevMatched[i1].y, windowSize,level1,level1);
+		vector<int> rotHist[HISTO_LENGTH];
+		for(int i=0;i<HISTO_LENGTH;i++)
+			rotHist[i].reserve(500);
+		const float factor = 1.0f/HISTO_LENGTH;
 
-        if(vIndices2.empty())
-            continue;
+		vector<int> vMatchedDistance(F2.cameraFrames[nCam].mvKeysUn.size(),INT_MAX);
+		vector<int> vnMatches21(F2.cameraFrames[nCam].mvKeysUn.size(), -1);
 
-        cv::Mat d1 = F1.cameraFrames[0].mDescriptors.row(i1);
+		for(size_t i1=0, iend1=F1.cameraFrames[nCam].mvKeysUn.size(); i1<iend1; i1++)
+		{
+			cv::KeyPoint kp1 = F1.cameraFrames[nCam].mvKeysUn[i1];
+			int level1 = kp1.octave;
+			if(level1>0)
+				continue;
 
-        int bestDist = INT_MAX;
-        int bestDist2 = INT_MAX;
-        int bestIdx2 = -1;
+			vector<size_t> vIndices2 = F2.GetFeaturesInArea(vbPrevMatched[nCam][i1].x,vbPrevMatched[nCam][i1].y, windowSize,level1,level1);
 
-        for(vector<size_t>::iterator vit=vIndices2.begin(); vit!=vIndices2.end(); vit++)
-        {
-            size_t i2 = *vit;
+			if(vIndices2.empty())
+				continue;
 
-            cv::Mat d2 = F2.cameraFrames[0].mDescriptors.row(i2);
+			cv::Mat d1 = F1.cameraFrames[nCam].mDescriptors.row(i1);
 
-            int dist = DescriptorDistance(d1,d2);
+			int bestDist = INT_MAX;
+			int bestDist2 = INT_MAX;
+			int bestIdx2 = -1;
 
-            if(vMatchedDistance[i2]<=dist)
-                continue;
+			for(vector<size_t>::iterator vit=vIndices2.begin(); vit!=vIndices2.end(); vit++)
+			{
+				size_t i2 = *vit;
 
-            if(dist<bestDist)
-            {
-                bestDist2=bestDist;
-                bestDist=dist;
-                bestIdx2=i2;
-            }
-            else if(dist<bestDist2)
-            {
-                bestDist2=dist;
-            }
-        }
+				cv::Mat d2 = F2.cameraFrames[nCam].mDescriptors.row(i2);
 
-        if(bestDist<=TH_LOW)
-        {
-            if(bestDist<(float)bestDist2*mfNNratio)
-            {
-                if(vnMatches21[bestIdx2]>=0)
-                {
-                    vnMatches12[vnMatches21[bestIdx2]]=-1;
-                    nmatches--;
-                }
-                vnMatches12[i1]=bestIdx2;
-                vnMatches21[bestIdx2]=i1;
-                vMatchedDistance[bestIdx2]=bestDist;
-                nmatches++;
+				int dist = DescriptorDistance(d1,d2);
 
-                if(mbCheckOrientation)
-                {
-                    float rot = F1.cameraFrames[0].mvKeysUn[i1].angle-F2.cameraFrames[0].mvKeysUn[bestIdx2].angle;
-                    if(rot<0.0)
-                        rot+=360.0f;
-                    int bin = round(rot*factor);
-                    if(bin==HISTO_LENGTH)
-                        bin=0;
-                    ROS_ASSERT(bin>=0 && bin<HISTO_LENGTH);
-                    rotHist[bin].push_back(i1);
-                }
-            }
-        }
+				if(vMatchedDistance[i2]<=dist)
+					continue;
+
+				if(dist<bestDist)
+				{
+					bestDist2=bestDist;
+					bestDist=dist;
+					bestIdx2=i2;
+				}
+				else if(dist<bestDist2)
+				{
+					bestDist2=dist;
+				}
+			}
+
+			if(bestDist<=TH_LOW)
+			{
+				if(bestDist<(float)bestDist2*mfNNratio)
+				{
+					if(vnMatches21[bestIdx2]>=0)
+					{
+						vnMatches12[vnMatches21[bestIdx2]]=-1;
+						nmatches--;
+					}
+					vnMatches12[i1]=bestIdx2;
+					vnMatches21[bestIdx2]=i1;
+					vMatchedDistance[bestIdx2]=bestDist;
+					nmatches++;
+
+					if(mbCheckOrientation)
+					{
+						float rot = F1.cameraFrames[nCam].mvKeysUn[i1].angle-F2.cameraFrames[nCam].mvKeysUn[bestIdx2].angle;
+						if(rot<0.0)
+							rot+=360.0f;
+						int bin = round(rot*factor);
+						if(bin==HISTO_LENGTH)
+							bin=0;
+						ROS_ASSERT(bin>=0 && bin<HISTO_LENGTH);
+						rotHist[bin].push_back(i1);
+					}
+				}
+			}
+		}
+
+		if(mbCheckOrientation)
+		{
+			int ind1=-1;
+			int ind2=-1;
+			int ind3=-1;
+
+			ComputeThreeMaxima(rotHist,HISTO_LENGTH,ind1,ind2,ind3);
+
+			for(int i=0; i<HISTO_LENGTH; i++)
+			{
+				if(i==ind1 || i==ind2 || i==ind3)
+					continue;
+				for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
+				{
+					int idx1 = rotHist[i][j];
+					if(vnMatches12[idx1]>=0)
+					{
+						vnMatches12[idx1]=-1;
+						nmatches--;
+					}
+				}
+			}
+
+		}
+
+		//Update prev matched
+		for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
+			if(vnMatches12[i1]>=0)
+				vbPrevMatched[nCam][i1]=F2.cameraFrames[nCam].mvKeysUn[vnMatches12[i1]].pt;
+
+        vnMatches12Frame.push_back(vnMatches12);
+		nmatchesFrame.push_back(nmatches);
 
     }
 
-    if(mbCheckOrientation)
-    {
-        int ind1=-1;
-        int ind2=-1;
-        int ind3=-1;
-
-        ComputeThreeMaxima(rotHist,HISTO_LENGTH,ind1,ind2,ind3);
-
-        for(int i=0; i<HISTO_LENGTH; i++)
-        {
-            if(i==ind1 || i==ind2 || i==ind3)
-                continue;
-            for(size_t j=0, jend=rotHist[i].size(); j<jend; j++)
-            {
-                int idx1 = rotHist[i][j];
-                if(vnMatches12[idx1]>=0)
-                {
-                    vnMatches12[idx1]=-1;
-                    nmatches--;
-                }
-            }
-        }
-
-    }
-
-    //Update prev matched
-    for(size_t i1=0, iend1=vnMatches12.size(); i1<iend1; i1++)
-        if(vnMatches12[i1]>=0)
-            vbPrevMatched[i1]=F2.cameraFrames[0].mvKeysUn[vnMatches12[i1]].pt;
-
-    return nmatches;
+//    cout << "frames in F1: " << F1.cameraFrames.size() << endl;
+//    cout << "frames in F2: " << F2.cameraFrames.size() << endl;
+    
+    return nmatchesFrame;
 }
 
 int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches12)

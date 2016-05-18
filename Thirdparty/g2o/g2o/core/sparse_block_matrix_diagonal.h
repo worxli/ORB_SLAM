@@ -29,7 +29,6 @@
 
 #include <vector>
 #include <Eigen/Core>
-#include <Eigen/StdVector>
 
 #include "../../config.h"
 #include "matrix_operations.h"

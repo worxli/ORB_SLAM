@@ -23,6 +23,7 @@
 
 #include<opencv2/opencv.hpp>
 #include "Frame.h"
+#include <opengv/types.hpp>
 
 
 namespace ORB_SLAM
@@ -39,9 +40,9 @@ public:
 
     // Computes in parallel a fundamental matrix and a homography
     // Selects a model and tries to recover the motion and the structure from motion
-    bool Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12,
-                    cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
-
+    bool Initialize(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12,
+                    cv::Mat &R21, cv::Mat &t21, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated);
+    void InitializeGenCam();
 
 private:
 
@@ -54,6 +55,8 @@ private:
     float CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma);
 
     float CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesInliers, float sigma);
+
+    bool CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated);
 
     bool ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
                       cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
@@ -73,17 +76,17 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint> mvKeys1;
+    vector<vector<cv::KeyPoint> > mvKeys1;
 
     // Keypoints from Current Frame (Frame 2)
-    vector<cv::KeyPoint> mvKeys2;
+    vector<vector<cv::KeyPoint> > mvKeys2;
 
     // Current Matches from Reference to Current
-    vector<Match> mvMatches12;
-    vector<bool> mvbMatched1;
+    vector<vector<Match> > mvMatches12;
+    vector<vector<bool> > mvbMatched1;
 
     // Calibration
-    cv::Mat mK;
+    vector<cv::Mat> mK;
 
     // Standard Deviation and Variance
     float mSigma, mSigma2;
@@ -94,13 +97,24 @@ private:
     // Ransac sets
     vector<vector<size_t> > mvSets;
 
+    // # of cameras
+    int cameras;
+
+    //
+    vector<vector<Eigen::Vector3d> > mvBearings1;
+
     // sample data
     vector<cv::Mat> v1c1;
     vector<cv::Mat> v2c1;
+    vector<cv::Mat> v1c2;
+    vector<cv::Mat> v2c2;
+
     cv::Mat gR;
     cv::Mat gt;
     cv::Mat c1R;
     cv::Mat c1t;
+    cv::Mat c2R;
+    cv::Mat c2t;
 
 
     void generateSampleData();
