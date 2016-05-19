@@ -366,8 +366,22 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
     // reproject points and check score
     for(uint i = 0; i<cameras; i++) {
         float parallaxi;
-        vector <cv::Point3f> mvP3Di;
+        vector<cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
+
+        std::cout << "R: " << std::endl << R << std::endl
+                  << "t: " << t << std::endl
+//                  << "mvKeys1: " << mvKeys1[i] << std::endl
+//                  << "mvKeys2: " << mvKeys2[i] << std::endl
+//                  << "vbMatchesInliers: " << vbMatchesInliers
+                  << "mK: " << std::endl << mK[i] << std::endl
+                  << "mvP3Di: " << std::endl << mvP3Di << std::endl
+                  << "4*mSigma2: " << mSigma2 << std::endl
+//                  << "mvbTri: " << mvbTriangulated << std::endl
+                  << "parallaxi: " << parallaxi << std::endl
+                  << "mR: " << mR[i] << std::endl
+                  << "mt: " << mt[i] << std::endl; // TODO: why has mt[i] 4 entries?
+
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i]);
         vP3D.push_back(mvP3Di);
@@ -415,14 +429,18 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
 //    cv::Mat O1 = cv::Mat::zeros(3,1,CV_32F);
 
+    std::cout << "Debug 6" << std::endl;
+
     // Camera 1 with baseframe at position 0 --> Rot. = eye and trans = 0
     // Comined rotation and translation world->base->camera // TODO: Tbc or Tcb?
     cv::Mat Rwb1 = cv::Mat::eye(3,3,CV_32F);
     cv::Mat Rbc1 = mR;
     cv::Mat Rwc1 = Rwb1*Rbc1;
     cv::Mat twb1 = cv::Mat::zeros(3,1,CV_32F);
-    cv::Mat tbc1 = mt;
+    cv::Mat tbc1 = mt.rowRange(0,3); // TODO: why mt 4 entries??
     cv::Mat twc1 = twb1 + tbc1;
+
+    std::cout << "Debug 7" << std::endl;
 
     // Camera 1 Projection Matrix K[I|0]
     cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
@@ -445,7 +463,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     cv::Mat Rbc2 = mR;
     cv::Mat Rwc2 = Rwb2*Rbc2;
     cv::Mat twb2 = t;
-    cv::Mat tbc2 = mt;
+    cv::Mat tbc2 = mt.rowRange(0,3); // TODO: why mt 4 entries??
     cv::Mat twc2 = twb2 + tbc2;
 
     // Camera 2 Projection Matrix K[R|t]
@@ -469,7 +487,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
         Triangulate(kp1,kp2,P1,P2,p3dC1);
-
+        
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
             vbGood[vMatches12[i].first]=false;
