@@ -626,8 +626,8 @@ void Tracking::Initialize()
         cout << Rcw << endl;
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
-                if (mvIniMatches[j][i]>0)
-                    cout << "vbTriangulated " << vbTriangulated[j][i] << endl;
+                if (vbTriangulated[j][i])
+                    cout << "vbTriangulated " << i << " ";
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
                     nmatches--;
@@ -663,11 +663,12 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
         // Create MapPoints and asscoiate to keyframes
         for (size_t i = 0; i < mvIniMatches.size(); i++) {
-            if (mvIniMatches[j][i] < 0)
-                continue;
 
             cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
             cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
+            
+            if (mvIniMatches[j][i] < 0)
+                continue;
 
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[j][i]);

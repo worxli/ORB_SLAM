@@ -111,8 +111,10 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
         cv::KeyPoint &kp = mvKeysUn[i];
 
         int nGridPosX, nGridPosY;
-        if(PosInGrid(kp,nGridPosX,nGridPosY))
+        if(PosInGrid(kp,nGridPosX,nGridPosY)) {
             mGrid[nGridPosX][nGridPosY].push_back(i);
+        }
+
     }
 
     mvbOutlier = vector<bool>(N,false);

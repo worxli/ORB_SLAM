@@ -20,6 +20,7 @@
 
 #include "KeyFrame.h"
 #include "Converter.h"
+#include "../include/KeyFrame.h"
 #include <ros/ros.h>
 
 namespace ORB_SLAM
@@ -38,26 +39,25 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
 {
     mnId=nNextId++;
 
+    mGrid.resize(cameraFrames.size());
     for(int j =0; j<cameraFrames.size(); j++) {
 
         // copy all the stuff manually
         mfGridElementWidthInv.push_back(F.cameraFrames[j].mfGridElementWidthInv);
         mfGridElementHeightInv.push_back(F.cameraFrames[j].mfGridElementHeightInv);
         mBowVec = F.mBowVec;
-        mFeatVec = F.mFeatVec;
         mvKeys.push_back(F.cameraFrames[j].mvKeys);
         mvKeysUn.push_back(F.cameraFrames[j].mvKeysUn);
         mDescriptors.push_back(F.cameraFrames[j].mDescriptors.clone());
 
-
-        mnGridCols = FRAME_GRID_COLS;
-        mnGridRows = FRAME_GRID_ROWS;
-        mGrid.resize(mnGridCols);
-        for(int i=0; i<mnGridCols;i++)
+        mGrid[j].resize(FRAME_GRID_COLS);
+        for(int i=0; i<FRAME_GRID_COLS;i++)
         {
-            mGrid[i].resize(mnGridRows);
-            for(int j=0; j<mnGridRows; j++)
-                mGrid[i][j] = F.cameraFrames[j].mGrid[i][j];
+            mGrid[j][i].resize(FRAME_GRID_ROWS);
+            for(int l=0; l<FRAME_GRID_ROWS; l++) {
+                mGrid[j][i][l] = F.cameraFrames[j].mGrid[i][l];
+            }
+
         }
     }
 
@@ -653,7 +653,7 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            vector<size_t> vCell = mGrid[ix][iy];
+            vector<size_t> vCell = mGrid[camera][ix][iy];
             for(size_t j=0, jend=vCell.size(); j<jend; j++)
             {
                 const cv::KeyPoint &kpUn = mvKeysUn[camera][vCell[j]];

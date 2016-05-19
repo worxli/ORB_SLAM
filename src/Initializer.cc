@@ -229,6 +229,18 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         vbMatchesInliers[ransac.inliers_[i]] = true;
     }
 
+    // fill old matches structure
+    mvMatches12.clear();
+    for(int j =0; j<cameras; j++) {
+        vector<Match> matches;
+        matches.reserve(mvKeys2[j].size());
+        mvMatches12.push_back(matches);
+        for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
+            if (vMatches12[j][i] >= 0)
+                mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
+        }
+    }
+
     return CheckRelativePose(R21, t21, vP3D, vbTriangulated, vbMatchesInliers);
 }
 
@@ -409,18 +421,12 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     t.copyTo(P2.rowRange(0,3).col(3));
     P2 = K*P2;
 
-    cout << R.type() << endl;
-    cout << t.type() << endl;
-
     cv::Mat O2 = -R.t()*t;
-
-    cout << O2 << endl;
 
     int nGood=0;
 
     for(size_t i=0, iend=vMatches12.size();i<iend;i++)
     {
-        cout << "enter loop" << endl;
         if(!vbMatchesInliers[i])
             continue;
 

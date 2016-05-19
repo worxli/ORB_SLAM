@@ -35,6 +35,8 @@
 
 namespace ORB_SLAM
 {
+#define FRAME_GRID_ROWS 48
+#define FRAME_GRID_COLS 64
 
 class Map;
 class MapPoint;
@@ -207,8 +209,7 @@ protected:
 
 
     // Grid over the image to speed up feature matching
-    //TODO
-    std::vector< std::vector <std::vector<size_t> > > mGrid;
+    std::vector<std::vector<std::vector<std::vector<std::size_t> > > > mGrid;
 
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
