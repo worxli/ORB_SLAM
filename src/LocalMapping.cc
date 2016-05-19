@@ -210,21 +210,32 @@ void LocalMapping::CreateNewMapPoints()
 
     ORBmatcher matcher(0.6,false);
 
-    cv::Mat Rcw1 = mpCurrentKeyFrame->GetRotation();
-    cv::Mat Rwc1 = Rcw1.t();
-    cv::Mat tcw1 = mpCurrentKeyFrame->GetTranslation();
-    cv::Mat Tcw1(3,4,CV_32F);
-    Rcw1.copyTo(Tcw1.colRange(0,3));
-    tcw1.copyTo(Tcw1.col(3));
+    cv::Mat Rbw1 = mpCurrentKeyFrame->GetRotation();
+    cv::Mat Rwb1 = Rbw1.t();
+    cv::Mat tbw1 = mpCurrentKeyFrame->GetTranslation();
+    cv::Mat Tbw1(3,4,CV_32F);
+    Rbw1.copyTo(Tbw1.colRange(0,3));
+    tbw1.copyTo(Tbw1.col(3));
     cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
     Eigen::Matrix3d R1;
     Eigen::Vector3d t1;
     // Needed for calculation of 3point triangulation with pluckerlines
-    cv::cv2eigen(Rcw1, R1);
-    cv::cv2eigen(tcw1, t1);
+    cv::cv2eigen(Rbw1, R1);
+    cv::cv2eigen(tbw1, t1);
 
     for(int j=0;j<mpCurrentKeyFrame->cameraFrames.size();j++) {
+
+        // Retrieve extrinsic Rotation and translation for reprojection later
+        cv::Mat Rcb1 = mpCurrentKeyFrame->cameraFrames[j].mR;
+        cv::Mat tcb1 = mpCurrentKeyFrame->cameraFrames[j].mt;
+        cv::Mat Rcw1 = Rcb1*Rbw1;
+        cv::Mat Rwc1 = Rcw1.t();
+        cv::Mat tcw1 = tcb1*tbw1;
+        cv::Mat Tcw1(3,4,CV_32F);
+        Rcw1.copyTo(Tcw1.colRange(0,3));
+        tcw1.copyTo(Tcw1.col(3));
+        // TODO cv::Mat Ow1??
 
         const float fx1 = mpCurrentKeyFrame->cameraFrames[j].fx;
         const float fy1 = mpCurrentKeyFrame->cameraFrames[j].fy;
@@ -241,7 +252,7 @@ void LocalMapping::CreateNewMapPoints()
 
             // Check first that baseline is not too short
             // Small translation errors for short baseline keyframes make scale to diverge
-            cv::Mat Ow2 = pKF2->GetCameraCenter();
+            cv::Mat Ow2 = pKF2->GetCameraCenter(); //TODO same as for Ow1?
             cv::Mat vBaseline = Ow2 - Ow1;
             const float baseline = cv::norm(vBaseline);
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
@@ -260,11 +271,20 @@ void LocalMapping::CreateNewMapPoints()
             matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedKeysUn1, vMatchedKeysUn2,
                                            vMatchedIndices);
 
-            cv::Mat Rcw2 = pKF2->GetRotation();
+            cv::Mat Rbw2 = pKF2->GetRotation();
+            cv::Mat Rwb2 = Rbw2.t();
+            cv::Mat tbw2 = pKF2->GetTranslation();
+            cv::Mat Tbw2(3, 4, CV_32F);
+            Rbw2.copyTo(Tbw2.colRange(0, 3));
+            tbw2.copyTo(Tbw2.col(3));
+            // Retrieve extrinsic Rotation and translation for reprojection later
+            cv::Mat Rcb2 = pKF2->cameraFrames[j].mR;
+            cv::Mat tcb2 = pKF2->cameraFrames[j].mt;
+            cv::Mat Rcw2 = Rcb2*Rbw2;
             cv::Mat Rwc2 = Rcw2.t();
-            cv::Mat tcw2 = pKF2->GetTranslation();
-            cv::Mat Tcw2(3, 4, CV_32F);
-            Rcw2.copyTo(Tcw2.colRange(0, 3));
+            cv::Mat tcw2 = tcb2*tbw2;
+            cv::Mat Tcw2(3,4,CV_32F);
+            Rcw2.copyTo(Tcw2.colRange(0,3));
             tcw2.copyTo(Tcw2.col(3));
 
             const float fx2 = pKF2->cameraFrames[j].fx;
@@ -283,23 +303,25 @@ void LocalMapping::CreateNewMapPoints()
                 const cv::KeyPoint &kp2 = vMatchedKeysUn2[ikp];
 
                 /////////////////////////////// Plucker line triangulation /////////////////////////////
-
-                // TODO
-                // Retrieve Plucker lines of matched keypoints
-//                std::vector <Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[0].pluckerLines[idx1];
-//                std::vector <Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[0].pluckerLines[idx2];
 //
-//                std::cout << "ma_pl_line1: " << matched_plucker_line1[0] << " | " << matched_plucker_line1[1] <<
-//                std::endl;
+//                // TODO Test and Reprojection to camera frame not keyframe
+//                // TODO Not in use yet
+//                // Retrieve Plucker lines of matched keypoints
+//                std::vector<Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[j].pluckerLines[idx1];
+//                std::vector<Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[j].pluckerLines[idx2];
+//
+//                std::cout << "ma_pl_line1: " << matched_plucker_line1[0] << " | " << matched_plucker_line1[1] << std::endl;
 //
 //                // Create 3d point
 //                Eigen::Vector3d *P3d;
 //
 //                // Trinangulate 3d point (P3d) with plucker lines
 //                PluckerLineTriangulation(matched_plucker_line1, matched_plucker_line2, R1, t1, P3d);
-
+//
+//                //cv::Mat x3D = *P3d;
+//                //cv::Mat x3Dt = x3D.t();
                 //////////////////////// END Plucker Line triangulation ///////////////////////////////////
-
+                //////////////////////// BEGIN OLD triangulation //////////////////////////////////////////
 
                 // Check parallax between rays
                 cv::Mat xn1 = (cv::Mat_<float>(3, 1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.0);
@@ -329,6 +351,8 @@ void LocalMapping::CreateNewMapPoints()
                 // Euclidean coordinates
                 x3D = x3D.rowRange(0, 3) / x3D.at<float>(3);
                 cv::Mat x3Dt = x3D.t();
+
+                //////////////////////// END OLD triangulation ////////////////////////////////////////////
 
                 //Check triangulation in front of cameras
                 float z1 = Rcw1.row(2).dot(x3Dt) + tcw1.at<float>(2);
