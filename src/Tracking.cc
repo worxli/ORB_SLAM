@@ -623,6 +623,7 @@ void Tracking::Initialize()
 
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
+        cout << Rcw << endl;
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
                 if (mvIniMatches[j][i]>0)

@@ -104,18 +104,18 @@ private:
     vector<vector<Eigen::Vector3d> > mvBearings1;
 
     // sample data
-    vector<cv::Mat> v1c1;
-    vector<cv::Mat> v2c1;
-    vector<cv::Mat> v1c2;
-    vector<cv::Mat> v2c2;
-
     cv::Mat gR;
     cv::Mat gt;
-    cv::Mat c1R;
-    cv::Mat c1t;
-    cv::Mat c2R;
-    cv::Mat c2t;
 
+    vector<Eigen::Vector3d> v1c1;
+    vector<Eigen::Vector3d> v2c1;
+    vector<Eigen::Vector3d> v1c2;
+    vector<Eigen::Vector3d> v2c2;
+
+    Eigen::Matrix3d c1R;
+    Eigen::Vector3d c1t;
+    Eigen::Matrix3d c2R;
+    Eigen::Vector3d c2t;
 
     void generateSampleData();
 

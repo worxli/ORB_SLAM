@@ -81,7 +81,7 @@ protected:
 
     void KeyFrameCulling();
 
-    cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2);
+    cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2, int camera);
 
     cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
