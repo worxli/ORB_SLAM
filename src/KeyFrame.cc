@@ -27,6 +27,9 @@ namespace ORB_SLAM
 
 long unsigned int KeyFrame::nNextId=0;
 
+KeyFrame::KeyFrame() {
+}
+
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), cameraFrames(F.cameraFrames),
     mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
@@ -231,6 +234,13 @@ void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
     mvpMapPoints[idx]=pMP;
 }
 
+//void KeyFrame::TestAddMapPoint(MapPoint *pMP){
+//    boost::mutex::scoped_lock lock(mMutexFeatures);
+//    mvpMapPoints.push_back(pMP);
+//    mvLevelSigma2.resize(3,2);
+//    mvInvLevelSigma2.resize(3,0.5);
+//}
+
 void KeyFrame::EraseMapPointMatch(const size_t &idx)
 {
     boost::mutex::scoped_lock lock(mMutexFeatures);
@@ -296,6 +306,10 @@ cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx, int camera) const
     return mvKeysUn[camera][idx];
 }
 
+//void KeyFrame::TestAddKeyPointUn(cv::KeyPoint &kpt){
+//    mvKeysUn.push_back(kpt);
+//}
+
 int KeyFrame::GetKeyPointScaleLevel(const size_t &idx, int camera) const
 {
     return mvKeysUn[camera][idx].octave;
@@ -325,6 +339,14 @@ cv::Mat KeyFrame::GetCalibrationMatrix(int camera) const
 {
     return mK[camera].clone();
 }
+
+//void KeyFrame::SetCalibrationMatrix(cv::Mat K){
+//    mK = K.clone();
+//    this->fx = K.at<float>(0,0);
+//    this->fy = K.at<float>(1,1);
+//    this->cx = K.at<float>(0,2);
+//    this->cy = K.at<float>(1,2);
+//}
 
 DBoW2::FeatureVector KeyFrame::GetFeatureVector()
 {

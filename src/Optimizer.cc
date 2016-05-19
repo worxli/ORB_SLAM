@@ -998,4 +998,262 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nIn;
 }
 
+void Optimizer::TestLocalBundleAdjustment()
+{
+    // define config parameters
+    bool bFixData = false;
+    unsigned int nKFs = 3;
+    unsigned int nMPs = 30;
+    unsigned int nReferenceKF_ID = 1000;
+    unsigned int nFirstMapPointID = nReferenceKF_ID + nKFs;
+
+    float fMPSigma = 1; // noise level, (+-)0.1 m
+
+    float f_t1Noise = 0.1;
+    float f_t2Noise = 0.1;
+    float f_t3Noise = 0.1;
+
+    float fRollError = 0; //degree
+    float fPitchError = 0;
+    float fYawError = 0;
+
+    int nMAX_X2 = 2*10*10;
+    int nMAX_Y2 = 2*10*10;
+    int nMAX_Z2 = 20*20;
+
+    float fx, fy, cx, cy;
+    fx = 268.963; fy = 269.986; cx = 157.609; cy = 114.637;
+    cv::Mat K = cv::Mat::eye(3,3,CV_32F);
+    K.at<float>(0,0) = fx;
+    K.at<float>(1,1) = fy;
+    K.at<float>(0,2) = cx;
+    K.at<float>(1,2) = cy;
+
+    srand (time(NULL));
+
+    //
+    std::vector<KeyFrame*> vAllKeyFrames;
+    std::vector<MapPoint*> vAllMapPoints;
+//    // generate test data for KF0;
+    KeyFrame* pKF0;
+//    pKF0->mnId = nReferenceKF_ID;
+//    cv::Mat T = cv::Mat:: (4,4,CV_32F);
+//    pKF0->SetPose(T);
+//    pKF0->SetCalibrationMatrix(K);
+//    vAllKeyFrames.push_back(pKF0);
+
+//    cout << endl;
+
+    // generate extra KFs
+    for(unsigned int i = 0; i < nKFs; i++){
+        KeyFrame* pKFi = new KeyFrame();
+        // generate pose
+        float roll, pitch, yaw;
+        if(!bFixData){
+            roll = rand()%20 - 10;
+            pitch = rand()%20 - 10;
+            yaw = rand()%20 - 10;
+        }
+        else{
+            roll = 3*i;
+            pitch = 3*i;
+            yaw = 3*i;
+        }
+        roll = roll*3.14/180.0; pitch = pitch*3.14/180.0; yaw = yaw*3.14/180.0;
+
+        tf::Matrix3x3 rotationM;
+        rotationM.setEulerZYX(yaw, pitch, roll);
+        cv::Mat Rcw2(3,3,CV_32F);
+        Rcw2.at<float>(0,0) = rotationM[0][0];
+        Rcw2.at<float>(0,1) = rotationM[0][1];
+        Rcw2.at<float>(0,2) = rotationM[0][2];
+
+        Rcw2.at<float>(1,0) = rotationM[1][0];
+        Rcw2.at<float>(1,1) = rotationM[1][1];
+        Rcw2.at<float>(1,2) = rotationM[1][2];
+
+        Rcw2.at<float>(2,0) = rotationM[2][0];
+        Rcw2.at<float>(2,1) = rotationM[2][1];
+        Rcw2.at<float>(2,2) = rotationM[2][2];
+
+        cv::Mat camCenter(3,1,CV_32F);
+        if(!bFixData){
+            camCenter.at<float>(0) = rand()%5 - 5;
+            camCenter.at<float>(1) = rand()%5 - 5;
+            camCenter.at<float>(2) = (rand()%5)*(-1.0);
+        }
+        else{
+            camCenter.at<float>(0) = i*1;
+            camCenter.at<float>(1) = i*1;
+            camCenter.at<float>(2) = i*(-1.0);
+        }
+
+//        cout << "DEBUG camCenter " << endl << camCenter << endl;
+
+        cv::Mat tcw2 = -Rcw2*camCenter;
+
+//        cout << "DEBUG tcw2 "<< endl << tcw2 << endl;
+
+        cv::Mat Tcw2 = cv::Mat::eye(4,4,CV_32F);
+        Rcw2.copyTo(Tcw2.rowRange(0,3).colRange(0,3));
+        tcw2.copyTo(Tcw2.col(3).rowRange(0,3));
+
+        // set pose and ID to KFs
+        pKFi->SetPose(Tcw2);
+//        pKFi->SetCalibrationMatrix(K); // TODO
+//        cout << "DEBUG generated pose " << endl << pKFi->GetPose() << endl;
+        pKFi->mnId = i + nReferenceKF_ID;
+        vAllKeyFrames.push_back(pKFi);
+        if(i == 0){
+            pKF0 = pKFi;
+        }
+    }
+
+    // generate Map points in KF0 camera frame;
+    for(unsigned int i = 0 ; i < nMPs; i++){
+        double x, y, z;
+        if(!bFixData){
+            x = (rand()%nMAX_X2 - nMAX_X2/2.0)/sqrt(nMAX_X2/2);
+            y = (rand()%nMAX_Y2 - nMAX_Y2/2.0)/sqrt(nMAX_Y2/2);
+            z = (rand()%nMAX_Z2)/sqrt(nMAX_Z2/2) + 2;
+        }
+        else{
+            x = 0.5*i + 1;
+            y = 0.5*i + 2;
+            z = 0.5*i + 3;
+        }
+
+//        cout << "DEBUG MPs: " << x << " " << y << " " << z << endl;
+
+        cv::Mat x3D(4,1,CV_32F);
+        x3D.at<float>(0) = x; x3D.at<float>(1) = y; x3D.at<float>(2) = z; x3D.at<float>(3) = 1.0;
+        // assign ID and world coordinate to generated MP point.
+        MapPoint* pMPi = new MapPoint();
+        pMPi->mnId = i + nFirstMapPointID;
+        pMPi->SetWorldPos(x3D.rowRange(0,3));
+
+        //project pMPi to keyframes to generate KeyPoint location
+        for(size_t j = 0; j < vAllKeyFrames.size(); j++){
+            KeyFrame* pKF = vAllKeyFrames[j];
+            cv::Mat x3DinCurKP =pKF->GetPose()*x3D;
+            x3DinCurKP = x3DinCurKP/x3DinCurKP.at<float>(2);
+            x3DinCurKP = K*x3DinCurKP.rowRange(0,3);
+            cv::KeyPoint kpt;
+            kpt.pt.x = x3DinCurKP.at<float>(0)/x3DinCurKP.at<float>(2);
+            kpt.pt.y = x3DinCurKP.at<float>(1)/x3DinCurKP.at<float>(2);
+            kpt.octave = 2;
+//            pKF->TestAddKeyPointUn(kpt); // TODO
+//            pKF->TestAddMapPoint(pMPi); // TODO
+            pMPi->AddObservation(pKF,i);
+            pKF->UpdateConnections();
+        }
+        vAllMapPoints.push_back(pMPi);
+    }
+
+    // store orignal pose and MP locations
+    std::vector<cv::Mat> vOriginal_Poses;
+    std::vector<cv::Mat> vOriginalMP_Position;
+    for(size_t i = 0; i < vAllKeyFrames.size(); i++){
+        vOriginal_Poses.push_back(vAllKeyFrames.at(i)->GetPose());
+    }
+    for(size_t i = 0; i < vAllMapPoints.size(); i++){
+        vOriginalMP_Position.push_back(vAllMapPoints.at(i)->GetWorldPos());
+    }
+
+    // add noise for testing
+    vector<MapPoint*> allMPs = pKF0->GetMapPointMatches();
+    for(size_t i = 0; i < allMPs.size(); i++){
+        MapPoint* pMP = allMPs[i];
+        cv::Mat x3D = pMP->GetWorldPos();
+
+        float x_noise = fMPSigma;
+        float y_noise = fMPSigma;
+        float z_noise = fMPSigma;
+
+        x3D.at<float>(0) += x_noise;
+        x3D.at<float>(1) += y_noise;
+        x3D.at<float>(2) += z_noise;
+        pMP->SetWorldPos(x3D);
+    }
+
+    // pose translation noise
+    for(size_t i = 0; i < vAllKeyFrames.size(); i++){
+        KeyFrame* pKFi = vAllKeyFrames[i];
+        if (pKFi->mnId == nReferenceKF_ID) continue;
+//        cout << "DEBUG Previous Pose: " << endl << pKFi->GetPose() << endl;
+        cv::Mat camCenter = pKFi->GetRotation().t()*pKFi->GetTranslation()*(-1.0);
+
+        camCenter.at<float>(0) += f_t1Noise;
+        camCenter.at<float>(1) += f_t2Noise;
+        camCenter.at<float>(2) += f_t3Noise;
+
+        camCenter = (-1.0)*pKFi->GetRotation()*camCenter;
+
+        cv::Mat pose = pKFi->GetPose();
+        camCenter.copyTo(pose.rowRange(0,3).col(3));
+        pKFi->SetPose(pose);
+//        cout << "DEBUG noise corrupted cam center: " << endl << pKFi->GetCameraCenter() << endl;
+    }
+    // pose rotation noise
+    for(size_t i = 0; i <  vAllKeyFrames.size(); i++){
+        KeyFrame* pKFi = vAllKeyFrames[i];
+        if(pKFi->mnId == nReferenceKF_ID || pKFi->mnId == nReferenceKF_ID + 1) continue;
+        cv::Mat R = pKFi->GetRotation();
+
+        tf::Matrix3x3 r_noise;
+        r_noise.setEulerZYX(fYawError*3.14/180.0, fPitchError*3.14/180.0, fRollError*3.14/180.0);
+        cv::Mat R_noise(3,3,CV_32F);
+
+        R_noise.at<float>(0,0) = r_noise[0][0];
+        R_noise.at<float>(0,1) = r_noise[0][1];
+        R_noise.at<float>(0,2) = r_noise[0][2];
+
+        R_noise.at<float>(1,0) = r_noise[1][0];
+        R_noise.at<float>(1,1) = r_noise[1][1];
+        R_noise.at<float>(1,2) = r_noise[1][2];
+
+        R_noise.at<float>(2,0) = r_noise[2][0];
+        R_noise.at<float>(2,1) = r_noise[2][1];
+        R_noise.at<float>(2,2) = r_noise[2][2];
+
+
+        R = R_noise*R;
+        cv::Mat T = pKFi->GetPose();
+        R.copyTo(T.colRange(0,3).rowRange(0,3));
+        pKFi->SetPose(T);
+    }
+
+
+    // call optimization
+    vector<bool> vbMatched; vbMatched.resize(nMPs, true);
+//    LocalBundleAdjustment(pKF0,vbMatched);
+    bool* pbStopFlag;
+    *pbStopFlag = false;
+    LocalBundleAdjustment(pKF0,pbStopFlag);
+
+
+    cout << endl << "==================== DEBUG Optimizer::LocalBA ==================" << endl;
+    // compute optimization error
+    for(size_t i = 0; i < vAllKeyFrames.size(); i++){
+        KeyFrame* pKFi = vAllKeyFrames[i];
+        cout << "+++++++ Error for camera pose   +++++++" << i << endl;
+        cout << vOriginal_Poses[i]*pKFi->GetPose().inv() << endl;
+
+//        cout << "+++++++ Error for camera center +++++++" << i << endl;
+        cv::Mat T = vOriginal_Poses[i];
+        cv::Mat R = T.colRange(0,3).rowRange(0,3);
+        cv::Mat t = T.col(3).rowRange(0,3);
+
+//        cout << "DEBUG estimated camCenter of frame: " << pKFi->mnId << endl;
+//        cout << pKFi->GetCameraCenter() << endl;
+        cout << -R.t()*t - pKFi->GetCameraCenter() << endl << endl;
+    }
+
+//    cout << "+++++++ Error for map points locations +++++++ " << endl;
+//    for(size_t i = 0; i < vAllMapPoints.size(); i++){
+//        MapPoint* pMP = vAllMapPoints[i];
+//        cout << vOriginalMP_Position[i].t() - pMP->GetWorldPos().t()<< endl;
+//    }
+}
+
 } //namespace ORB_SLAM

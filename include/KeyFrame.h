@@ -45,6 +45,7 @@ class DatabaseResult;
 class KeyFrame
 {
 public:
+    KeyFrame();
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Camera
@@ -168,6 +169,9 @@ public:
     int mnRelocWords;
     float mRelocScore;
 
+     // Calibration parameters
+    float fx, fy, cx, cy;
+
     //BoW
     DBoW2::BowVector mBowVec;
 
@@ -179,6 +183,10 @@ public:
         return pKF1->mnId<pKF2->mnId;
     }
 
+    // Needed for testing
+//    void TestAddKeyPointUn(cv::KeyPoint &kpt);
+//    void TestAddMapPoint(MapPoint *pMP);
+//    void SetCalibrationMatrix(cv::Mat K);
 
 protected:
 

@@ -36,7 +36,7 @@ class LoopClosing;
 
 class Optimizer
 {
-public:
+  public:
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP, int nIterations = 5, bool *pbStopFlag=NULL);
     void static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL);
     void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag=NULL);
@@ -49,6 +49,10 @@ public:
 
 
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12, float th2 = 10);
+
+  //function used to test Optimizer methods
+ public:
+  void static TestLocalBundleAdjustment();
 };
 
 } //namespace ORB_SLAM
