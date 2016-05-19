@@ -1226,7 +1226,7 @@ void Optimizer::TestLocalBundleAdjustment()
 
     // call optimization
     vector<bool> vbMatched; vbMatched.resize(nMPs, true);
-//    LocalBundleAdjustment(pKF0,vbMatched);
+//    LocalBundleAdjustment(pKF0,vbMatched); // TODO
     bool* pbStopFlag;
     *pbStopFlag = false;
     LocalBundleAdjustment(pKF0,pbStopFlag);
