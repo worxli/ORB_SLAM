@@ -253,6 +253,7 @@ void LocalMapping::CreateNewMapPoints()
             // Check first that baseline is not too short
             // Small translation errors for short baseline keyframes make scale to diverge
             cv::Mat Ow2 = pKF2->GetCameraCenter(); //TODO same as for Ow1?
+            //Ow2 = Obw2-Rcb2.t()*tcb2;
             cv::Mat vBaseline = Ow2 - Ow1;
             const float baseline = cv::norm(vBaseline);
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
@@ -304,7 +305,6 @@ void LocalMapping::CreateNewMapPoints()
 
                 /////////////////////////////// Plucker line triangulation /////////////////////////////
 //
-//                // TODO Test and Reprojection to camera frame not keyframe
 //                // TODO Not in use yet
 //                // Retrieve Plucker lines of matched keypoints
 //                std::vector<Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[j].pluckerLines[idx1];
