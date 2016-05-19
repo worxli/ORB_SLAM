@@ -125,21 +125,17 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
             ransac;
 
     // create a NoncentralRelativePoseSacProblem
-    cout << "create NoncentralRelativePoseSacProblem" << endl;
     std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
             relposeproblem_ptr(
             new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
                     adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
     );
     // run ransac
-    cout << "run ransac" << endl;
     ransac.sac_model_ = relposeproblem_ptr;
     ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.max_iterations_ = 10;
-    cout << "compute model" << endl;
+    ransac.max_iterations_ = 20;
     ransac.computeModel();
     // get the result
-    cout << "get result" << endl;
     opengv::transformation_t best_transformation = ransac.model_coefficients_;
 
     cv::Mat Tcw;
@@ -298,7 +294,6 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
         vector <cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
         vector<bool> vbMatchesInliers; //TODO
-        cout << i << endl;
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
         vP3D.push_back(mvP3Di);
@@ -932,16 +927,10 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     A.row(2) = kp2.pt.x*P2.row(2)-P2.row(0);
     A.row(3) = kp2.pt.y*P2.row(2)-P2.row(1);
 
-//    cout << "triangulation" << endl;
-//    cout << kp1.pt << endl;
-//    cout << kp2.pt << endl;
-//    cout << P1 << endl;
-
     cv::Mat u,w,vt;
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     x3D = vt.row(3).t();
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-    //cout << x3D << endl;
 }
 
     /*
@@ -1028,6 +1017,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
     for(size_t i=0, iend=vMatches12.size();i<iend;i++)
     {
+        //TODO
 //        if(!vbMatchesInliers[i])
 //            continue;
 
@@ -1036,15 +1026,12 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         cv::Mat p3dC1;
 
         Triangulate(kp1,kp2,P1,P2,p3dC1);
-        //cout << "p3dC1" << p3dC1 << endl;
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
             vbGood[vMatches12[i].first]=false;
             continue;
         }
-
-        cout << p3dC1 << endl;
 
         // Check parallax
         cv::Mat normal1 = p3dC1 - O1;
@@ -1071,8 +1058,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
 
-        cout << "error" << squareError1 << endl;
-
         if(squareError1>th2)
             continue;
 
@@ -1089,7 +1074,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         vCosParallax.push_back(cosParallax);
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
-        cout << vP3D[vMatches12[i].first] << endl;
         nGood++;
 
         if(cosParallax<0.99998)

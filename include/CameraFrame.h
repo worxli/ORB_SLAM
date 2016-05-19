@@ -79,6 +79,9 @@ public:
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;
 
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
+
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
     float mfGridElementWidthInv;
     float mfGridElementHeightInv;
@@ -106,6 +109,7 @@ public:
 
     // Scale Pyramid Info
     int mnScaleLevels;
+    float mfScaleFactor;
     vector<float> mvScaleFactors;
     vector<float> mvLevelSigma2;
     vector<float> mvInvLevelSigma2;
