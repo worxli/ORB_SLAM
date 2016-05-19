@@ -55,9 +55,9 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 void Initializer::generateSampleData()
 {
     gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
-    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976); //left
     c1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
-    c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+    c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679); // front
     c2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
     c2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
 
@@ -1025,6 +1025,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
         cv::Mat p3dC1;
 
+        // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
         Triangulate(kp1,kp2,P1,P2,p3dC1);
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
