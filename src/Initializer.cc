@@ -409,19 +409,52 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     vector<float> vCosParallax;
     vCosParallax.reserve(vKeys1.size());
 
+//    // Camera 1 Projection Matrix K[I|0]
+//    cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
+//    K.copyTo(P1.rowRange(0,3).colRange(0,3));
+
+//    cv::Mat O1 = cv::Mat::zeros(3,1,CV_32F);
+
+    // Camera 1 with baseframe at position 0 --> Rot. = eye and trans = 0
+    // Comined rotation and translation world->base->camera // TODO: Tbc or Tcb?
+    cv::Mat Rwb1 = cv::Mat::eye(3,3,CV_32F);
+    cv::Mat Rbc1 = mR;
+    cv::Mat Rwc1 = Rwb1*Rbc1;
+    cv::Mat twb1 = cv::Mat::zeros(3,1,CV_32F);
+    cv::Mat tbc1 = mt;
+    cv::Mat twc1 = twb1 + tbc1;
+
     // Camera 1 Projection Matrix K[I|0]
     cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
-    K.copyTo(P1.rowRange(0,3).colRange(0,3));
+    Rwc1.copyTo(P1.rowRange(0,3).colRange(0,3));
+    twc1.copyTo(P1.rowRange(0,3).col(3));
+    P1 = K*P1;
 
-    cv::Mat O1 = cv::Mat::zeros(3,1,CV_32F);
+    cv::Mat O1 = -Rwc1.t()*twc1;
+
+//    // Camera 2 Projection Matrix K[R|t]
+//    cv::Mat P2(3,4,CV_32F);
+//    R.copyTo(P2.rowRange(0,3).colRange(0,3));
+//    t.copyTo(P2.rowRange(0,3).col(3));
+//    P2 = K*P2;
+
+//    cv::Mat O2 = -R.t()*t;
+
+    // Comined rotation and translation world->base->camera // TODO: Tbc or Tcb?
+    cv::Mat Rwb2 = R;
+    cv::Mat Rbc2 = mR;
+    cv::Mat Rwc2 = Rwb2*Rbc2;
+    cv::Mat twb2 = t;
+    cv::Mat tbc2 = mt;
+    cv::Mat twc2 = twb2 + tbc2;
 
     // Camera 2 Projection Matrix K[R|t]
     cv::Mat P2(3,4,CV_32F);
-    R.copyTo(P2.rowRange(0,3).colRange(0,3));
-    t.copyTo(P2.rowRange(0,3).col(3));
+    Rwc2.copyTo(P2.rowRange(0,3).colRange(0,3));
+    twc2.copyTo(P2.rowRange(0,3).col(3));
     P2 = K*P2;
 
-    cv::Mat O2 = -R.t()*t;
+    cv::Mat O2 = -Rwc2.t()*twc2;
 
     int nGood=0;
 
