@@ -853,17 +853,17 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 }
 
 int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F12,
-vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector<pair<size_t, size_t> > &vMatchedPairs)
+vector<cv::KeyPoint> &vMatchedKeys1, vector<cv::KeyPoint> &vMatchedKeys2, vector<pair<size_t, size_t> > &vMatchedPairs, int camera)
 {
     vector<MapPoint*> vpMapPoints1 = pKF1->GetMapPointMatches();
-    vector<cv::KeyPoint> vKeysUn1 = pKF1->GetKeyPointsUn();
-    cv::Mat Descriptors1 = pKF1->GetDescriptors();
-    DBoW2::FeatureVector vFeatVec1 = pKF1->GetFeatureVector();
+    vector<cv::KeyPoint> vKeysUn1 = pKF1->GetKeyPointsUn(camera);
+    cv::Mat Descriptors1 = pKF1->GetDescriptors(camera);
+    DBoW2::FeatureVector vFeatVec1 = pKF1->GetFeatureVector(camera);
 
     vector<MapPoint*> vpMapPoints2 = pKF2->GetMapPointMatches();
-    vector<cv::KeyPoint> vKeysUn2 = pKF2->GetKeyPointsUn();
-    cv::Mat Descriptors2 = pKF2->GetDescriptors();
-    DBoW2::FeatureVector vFeatVec2 = pKF2->GetFeatureVector();
+    vector<cv::KeyPoint> vKeysUn2 = pKF2->GetKeyPointsUn(camera);
+    cv::Mat Descriptors2 = pKF2->GetDescriptors(camera);
+    DBoW2::FeatureVector vFeatVec2 = pKF2->GetFeatureVector(camera);
 
     // Find matches between not tracked keypoints
     // Matching speeded-up by ORB Vocabulary

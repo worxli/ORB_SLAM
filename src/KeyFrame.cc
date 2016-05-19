@@ -39,28 +39,30 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
 {
     mnId=nNextId++;
 
-    mnGridCols=FRAME_GRID_COLS;
-    mnGridRows=FRAME_GRID_ROWS;
-    mGrid.resize(mnGridCols);
-/*    for(int i=0; i<mnGridCols;i++)
-    {
-        mGrid[i].resize(mnGridRows);
-        for(int j=0; j<mnGridRows; j++)
-            mGrid[i][j] = F.mGrid[i][j];
-    }*/
-    //TODO in camera frame
+    for(int j =0; j<cameraFrames.size(); j++) {
+        cameraFrames[j].mnGridCols = FRAME_GRID_COLS;
+        cameraFrames[j].mnGridRows = FRAME_GRID_ROWS;
+        cameraFrames[j].mGrid.resize(cameraFrames[j].mnGridCols);
+        for(int i=0; i<cameraFrames[j].mnGridCols;i++)
+        {
+            mGrid[i].resize(cameraFrames[j].mnGridRows);
+            for(int j=0; j<cameraFrames[j].mnGridRows; j++)
+                cameraFrames[j].mGrid[i][j] = F.cameraFrames[j].mGrid[i][j];
+        }
+    }
 
     SetPose(F.mTcw);    
 }
 
 void KeyFrame::ComputeBoW()
 {
-    if(mBowVec.empty() || mFeatVec.empty())
-    {
-        vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
-        // Feature vector associate features with nodes in the 4th level (from leaves up)
-        // We assume the vocabulary tree has 6 levels, change the 4 otherwise
-        mpORBvocabulary->transform(vCurrentDesc,mBowVec,mFeatVec,4);
+    for(int j =0; j<cameraFrames.size(); j++) {
+        if (mBowVec[j].empty() || mFeatVec[j].empty()) {
+            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors[j]);
+            // Feature vector associate features with nodes in the 4th level (from leaves up)
+            // We assume the vocabulary tree has 6 levels, change the 4 otherwise
+            mpORBvocabulary->transform(vCurrentDesc, mBowVec[j], mFeatVec[j], 4);
+        }
     }
 }
 
@@ -276,57 +278,57 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
     return mvpMapPoints[idx];
 }
 
-cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx) const
+cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx, int camera) const
 {
-    return mvKeysUn[idx];
+    return mvKeysUn[camera][idx];
 }
 
-int KeyFrame::GetKeyPointScaleLevel(const size_t &idx) const
+int KeyFrame::GetKeyPointScaleLevel(const size_t &idx, int camera) const
 {
-    return mvKeysUn[idx].octave;
+    return mvKeysUn[camera][idx].octave;
 }
 
-cv::Mat KeyFrame::GetDescriptor(const size_t &idx)
+cv::Mat KeyFrame::GetDescriptor(const size_t &idx, int camera)
 {
-    return mDescriptors.row(idx).clone();
+    return mDescriptors[camera].row(idx).clone();
 }
 
-cv::Mat KeyFrame::GetDescriptors()
+cv::Mat KeyFrame::GetDescriptors(int camera)
 {
-    return mDescriptors.clone();
+    return mDescriptors[camera].clone();
 }
 
-vector<cv::KeyPoint> KeyFrame::GetKeyPoints() const
+vector<cv::KeyPoint> KeyFrame::GetKeyPoints(int camera) const
 {
-    return mvKeys;
+    return mvKeys[camera];
 }
 
-vector<cv::KeyPoint> KeyFrame::GetKeyPointsUn() const
+vector<cv::KeyPoint> KeyFrame::GetKeyPointsUn(int camera) const
 {
-    return mvKeysUn;
+    return mvKeysUn[camera];
 }
 
-cv::Mat KeyFrame::GetCalibrationMatrix() const
+cv::Mat KeyFrame::GetCalibrationMatrix(int camera) const
 {
-    return mK.clone();
+    return mK[camera].clone();
 }
 
-DBoW2::FeatureVector KeyFrame::GetFeatureVector()
-{
-    boost::mutex::scoped_lock lock(mMutexFeatures);
-    return mFeatVec;
-}
-
-DBoW2::BowVector KeyFrame::GetBowVector()
+DBoW2::FeatureVector KeyFrame::GetFeatureVector(int camera)
 {
     boost::mutex::scoped_lock lock(mMutexFeatures);
-    return mBowVec;
+    return mFeatVec[camera];
 }
 
-cv::Mat KeyFrame::GetImage()
+DBoW2::BowVector KeyFrame::GetBowVector(int camera)
+{
+    boost::mutex::scoped_lock lock(mMutexFeatures);
+    return mBowVec[camera];
+}
+
+cv::Mat KeyFrame::GetImage(int camera)
 {
     boost::mutex::scoped_lock lock(mMutexImage);
-    return im.clone();
+    return im[camera].clone();
 }
 
 void KeyFrame::UpdateConnections()
@@ -609,28 +611,28 @@ void KeyFrame::EraseConnection(KeyFrame* pKF)
         UpdateBestCovisibles();
 }
 
-vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r) const
+vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const float &r, int camera) const
 {
     vector<size_t> vIndices;
-    vIndices.reserve(mvKeysUn.size());
+    vIndices.reserve(mvKeysUn[camera].size());
 
-    int nMinCellX = floor((x-mnMinX-r)*mfGridElementWidthInv);
+    int nMinCellX = floor((x-cameraFrames[camera].mnMinX-r)*cameraFrames[camera].mfGridElementWidthInv);
     nMinCellX = max(0,nMinCellX);
-    if(nMinCellX>=mnGridCols)
+    if(nMinCellX>=cameraFrames[camera].mnGridCols)
         return vIndices;
 
-    int nMaxCellX = ceil((x-mnMinX+r)*mfGridElementWidthInv);
-    nMaxCellX = min(mnGridCols-1,nMaxCellX);
+    int nMaxCellX = ceil((x-cameraFrames[camera].mnMinX+r)*cameraFrames[camera].mfGridElementWidthInv);
+    nMaxCellX = min(cameraFrames[camera].mnGridCols-1,nMaxCellX);
     if(nMaxCellX<0)
         return vIndices;
 
-    int nMinCellY = floor((y-mnMinY-r)*mfGridElementHeightInv);
+    int nMinCellY = floor((y-cameraFrames[camera].mnMinY-r)*cameraFrames[camera].mfGridElementHeightInv);
     nMinCellY = max(0,nMinCellY);
-    if(nMinCellY>=mnGridRows)
+    if(nMinCellY>=cameraFrames[camera].mnGridRows)
         return vIndices;
 
-    int nMaxCellY = ceil((y-mnMinY+r)*mfGridElementHeightInv);
-    nMaxCellY = min(mnGridRows-1,nMaxCellY);
+    int nMaxCellY = ceil((y-cameraFrames[camera].mnMinY+r)*cameraFrames[camera].mfGridElementHeightInv);
+    nMaxCellY = min(cameraFrames[camera].mnGridRows-1,nMaxCellY);
     if(nMaxCellY<0)
         return vIndices;
 
@@ -638,10 +640,10 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            vector<size_t> vCell = mGrid[ix][iy];
+            vector<size_t> vCell = cameraFrames[camera].mGrid[ix][iy];
             for(size_t j=0, jend=vCell.size(); j<jend; j++)
             {
-                const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
+                const cv::KeyPoint &kpUn = mvKeysUn[camera][vCell[j]];
                 if(abs(kpUn.pt.x-x)<=r && abs(kpUn.pt.y-y)<=r)
                     vIndices.push_back(vCell[j]);
             }
@@ -653,7 +655,7 @@ vector<size_t> KeyFrame::GetFeaturesInArea(const float &x, const float &y, const
 
 bool KeyFrame::IsInImage(const float &x, const float &y) const
 {
-    return (x>=mnMinX && x<mnMaxX && y>=mnMinY && y<mnMaxY);
+    return (x>=cameraFrames[camera].mnMinX && x<cameraFrames[camera].mnMaxX && y>=cameraFrames[camera].mnMinY && y<cameraFrames[camera].mnMaxY);
 }
 
 float KeyFrame::ComputeSceneMedianDepth(int q)

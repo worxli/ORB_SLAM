@@ -65,8 +65,8 @@ public:
 
     // Bag of Words Representation
     void ComputeBoW();
-    DBoW2::FeatureVector GetFeatureVector();
-    DBoW2::BowVector GetBowVector();
+    DBoW2::FeatureVector GetFeatureVector(int camera);
+    DBoW2::BowVector GetBowVector(int camera);
 
     // Covisibility graph functions
     void AddConnection(KeyFrame* pKF, const int &weight);
@@ -102,13 +102,13 @@ public:
     MapPoint* GetMapPoint(const size_t &idx);
 
     // KeyPoint functions
-    cv::KeyPoint GetKeyPointUn(const size_t &idx) const;
-    cv::Mat GetDescriptor(const size_t &idx);
+    cv::KeyPoint GetKeyPointUn(const size_t &idx, int camera) const;
+    cv::Mat GetDescriptor(const size_t &idx, int camera);
     int GetKeyPointScaleLevel(const size_t &idx) const;
-    std::vector<cv::KeyPoint> GetKeyPoints() const;
-    std::vector<cv::KeyPoint> GetKeyPointsUn() const;
+    std::vector<cv::KeyPoint> GetKeyPoints(int camera) const;
+    std::vector<cv::KeyPoint> GetKeyPointsUn(int camera) const;
     cv::Mat GetDescriptors();
-    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
+    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, int camera) const;
 
     // Image
     cv::Mat GetImage();
@@ -195,22 +195,19 @@ protected:
     cv::Mat mK;
 
     // KeyPoints, Descriptors, MapPoints vectors (all associated by an index)
-    std::vector<cv::KeyPoint> mvKeys;
-    std::vector<cv::KeyPoint> mvKeysUn;
-    cv::Mat mDescriptors;
-    //TODO ?
-//    vector<std::vector<cv::KeyPoint> > mvKeys;
-//    vector<std::vector<cv::KeyPoint> > mvKeysUn;
-//    vector<cv::Mat> mDescriptors;
+    vector<std::vector<cv::KeyPoint> > mvKeys;
+    vector<std::vector<cv::KeyPoint> > mvKeysUn;
+    vector<cv::Mat> mDescriptors;
     std::vector<MapPoint*> mvpMapPoints;
 
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;
     ORBVocabulary* mpORBvocabulary;
-    DBoW2::FeatureVector mFeatVec;
+    vector<DBoW2::FeatureVector> mFeatVec;
 
 
     // Grid over the image to speed up feature matching
+    //TODO
     std::vector< std::vector <std::vector<size_t> > > mGrid;
 
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
