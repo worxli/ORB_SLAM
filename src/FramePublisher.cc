@@ -20,6 +20,7 @@
 
 #include "FramePublisher.h"
 #include "Tracking.h"
+#include "../include/FramePublisher.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -65,8 +66,6 @@ cv::Mat FramePublisher::DrawFrame()
     vector<MapPoint*> vMatchedMapPoints; // Tracked MapPoints in current frame
     int state; // Tracking state
 
-    //TODO loop over n frames
-
     //Copy variable to be used within scoped mutex
     {
         boost::mutex::scoped_lock lock(mMutex);
@@ -79,12 +78,18 @@ cv::Mat FramePublisher::DrawFrame()
         if(mState==Tracking::NOT_INITIALIZED)
         {            
             vIniKeys = mvIniKeys;
+            cout << "--------------------------------------------------------" << endl;
+            cout << mvIniKeys.size() << endl;
         }
         else if(mState==Tracking::INITIALIZING)
         {
             vCurrentKeys = mvCurrentKeys;
             vIniKeys = mvIniKeys;
-            vMatches = mvIniMatches[0]; //TODO
+            vMatches = mvIniMatches;
+            cout << "--------------------------------------------------------" << endl;
+            cout << vCurrentKeys.size() << " " << vCurrentKeys[0].pt << " " << vCurrentKeys[10].pt << vCurrentKeys[100].pt << " " << vCurrentKeys[1000].pt << " " << endl;
+            cout << mvIniKeys.size() << " " << vIniKeys[0].pt << " " << vIniKeys[10].pt << vIniKeys[100].pt << " " << vIniKeys[1000].pt << " " << endl;
+            cout << vMatches.size() << " " << vMatches[0] << " " << vMatches[10] << vMatches[100] << " " << vMatches[1000] << " " << endl;
         }
         else if(mState==Tracking::WORKING)
         {
@@ -191,17 +196,17 @@ void FramePublisher::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 void FramePublisher::Update(Tracking *pTracker)
 {
+    int camera = 2;
     boost::mutex::scoped_lock lock(mMutex);
-    // TODO
-    pTracker->mCurrentFrame.cameraFrames[0].im.copyTo(mIm);
-    mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[0].mvKeys;
+    pTracker->mCurrentFrame.cameraFrames[camera].im.copyTo(mIm);
+    mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[camera].mvKeys;
     mvpMatchedMapPoints=pTracker->mCurrentFrame.mvpMapPoints;
     mvbOutliers = pTracker->mCurrentFrame.mvbOutlier;
 
     if(pTracker->mLastProcessedState==Tracking::INITIALIZING)
     {
-        mvIniKeys=pTracker->mInitialFrame.cameraFrames[0].mvKeys;
-        mvIniMatches=pTracker->mvIniMatches;
+        mvIniKeys=pTracker->mInitialFrame.cameraFrames[camera].mvKeys;
+        mvIniMatches=pTracker->mvIniMatches[camera];
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);
 

@@ -32,6 +32,7 @@
 
 #include"Optimizer.h"
 #include"PnPsolver.h"
+#include "../include/Tracking.h"
 
 #include<iostream>
 #include<fstream>
@@ -577,9 +578,7 @@ void Tracking::FirstInitialization()
         }
 
         if(mpInitializer) {
-            //cout << "delete Initializer" << mpInitializer << endl;
             delete mpInitializer;
-            //cout << "deleted" << endl;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
@@ -590,55 +589,47 @@ void Tracking::FirstInitialization()
 
 void Tracking::Initialize()
 {
-    // Check if current frame has enough keypoints, otherwise reset initialization process
-    int features = 0;
-    for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
-        features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+    int nmatches = 0;
+    mvIniMatches.clear();
+    for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
 
-    cout << "features " << features << endl;
+        vector<cv::Point2f> vbPrevMatched = mvbPrevMatched[j];
+        vector<int> vIniMatches;
 
-    if(features<100)
-    {
-        mvIniMatches.clear();
+        // Check if current frame has enough keypoints, otherwise reset initialization process
+        if (mCurrentFrame.cameraFrames[j].mvKeys.size() <= 30) {
+            mState = NOT_INITIALIZED;
+            return;
+        }
+
+        // Find correspondences
+        ORBmatcher matcher(0.9, true);
+
+        nmatches += matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, vbPrevMatched, vIniMatches, j, 100);
+        mvbPrevMatched[j] = vbPrevMatched;
+        mvIniMatches.push_back(vIniMatches);
+    }
+
+    // Check if there are enough correspondences
+    if (nmatches < 100) {
         mState = NOT_INITIALIZED;
         return;
     }
-
-    // Find correspondences
-    ORBmatcher matcher(0.9,true);
-    vector<int> nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
-
-    // Check if there are enough correspondences in each cameraframe
-    int minNmatches = *min_element(nmatches.begin(),nmatches.end());
-    int maxNmatches = *max_element(nmatches.begin(),nmatches.end());
-
-    cout << "min number of correspondences " << minNmatches << endl;
-    cout << "max number of correspondences " << maxNmatches << endl;
-
-    if(maxNmatches<50)
-    {
-        mState = NOT_INITIALIZED;
-        return;
-    }
-
-    // test output
-    cout << "matches 1-1: " << nmatches[0]  << endl;
-    cout << "matches 2-2: " << nmatches[1]  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
     vector<vector<bool> > vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
+
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
-            cout << "camera " << j << endl;
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
                 if (mvIniMatches[j][i]>0)
                    // cout << "vbTriangulated " << vbTriangulated[j][i] << endl;
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
-                    minNmatches--;
+                    nmatches--;
                 }
             }
         }

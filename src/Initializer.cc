@@ -56,6 +56,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 
 void Initializer::generateSampleData()
 {
+<<<<<<< HEAD
     cv::Mat mc1R;
     cv::Mat mc1t;
     cv::Mat mc2R;
@@ -79,6 +80,16 @@ void Initializer::generateSampleData()
     Eigen::Matrix<double, 3, 1> mv2point;
 
     for(uint i = 0; i<100; i++) {
+=======
+    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
+    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976); //left
+    c1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679); // front
+    c2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
+    c2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
+
+    for(uint i = 0; i<1000; i++) {
+>>>>>>> 86566656c7e705bfe045c5a8904c6acf47ad3d34
         cv::Mat p1 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
         cv::Mat p2 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
         mv1c1.push_back(mc1R*p1+mc1t);
@@ -194,21 +205,19 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
             ransac;
 
     // create a NoncentralRelativePoseSacProblem
-    cout << "create NoncentralRelativePoseSacProblem" << endl;
     std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
             relposeproblem_ptr(
             new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
                     adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
     );
     // run ransac
-    cout << "run ransac" << endl;
     ransac.sac_model_ = relposeproblem_ptr;
     ransac.threshold_ = 0.8 - cos(atan(sqrt(2.0)*10/800.0));
     ransac.max_iterations_ = 10;
     cout << "compute model" << endl;
+
     ransac.computeModel();
     // get the result
-    cout << "get result" << endl;
     opengv::transformation_t best_transformation = ransac.model_coefficients_;
 
     cv::Mat Tcw;
@@ -371,7 +380,6 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
         vector <cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
         vector<bool> vbMatchesInliers; //TODO
-        cout << i << endl;
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
         vP3D.push_back(mvP3Di);
@@ -1005,16 +1013,10 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     A.row(2) = kp2.pt.x*P2.row(2)-P2.row(0);
     A.row(3) = kp2.pt.y*P2.row(2)-P2.row(1);
 
-//    cout << "triangulation" << endl;
-//    cout << kp1.pt << endl;
-//    cout << kp2.pt << endl;
-//    cout << P1 << endl;
-
     cv::Mat u,w,vt;
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     x3D = vt.row(3).t();
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
-    //cout << x3D << endl;
 }
 
     /*
@@ -1101,6 +1103,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
     for(size_t i=0, iend=vMatches12.size();i<iend;i++)
     {
+        //TODO
 //        if(!vbMatchesInliers[i])
 //            continue;
 
@@ -1108,8 +1111,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
         cv::Mat p3dC1;
 
+        // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
         Triangulate(kp1,kp2,P1,P2,p3dC1);
-        //cout << "p3dC1" << p3dC1 << endl;
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
@@ -1117,8 +1120,11 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
             continue;
         }
 
+<<<<<<< HEAD
         //cout << "p3dC1: " << p3dC1 << endl;
 
+=======
+>>>>>>> 86566656c7e705bfe045c5a8904c6acf47ad3d34
         // Check parallax
         cv::Mat normal1 = p3dC1 - O1;
         float dist1 = cv::norm(normal1);
@@ -1144,8 +1150,11 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
 
+<<<<<<< HEAD
         //cout << "Check RT error " << squareError1 << endl;
 
+=======
+>>>>>>> 86566656c7e705bfe045c5a8904c6acf47ad3d34
         if(squareError1>th2)
             continue;
 
@@ -1162,7 +1171,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         vCosParallax.push_back(cosParallax);
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
+<<<<<<< HEAD
         //cout << "CheckRT vP3D: " << vP3D[vMatches12[i].first] << endl;
+=======
+>>>>>>> 86566656c7e705bfe045c5a8904c6acf47ad3d34
         nGood++;
 
         if(cosParallax<0.99998)
