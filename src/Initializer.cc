@@ -50,6 +50,8 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
+
+    generateSampleData();
 }
 
 void Initializer::generateSampleData()
@@ -58,24 +60,64 @@ void Initializer::generateSampleData()
 //    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
     gR =(cv::Mat_<float>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
     gt =(cv::Mat_<float>(3,1) << 0, 0, 0);
-    c1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
-    c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
-    c2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
-    c2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
+    cv::Mat mc1R;
+    cv::Mat mc1t;
+    cv::Mat mc2R;
+    cv::Mat mc2t;
+
+    mc1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
+    mc1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
+    mc2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
+    mc2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
+
+    vector<cv::Mat> mv1c1;
+    vector<cv::Mat> mv2c1;
+    vector<cv::Mat> mv1c2;
+    vector<cv::Mat> mv2c2;
+
+    Eigen::Matrix<double, 3, 1> mv1point;
+    Eigen::Matrix<double, 3, 1> mv2point;
+
 
     for(uint i = 0; i<1000; i++) {
         cv::Mat p1 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
         cv::Mat p2 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
-        v1c1.push_back(c1R*p1+c1t);
-        v2c1.push_back(c1R*(gR*p1+gt)+c1t);
-        v1c2.push_back(c2R*p2+c2t);
-        v2c2.push_back(c2R*(gR*p2+gt)+c2t);
-//        cout << "pc2: " << v2c1[i] << endl;
-        v1c1[i] = v1c1[i]/cv::norm(v1c1[i]);
-        v2c1[i] = v2c1[i]/cv::norm(v2c1[i]);
-        v1c2[i] = v1c2[i]/cv::norm(v1c2[i]);
-        v2c2[i] = v2c2[i]/cv::norm(v2c2[i]);
+        mv1c1.push_back(mc1R*p1+mc1t);
+        mv2c1.push_back(mc1R*(gR*p1+gt)+mc1t);
+        mv1c2.push_back(mc2R*p2+mc2t);
+        mv2c2.push_back(mc2R*(gR*p2+gt)+mc2t);
+
+        //cout << "gR: " << gR << endl;
+        //cout << "gR.inv()*gR: " << gR.inv()*gR << endl;
+        //cout << "p1: " << p1;
+        //cout << " p1 back calc from mv2c1: " << gR.inv()*(mc1R.inv()*(mv2c1[i]-mc1t)-gt) << endl;
+        cout << "mv1c1[" << i << "] w/o norm:" << mv1c1[i] << endl;
+        //cout << "mv2c1[" << i << "] w/o norm:" << mv2c1[i] << endl;
+        cout << "mv1c1[" << i << "] back calculated: " << mc1R*(gR.inv()*(mc1R.inv()*(mv2c1[i]-mc1t)-gt))+mc1t << endl;
+
+        mv1c1[i] = mv1c1[i]/cv::norm(mv1c1[i]);
+        mv2c1[i] = mv2c1[i]/cv::norm(mv2c1[i]);
+        mv1c2[i] = mv1c2[i]/cv::norm(mv1c2[i]);
+        mv2c2[i] = mv2c2[i]/cv::norm(mv2c2[i]);
+
+        //cout << "mv1c1[" << i << "] with norm:" << mv1c1[i] << endl;
+        //cout << "mv2c1[" << i << "] with norm:" << mv2c1[i] << endl;
+
+        cv::cv2eigen(mv1c1[i], mv1point);
+        cv::cv2eigen(mv1c2[i], mv2point);
+        v1c1.push_back(mv1point);
+        v1c2.push_back(mv2point);
+
+        cv::cv2eigen(mv2c1[i], mv1point);
+        cv::cv2eigen(mv2c2[i], mv2point);
+        v2c1.push_back(mv1point);
+        v2c2.push_back(mv2point);
     }
+
+    cv::cv2eigen(mc1R, c1R);
+    cv::cv2eigen(mc1t, c1t);
+    cv::cv2eigen(mc2R, c2R);
+    cv::cv2eigen(mc2t, c2t);
 
     cout << "done generating sample data" << endl;
 }
@@ -96,7 +138,31 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     opengv::rotations_t mvR;
     opengv::translations_t mvT;
 
-    for(int j =0; j<cameras; j++) {
+
+    //SAMPLE DATA VERSION
+    std::vector<int> camcorr(100,rand() %2); //select randomly cam 0 or 1
+    for(int i=0; i<100; i++)
+    {
+        if(camcorr[i]==0) {
+            mvBearings1Adapter.push_back(v1c1[i]);
+            mvBearings2Adapter.push_back(v2c1[i]);
+        }
+        else {
+            mvBearings1Adapter.push_back(v1c2[i]);
+            mvBearings2Adapter.push_back(v2c1[i]);
+        }
+    }
+    mvCorr1 = camcorr;
+    mvCorr2 = camcorr;
+    mvR.push_back(c1R);
+    mvR.push_back(c2R);
+    mvT.push_back(c1t);
+    mvT.push_back(c2t);
+    //END SAMPLE DATA VERSION
+
+
+    //REAL DATA VERSION
+/*    for(int j =0; j<cameras; j++) {
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
 
         // check for matches and get the bearing vectors
@@ -117,7 +183,9 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         cv::cv2eigen(CurrentFrame.cameraFrames[j].mt, mt);
         mvR.push_back(mR);
         mvT.push_back(mt);
-    }
+    }*/
+    //END REAL DATA VERSION
+
 
     // create the non-central relative adapter
     opengv::relative_pose::NoncentralRelativeAdapter adapter(mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvT, mvR );
@@ -134,8 +202,10 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     );
     // run ransac
     ransac.sac_model_ = relposeproblem_ptr;
-    ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.max_iterations_ = 20;
+    ransac.threshold_ = 0.8 - cos(atan(sqrt(2.0)*10/800.0));
+    ransac.max_iterations_ = 10;
+    cout << "compute model" << endl;
+
     ransac.computeModel();
     ransac.inliers_;
     // get the result
@@ -149,6 +219,8 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     Tcw.rowRange(0,3).col(3).copyTo(tcw);
     cout << "Rcw " << Rcw << endl;
     cout << "Tcw " << tcw << endl;
+
+    cout << "Real R for comparison: " << gR << endl;
 
     Rcw.convertTo(Rcw, CV_32F);
     tcw.convertTo(tcw, CV_32F);
@@ -174,8 +246,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
 //    InitializeGenCam();
 }
 
-//bool Initializer::InitializeGenCam(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
-//                                   vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
+/*
 void Initializer::InitializeGenCam()
 {
     //Transform Sample Data into Eigen Matrices
@@ -190,6 +261,7 @@ void Initializer::InitializeGenCam()
 
     cout << "bearing vectors created" << endl;
 
+*/
 /*    for(int i=0; i<400; i++)
     {
         Eigen::Matrix<double, 3, 1> mv1c1point;
@@ -205,7 +277,8 @@ void Initializer::InitializeGenCam()
     cout << "bearing vectors filled" << endl;
 
     std::vector<int> camcorr1(400,0);
-    std::vector<int> camcorr2(400,0);*/
+    std::vector<int> camcorr2(400,0);*//*
+
 
         std::vector<int> camcorr(400,rand() %2); //select randomly cam 0 or 1
 
@@ -286,6 +359,7 @@ void Initializer::InitializeGenCam()
 //    }
 //    return false;
 }
+*/
 
 bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
 {
@@ -301,7 +375,7 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
                             4.0 * mSigma2, mvbTriangulated, parallaxi);
         vP3D.push_back(mvP3Di);
         vbTriangulated.push_back(mvbTriangulated);
-        cout << "ngood " << nGood << endl;
+        cout << "CheckRelativePose: ngood " << nGood << endl;
     }
     return nGood > 5; //TODO
 }
@@ -1028,6 +1102,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
         cv::Mat p3dC1;
 
+        // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
         Triangulate(kp1,kp2,P1,P2,p3dC1);
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
