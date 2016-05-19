@@ -20,6 +20,7 @@
 
 #include "Frame.h"
 #include "Converter.h"
+#include "../include/Frame.h"
 
 #include <ros/ros.h>
 
@@ -88,28 +89,23 @@ namespace ORB_SLAM {
     }
 
     bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) {
-        for (uint i = 0; i < cameraFrames.size(); i++) {
-            if (cameraFrames[i].isInFrustum(pMP, viewingCosLimit))
-                return true;
-        }
-        return false;
+        return cameraFrames[pMP->camera].isInFrustum(pMP, viewingCosLimit);
     }
 
     void Frame::ComputeBoW() {
         if (mBowVec.empty()) {
-            vector <cv::Mat> vCurrentDesc = Converter::toDescriptorVector(cameraFrames[0].mDescriptors);
+            vector <cv::Mat> vCurrentDesc;
+            for (uint i = 0; i < cameraFrames.size(); i++) {
+                vector <cv::Mat> currentDesc = Converter::toDescriptorVector(cameraFrames[i].mDescriptors);
+                vCurrentDesc.insert(vCurrentDesc.end(), currentDesc.begin(), currentDesc.end());
+            }
             mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
         }
     }
 
-    vector <size_t> Frame::GetFeaturesInArea(const float &x, const float &y, const float &r, int minLevel, int maxLevel) const {
+    vector <size_t> Frame::GetFeaturesInArea(const float &x, const float &y, const float &r, int minLevel, int maxLevel, int camera) const {
 
-        vector <size_t> vIndices;
-        for (uint i = 0; i < cameraFrames.size(); i++) {
-            vector <size_t> cameraFramevIndices = cameraFrames[i].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
-            vIndices.insert(vIndices.end(), cameraFramevIndices.begin(), cameraFramevIndices.end());
-        }
-        return vIndices;
+        return cameraFrames[camera].GetFeaturesInArea(x, y, r, minLevel, maxLevel);
     }
 
 } //namespace ORB_SLAM

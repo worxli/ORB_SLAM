@@ -60,13 +60,13 @@ public:
     cv::Mat GetTranslation();
 
     // Calibration
-    cv::Mat GetProjectionMatrix();
-    cv::Mat GetCalibrationMatrix() const;
+//    cv::Mat GetProjectionMatrix(int camera);
+    cv::Mat GetCalibrationMatrix(int camera) const;
 
     // Bag of Words Representation
     void ComputeBoW();
-    DBoW2::FeatureVector GetFeatureVector(int camera);
-    DBoW2::BowVector GetBowVector(int camera);
+    DBoW2::FeatureVector GetFeatureVector();
+    DBoW2::BowVector GetBowVector();
 
     // Covisibility graph functions
     void AddConnection(KeyFrame* pKF, const int &weight);
@@ -104,15 +104,15 @@ public:
     // KeyPoint functions
     cv::KeyPoint GetKeyPointUn(const size_t &idx, int camera) const;
     cv::Mat GetDescriptor(const size_t &idx, int camera);
-    int GetKeyPointScaleLevel(const size_t &idx) const;
+    int GetKeyPointScaleLevel(const size_t &idx, int camera) const;
     std::vector<cv::KeyPoint> GetKeyPoints(int camera) const;
     std::vector<cv::KeyPoint> GetKeyPointsUn(int camera) const;
-    cv::Mat GetDescriptors();
+    cv::Mat GetDescriptors(int camera);
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, int camera) const;
 
     // Image
-    cv::Mat GetImage();
-    bool IsInImage(const float &x, const float &y) const;
+//    cv::Mat GetImage();
+    bool IsInImage(const float &x, const float &y, int camera) const;
 
     // Activate/deactivate erasable flags
     void SetNotErase();
@@ -149,8 +149,8 @@ public:
     // Grid (to speed up feature matching)
     int mnGridCols;
     int mnGridRows;
-    float mfGridElementWidthInv;
-    float mfGridElementHeightInv;
+    vector<float> mfGridElementWidthInv;
+    vector<float> mfGridElementHeightInv;
 
     // Variables used by the tracking
     long unsigned int mnTrackReferenceForFrame;
@@ -187,12 +187,12 @@ protected:
     cv::Mat Ow;
 
     // Original image, undistorted image bounds, and calibration matrix
-    cv::Mat im;
+//    vector<cv::Mat> im;
     int mnMinX;
     int mnMinY;
     int mnMaxX;
     int mnMaxY;
-    cv::Mat mK;
+    vector<cv::Mat> mK;
 
     // KeyPoints, Descriptors, MapPoints vectors (all associated by an index)
     vector<std::vector<cv::KeyPoint> > mvKeys;
@@ -203,7 +203,7 @@ protected:
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;
     ORBVocabulary* mpORBvocabulary;
-    vector<DBoW2::FeatureVector> mFeatVec;
+    DBoW2::FeatureVector mFeatVec;
 
 
     // Grid over the image to speed up feature matching

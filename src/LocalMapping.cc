@@ -22,6 +22,7 @@
 #include "LoopClosing.h"
 #include "ORBmatcher.h"
 #include "Optimizer.h"
+#include "../include/MapPoint.h"
 
 #include <ros/ros.h>
 
@@ -262,14 +263,14 @@ void LocalMapping::CreateNewMapPoints()
                 continue;
 
             // Compute Fundamental Matrix
-            cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2);
+            cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2, j);
 
             // Search matches that fulfil epipolar constraint
             vector<cv::KeyPoint> vMatchedKeysUn1;
             vector<cv::KeyPoint> vMatchedKeysUn2;
             vector<pair<size_t, size_t> > vMatchedIndices;
             matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedKeysUn1, vMatchedKeysUn2,
-                                           vMatchedIndices);
+                                           vMatchedIndices, j);
 
             cv::Mat Rbw2 = pKF2->GetRotation();
             cv::Mat Rwb2 = Rbw2.t();
@@ -533,7 +534,7 @@ void LocalMapping::SearchInNeighbors()
     mpCurrentKeyFrame->UpdateConnections();
 }
 
-cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
+cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2, int camera)
 {
     cv::Mat R1w = pKF1->GetRotation();
     cv::Mat t1w = pKF1->GetTranslation();
@@ -545,8 +546,8 @@ cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2)
 
     cv::Mat t12x = SkewSymmetricMatrix(t12);
 
-    cv::Mat K1 = pKF1->GetCalibrationMatrix();
-    cv::Mat K2 = pKF2->GetCalibrationMatrix();
+    cv::Mat K1 = pKF1->GetCalibrationMatrix(camera);
+    cv::Mat K2 = pKF2->GetCalibrationMatrix(camera);
 
 
     return K1.t().inv()*t12x*R12*K2.inv();
@@ -631,7 +632,8 @@ void LocalMapping::KeyFrameCulling()
                     nMPs++;
                     if(pMP->Observations()>3)
                     {
-                        int scaleLevel = pKF->GetKeyPointUn(i).octave;
+                        int camera = pMP->camera;
+                        int scaleLevel = pKF->GetKeyPointUn(i, camera).octave;
                         map<KeyFrame*, size_t> observations = pMP->GetObservations();
                         int nObs=0;
                         for(map<KeyFrame*, size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
@@ -639,7 +641,7 @@ void LocalMapping::KeyFrameCulling()
                             KeyFrame* pKFi = mit->first;
                             if(pKFi==pKF)
                                 continue;
-                            int scaleLeveli = pKFi->GetKeyPointUn(mit->second).octave;
+                            int scaleLeveli = pKFi->GetKeyPointUn(mit->second, camera).octave;
                             if(scaleLeveli<=scaleLevel+1)
                             {
                                 nObs++;

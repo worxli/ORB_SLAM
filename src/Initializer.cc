@@ -54,8 +54,10 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
 
 void Initializer::generateSampleData()
 {
-    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
-    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+//    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
+//    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
+    gR =(cv::Mat_<float>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+    gt =(cv::Mat_<float>(3,1) << 0, 0, 0);
     c1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
     c1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
     c2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
@@ -135,6 +137,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
     ransac.max_iterations_ = 20;
     ransac.computeModel();
+    ransac.inliers_;
     // get the result
     opengv::transformation_t best_transformation = ransac.model_coefficients_;
 
