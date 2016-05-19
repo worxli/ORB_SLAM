@@ -110,7 +110,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             e->setMeasurement(obs);
             Eigen::Matrix<double,3,1> t = Converter::toVector3d(pKF->cameraFrames[pMP->camera].mt);
             Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pKF->cameraFrames[pMP->camera].mR);
-            e->setT(g2o::SE3Quat(R,t)); // TODO:// SE3G: set relative transformation from baseframe to cameraframe
+            e->setT(g2o::SE3Quat(R,t)); // SE3G: set relative transformation from baseframe to cameraframe
             float invSigma2 = pKF->GetInvSigma2(kpUn.octave);
             e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);   // original and SE3G
 
@@ -118,7 +118,6 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             e->setRobustKernel(rk);
             rk->setDelta(thHuber);
 
-            // TODO
             e->fx = pKF->cameraFrames[pMP->camera].fx;
             e->fy = pKF->cameraFrames[pMP->camera].fy;
             e->cx = pKF->cameraFrames[pMP->camera].cx;
@@ -207,10 +206,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             nInitialCorrespondences++;
             pFrame->mvbOutlier[i] = false;
 
-            // TODO
             //SET EDGE
             Eigen::Matrix<double,2,1> obs;
-            cv::KeyPoint kpUn = pFrame->cameraFrames[0].mvKeysUn[i];
+            cv::KeyPoint kpUn = pFrame->cameraFrames[pMP->camera].mvKeysUn[i];
             obs << kpUn.pt.x, kpUn.pt.y;
 
             //g2o::EdgeSE3ProjectXYZ* e = new g2o::EdgeSE3ProjectXYZ();
@@ -219,9 +217,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(i+1)));
             e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
             e->setMeasurement(obs);
-            Eigen::Matrix<double,3,1> t = Converter::toVector3d(pFrame->cameraFrames[0].mt); // TODO
-            Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pFrame->cameraFrames[0].mR); // TODO
-            e->setT(g2o::SE3Quat(R,t)); // TODO:// SE3G: set relative transformation from baseframe to cameraframe
+            Eigen::Matrix<double,3,1> t = Converter::toVector3d(pFrame->cameraFrames[pMP->camera].mt);
+            Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pFrame->cameraFrames[pMP->camera].mR);
+            e->setT(g2o::SE3Quat(R,t)); // SE3G: set relative transformation from baseframe to cameraframe
             const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
             e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
 
@@ -229,11 +227,10 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             e->setRobustKernel(rk);
             rk->setDelta(delta);
 
-            // TODO
-            e->fx = pFrame->cameraFrames[0].fx;
-            e->fy = pFrame->cameraFrames[0].fy;
-            e->cx = pFrame->cameraFrames[0].cx;
-            e->cy = pFrame->cameraFrames[0].cy;
+            e->fx = pFrame->cameraFrames[pMP->camera].fx;
+            e->fy = pFrame->cameraFrames[pMP->camera].fy;
+            e->cx = pFrame->cameraFrames[pMP->camera].cx;
+            e->cy = pFrame->cameraFrames[pMP->camera].cy;
 
             e->setLevel(0);
 
@@ -435,9 +432,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                 e->setMeasurement(obs);
-                Eigen::Matrix<double,3,1> t = Converter::toVector3d(pKF->cameraFrames[0].mt); // TODO
-                Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pKF->cameraFrames[0].mR); // TODO
-                e->setT(g2o::SE3Quat(R,t)); // TODO:// SE3G: set relative transformation from baseframe to cameraframe
+                Eigen::Matrix<double,3,1> t = Converter::toVector3d(pKF->cameraFrames[pMP->camera].mt);
+                Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pKF->cameraFrames[pMP->camera].mR);
+                e->setT(g2o::SE3Quat(R,t)); // SE3G: set relative transformation from baseframe to cameraframe
                 float sigma2 = pKFi->GetSigma2(kpUn.octave);
                 float invSigma2 = pKFi->GetInvSigma2(kpUn.octave);
                 e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
@@ -446,11 +443,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuber);
 
-                // TODO
-                e->fx = pKFi->cameraFrames[0].fx;
-                e->fy = pKFi->cameraFrames[0].fy;
-                e->cx = pKFi->cameraFrames[0].cx;
-                e->cy = pKFi->cameraFrames[0].cy;
+                e->fx = pKFi->cameraFrames[pMP->camera].fx;
+                e->fy = pKFi->cameraFrames[pMP->camera].fy;
+                e->cx = pKFi->cameraFrames[pMP->camera].cx;
+                e->cy = pKFi->cameraFrames[pMP->camera].cy;
 
                 optimizer.addEdge(e);
                 vpEdges.push_back(e);
