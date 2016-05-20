@@ -662,11 +662,11 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
     for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
         // Create MapPoints and asscoiate to keyframes
-        for (size_t i = 0; i < mvIniMatches.size(); i++) {
+        for (size_t i = 0; i < mvIniMatches[j].size(); i++) {
 
             cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
             cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
-            
+
             if (mvIniMatches[j][i] < 0)
                 continue;
 
