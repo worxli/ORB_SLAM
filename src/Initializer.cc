@@ -380,7 +380,7 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
 //                  << "mvbTri: " << mvbTriangulated << std::endl
                   << "parallaxi: " << parallaxi << std::endl
                   << "mR: " << mR[i] << std::endl
-                  << "mt: " << mt[i] << std::endl; // TODO: why has mt[i] 4 entries?
+                  << "mt: " << mt[i] << std::endl;
 
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i]);
@@ -437,7 +437,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     cv::Mat Rbc1 = mR;
     cv::Mat Rwc1 = Rwb1*Rbc1;
     cv::Mat twb1 = cv::Mat::zeros(3,1,CV_32F);
-    cv::Mat tbc1 = mt.rowRange(0,3); // TODO: why mt 4 entries??
+    cv::Mat tbc1 = mt; // TODO: why mt 4 entries??
     cv::Mat twc1 = twb1 + tbc1;
 
     std::cout << "Debug 7" << std::endl;

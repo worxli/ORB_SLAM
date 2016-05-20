@@ -101,7 +101,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         R[i].at<float>(2,1) = fSettings["r32"];
         R[i].at<float>(2,2) = fSettings["r33"];
 
-        T.push_back(cv::Mat(4,1,CV_32F));
+        T.push_back(cv::Mat(3,1,CV_32F));
         T[i].at<float>(0) = fSettings["t1"];
         T[i].at<float>(1) = fSettings["t2"];
         T[i].at<float>(2) = fSettings["t3"];
