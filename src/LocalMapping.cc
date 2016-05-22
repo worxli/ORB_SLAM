@@ -232,7 +232,7 @@ void LocalMapping::CreateNewMapPoints()
         cv::Mat tcb1 = mpCurrentKeyFrame->cameraFrames[j].mt;
         cv::Mat Rcw1 = Rcb1*Rbw1;
         cv::Mat Rwc1 = Rcw1.t();
-        cv::Mat tcw1 = tcb1*tbw1;
+        cv::Mat tcw1 = tcb1 + tbw1;
         cv::Mat Tcw1(3,4,CV_32F);
         Rcw1.copyTo(Tcw1.colRange(0,3));
         tcw1.copyTo(Tcw1.col(3));
@@ -283,7 +283,7 @@ void LocalMapping::CreateNewMapPoints()
             cv::Mat tcb2 = pKF2->cameraFrames[j].mt;
             cv::Mat Rcw2 = Rcb2*Rbw2;
             cv::Mat Rwc2 = Rcw2.t();
-            cv::Mat tcw2 = tcb2*tbw2;
+            cv::Mat tcw2 = tcb2 + tbw2;
             cv::Mat Tcw2(3,4,CV_32F);
             Rcw2.copyTo(Tcw2.colRange(0,3));
             tcw2.copyTo(Tcw2.col(3));
