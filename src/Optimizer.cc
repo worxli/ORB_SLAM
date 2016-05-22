@@ -108,9 +108,9 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(id)));
             e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mnId)));
             e->setMeasurement(obs);
-            Eigen::Matrix<double,3,1> t = Converter::toVector3d(pKF->cameraFrames[pMP->camera].mt);
-            Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pKF->cameraFrames[pMP->camera].mR);
-            e->setT(g2o::SE3Quat(R,t)); // SE3G: set relative transformation from baseframe to cameraframe
+            Eigen::Matrix<double,3,1> tcb = Converter::toVector3d(pKF->cameraFrames[pMP->camera].mt);
+            Eigen::Matrix<double,3,3> Rcb = Converter::toMatrix3d(pKF->cameraFrames[pMP->camera].mR);
+            e->setT(g2o::SE3Quat(Rcb,tcb)); // SE3G: set relative transformation from baseframe to cameraframe
             float invSigma2 = pKF->GetInvSigma2(kpUn.octave);
             e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);   // original and SE3G
 
