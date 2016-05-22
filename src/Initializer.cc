@@ -369,18 +369,18 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
         vector<cv::Point3f> mvP3Di;
         vector<bool> mvbTriangulated;
 
-        std::cout << "R: " << std::endl << R << std::endl
-                  << "t: " << t << std::endl
-//                  << "mvKeys1: " << mvKeys1[i] << std::endl
-//                  << "mvKeys2: " << mvKeys2[i] << std::endl
-//                  << "vbMatchesInliers: " << vbMatchesInliers
-                  << "mK: " << std::endl << mK[i] << std::endl
-                  << "mvP3Di: " << std::endl << mvP3Di << std::endl
-                  << "4*mSigma2: " << mSigma2 << std::endl
-//                  << "mvbTri: " << mvbTriangulated << std::endl
-                  << "parallaxi: " << parallaxi << std::endl
-                  << "mR: " << mR[i] << std::endl
-                  << "mt: " << mt[i] << std::endl;
+//        std::cout << "R: " << std::endl << R << std::endl
+//                  << "t: " << t << std::endl
+////                  << "mvKeys1: " << mvKeys1[i] << std::endl
+////                  << "mvKeys2: " << mvKeys2[i] << std::endl
+////                  << "vbMatchesInliers: " << vbMatchesInliers
+//                  << "mK: " << std::endl << mK[i] << std::endl
+//                  << "mvP3Di: " << std::endl << mvP3Di << std::endl
+//                  << "4*mSigma2: " << mSigma2 << std::endl
+////                  << "mvbTri: " << mvbTriangulated << std::endl
+//                  << "parallaxi: " << parallaxi << std::endl
+//                  << "mR: " << mR[i] << std::endl
+//                  << "mt: " << mt[i] << std::endl;
 
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i]);
