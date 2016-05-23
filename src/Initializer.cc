@@ -433,10 +433,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw1 = cv::Mat::eye(3,3,CV_32F);
     cv::Mat Rcb1 = mR;
-    cv::Mat Rcw1 = Rcb1 * Rbw1;
+    //cv::Mat Rcw1 = Rcb1 * Rbw1;
     cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
     cv::Mat tcb1 = mt;
-    cv::Mat tcw1 = tcb1 + tbw1;
+    //cv::Mat tcw1 = tcb1 + tbw1;
 
     cv::Mat Tcw1(4,4,CV_32F);
     cv::Mat Tbw1(4,4,CV_32F);
@@ -455,7 +455,9 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     Tcw1.rowRange(0,3).col(3).copyTo(P1.rowRange(0,3).col(3));
     P1 = K*P1;
 
-    cv::Mat O1 = -Rcw1.t()*tcw1;
+//    cv::Mat O1 = -Rcw1.t()*tcw1;
+    cv::Mat O1 = -Tcw1.rowRange(0,3).colRange(0,3).t()*Tcw1.rowRange(0,3).col(3);
+
 
 //    // Camera 2 Projection Matrix K[R|t]
 //    cv::Mat P2(3,4,CV_32F);
@@ -468,10 +470,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw2 = R;
     cv::Mat Rcb2 = mR;
-    cv::Mat Rcw2 = Rcb2 * Rbw2;
+//    cv::Mat Rcw2 = Rcb2 * Rbw2;
     cv::Mat tbw2 = t;
     cv::Mat tcb2 = mt;
-    cv::Mat tcw2 = tcb2 + tbw2;
+//    cv::Mat tcw2 = tcb2 + tbw2;
 
     cv::Mat Tcw2(4,4,CV_32F);
     cv::Mat Tbw2(4,4,CV_32F);
@@ -490,7 +492,9 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     Tcw2.rowRange(0,3).col(3).copyTo(P2.rowRange(0,3).col(3));
     P2 = K*P2;
 
-    cv::Mat O2 = -Rcw2.t()*tcw2;
+//    cv::Mat O2 = -Rcw2.t()*tcw2;
+    cv::Mat O2 = -Tcw2.rowRange(0,3).colRange(0,3).t()*Tcw2.rowRange(0,3).col(3);
+
 
     int nGood=0;
 
