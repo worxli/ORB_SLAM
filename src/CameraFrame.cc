@@ -267,6 +267,19 @@ void CameraFrame::SetScaleParams(int &_mnScaleLevels, vector<float> _mvScaleFact
     mvInvLevelSigma2 = _mvInvLevelSigma2;
 }
 
+void CameraFrame::TestSetExtrinsics(cv::Mat &R, cv::Mat &t) {
+    mR = R.clone();
+    mt = t.clone();
+}
+
+void CameraFrame::TestSetIntrinsics(cv::Mat &K) {
+    mK = K.clone();
+    this->fx = K.at<float>(0,0);
+    this->fy = K.at<float>(1,1);
+    this->cx = K.at<float>(0,2);
+    this->cy = K.at<float>(1,2);
+}
+
 void CameraFrame::SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw)
 {
     mRcw = _mRcw;

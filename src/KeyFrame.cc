@@ -234,12 +234,12 @@ void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
     mvpMapPoints[idx]=pMP;
 }
 
-//void KeyFrame::TestAddMapPoint(MapPoint *pMP){
-//    boost::mutex::scoped_lock lock(mMutexFeatures);
-//    mvpMapPoints.push_back(pMP);
-//    mvLevelSigma2.resize(3,2);
-//    mvInvLevelSigma2.resize(3,0.5);
-//}
+void KeyFrame::TestAddMapPoint(MapPoint *pMP){
+    boost::mutex::scoped_lock lock(mMutexFeatures);
+    mvpMapPoints.push_back(pMP);
+    mvLevelSigma2.resize(3,2);
+    mvInvLevelSigma2.resize(3,0.5);
+}
 
 void KeyFrame::EraseMapPointMatch(const size_t &idx)
 {
@@ -303,12 +303,22 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
 
 cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx, int camera) const
 {
+    cout << "keysUn size: " << mvKeysUn.size() << " | " << mvKeysUn[camera].size() << endl;
     return mvKeysUn[camera][idx];
 }
 
-//void KeyFrame::TestAddKeyPointUn(cv::KeyPoint &kpt){
+void KeyFrame::TestAddKeyPointUn(cv::KeyPoint &kpt, int camera){
 //    mvKeysUn.push_back(kpt);
-//}
+
+//    std::vector<cv::KeyPoint> cam;
+//    cam.push_back(kpt);
+//    mvKeysUn.push_back(cam);
+    mvKeysUn[camera].push_back(kpt);
+}
+
+void KeyFrame::TestSetFeatureSize(int nCam) {
+    mvKeysUn.resize(nCam);
+}
 
 int KeyFrame::GetKeyPointScaleLevel(const size_t &idx, int camera) const
 {

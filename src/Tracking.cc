@@ -430,6 +430,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     {
         cout << "do first init" << endl;
         FirstInitialization();
+        cout << "finished first init" << endl;
     }
     else if(mState==INITIALIZING)
     {
@@ -569,6 +570,7 @@ void Tracking::FirstInitialization()
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
+
         mvbPrevMatched.clear();
         for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++) {
             vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size());
@@ -582,7 +584,6 @@ void Tracking::FirstInitialization()
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
         mState = INITIALIZING;
     }
 }

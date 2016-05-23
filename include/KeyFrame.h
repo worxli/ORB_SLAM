@@ -169,8 +169,9 @@ public:
     int mnRelocWords;
     float mRelocScore;
 
-     // Calibration parameters
-    float fx, fy, cx, cy;
+    // Needed for testing?
+    // Calibration parameters
+    //float fx, fy, cx, cy;
 
     //BoW
     DBoW2::BowVector mBowVec;
@@ -184,8 +185,9 @@ public:
     }
 
     // Needed for testing
-//    void TestAddKeyPointUn(cv::KeyPoint &kpt);
-//    void TestAddMapPoint(MapPoint *pMP);
+    void TestAddKeyPointUn(cv::KeyPoint &kpt, int camera);
+    void TestAddMapPoint(MapPoint *pMP);
+    void TestSetFeatureSize(int nCam);
 //    void SetCalibrationMatrix(cv::Mat K);
 
 protected:

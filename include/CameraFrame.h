@@ -118,6 +118,10 @@ public:
     void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
     void SetORB(ORBextractor* mpORBextractor, ORBVocabulary* mpORBvocabulary);
 
+    // Neede for testing
+    void TestSetExtrinsics(cv::Mat &R, cv::Mat &t);
+    void TestSetIntrinsics(cv::Mat &K);
+
 private:
 
     void UndistortKeyPoints();
