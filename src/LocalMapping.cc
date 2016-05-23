@@ -217,7 +217,7 @@ void LocalMapping::CreateNewMapPoints()
     cv::Mat Tbw1(3,4,CV_32F);
     Rbw1.copyTo(Tbw1.colRange(0,3));
     tbw1.copyTo(Tbw1.col(3));
-    cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
+    //cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
 
     Eigen::Matrix3d R1;
     Eigen::Vector3d t1;
@@ -236,6 +236,7 @@ void LocalMapping::CreateNewMapPoints()
         cv::Mat Tcw1(3,4,CV_32F);
         Rcw1.copyTo(Tcw1.colRange(0,3));
         tcw1.copyTo(Tcw1.col(3));
+        cv::Mat Ow1 = -Rcw1.t()*tcw1;
         // TODO cv::Mat Ow1??
 
         const float fx1 = mpCurrentKeyFrame->cameraFrames[j].fx;
@@ -251,9 +252,26 @@ void LocalMapping::CreateNewMapPoints()
         for (size_t i = 0; i < vpNeighKFs.size(); i++) {
             KeyFrame *pKF2 = vpNeighKFs[i];
 
+            cv::Mat Rbw2 = pKF2->GetRotation();
+            cv::Mat Rwb2 = Rbw2.t();
+            cv::Mat tbw2 = pKF2->GetTranslation();
+            cv::Mat Tbw2(3, 4, CV_32F);
+            Rbw2.copyTo(Tbw2.colRange(0, 3));
+            tbw2.copyTo(Tbw2.col(3));
+            // Retrieve extrinsic Rotation and translation for reprojection later
+            cv::Mat Rcb2 = pKF2->cameraFrames[j].mR;
+            cv::Mat tcb2 = pKF2->cameraFrames[j].mt;
+            cv::Mat Rcw2 = Rcb2*Rbw2;
+            cv::Mat Rwc2 = Rcw2.t();
+            cv::Mat tcw2 = tcb2 + tbw2;
+            cv::Mat Tcw2(3,4,CV_32F);
+            Rcw2.copyTo(Tcw2.colRange(0,3));
+            tcw2.copyTo(Tcw2.col(3));
+            cv::Mat Ow2 = -Rcw2.t()*tcw2;
+
             // Check first that baseline is not too short
             // Small translation errors for short baseline keyframes make scale to diverge
-            cv::Mat Ow2 = pKF2->GetCameraCenter(); //TODO same as for Ow1?
+            //cv::Mat Ow2 = pKF2->GetCameraCenter(); //TODO same as for Ow1?
             cv::Mat vBaseline = Ow2 - Ow1;
             const float baseline = cv::norm(vBaseline);
             const float medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
@@ -271,22 +289,6 @@ void LocalMapping::CreateNewMapPoints()
             vector<pair<size_t, size_t> > vMatchedIndices;
             matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedKeysUn1, vMatchedKeysUn2,
                                            vMatchedIndices, j);
-
-            cv::Mat Rbw2 = pKF2->GetRotation();
-            cv::Mat Rwb2 = Rbw2.t();
-            cv::Mat tbw2 = pKF2->GetTranslation();
-            cv::Mat Tbw2(3, 4, CV_32F);
-            Rbw2.copyTo(Tbw2.colRange(0, 3));
-            tbw2.copyTo(Tbw2.col(3));
-            // Retrieve extrinsic Rotation and translation for reprojection later
-            cv::Mat Rcb2 = pKF2->cameraFrames[j].mR;
-            cv::Mat tcb2 = pKF2->cameraFrames[j].mt;
-            cv::Mat Rcw2 = Rcb2*Rbw2;
-            cv::Mat Rwc2 = Rcw2.t();
-            cv::Mat tcw2 = tcb2 + tbw2;
-            cv::Mat Tcw2(3,4,CV_32F);
-            Rcw2.copyTo(Tcw2.colRange(0,3));
-            tcw2.copyTo(Tcw2.col(3));
 
             const float fx2 = pKF2->cameraFrames[j].fx;
             const float fy2 = pKF2->cameraFrames[j].fy;

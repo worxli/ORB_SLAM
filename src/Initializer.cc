@@ -24,12 +24,14 @@
 
 #include "Optimizer.h"
 #include "ORBmatcher.h"
-#include "../Thirdparty/opengv/include/opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp"
+#include "../include/Initializer.h"
 
 #include<boost/thread.hpp>
 #include<opengv/relative_pose/RelativeAdapterBase.hpp>
 #include<opengv/relative_pose/NoncentralRelativeAdapter.hpp>
+#include<opengv/relative_pose/CentralRelativeAdapter.hpp>
 #include<opengv/relative_pose/methods.hpp>
+#include <opengv/triangulation/methods.hpp>
 #include <opengv/sac/Ransac.hpp>
 #include <opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp>
 
@@ -141,26 +143,32 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
 
+    mvBearings1Adapter.clear();
+    mvBearings2Adapter.clear();
+    matchesBearing.clear();
+    mvCorr1.clear();
+    mvCorr2.clear();
 
-    // generalized camera
-    opengv::bearingVectors_t mvBearings1Adapter;
-    opengv::bearingVectors_t mvBearings2Adapter;
-    std::vector<int> mvCorr1;
-    std::vector<int> mvCorr2;
-    opengv::rotations_t mvR;
-    opengv::translations_t mvT;
-
-
+    matchesBearing.resize(cameras);
     for(int j =0; j<cameras; j++) {
+        matchesBearing[j].resize(vMatches12[j].size());
         mvKeys2.push_back(CurrentFrame.cameraFrames[j].mvKeysUn);
 
         // check for matches and get the bearing vectors
         for (size_t i = 0, iend = vMatches12[j].size(); i < iend; i++) {
             if (vMatches12[j][i] >= 0) {
+                const cv::KeyPoint &kp1 = mvKeys1[j][i];
+                const cv::KeyPoint &kp2 = mvKeys2[j][vMatches12[j][i]];
+
+                cout << "---------------" << endl;
+                cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+                cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+
                 mvBearings1Adapter.push_back(mvBearings1[j][i]);
                 mvBearings2Adapter.push_back(CurrentFrame.cameraFrames[j].vBearings[vMatches12[j][i]]);
                 mvCorr1.push_back(j);
                 mvCorr2.push_back(j); // because we're only correlating camera 1 to camera 1
+                matchesBearing[j][i] = mvBearings1Adapter.size()-1;
             }
         }
 
@@ -191,8 +199,8 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // run ransac
     ransac.sac_model_ = relposeproblem_ptr;
     //ransac.threshold_ = 0.8 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.threshold_ = 2.0*(1.0 - cos(atan(sqrt(2.0)*0.5/800.0)));
-    ransac.max_iterations_ = 10000;
+    ransac.threshold_ = 1.0*(1.0 - cos(atan(sqrt(2.0)*0.5/800.0)));
+    ransac.max_iterations_ = 1000;
     cout << "compute model" << endl;
 
     ransac.computeModel();
@@ -222,11 +230,17 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     Rcw.convertTo(Rcw, CV_32F);
     tcw.convertTo(tcw, CV_32F);
     R21 = Rcw;
-    t21 = tcw;
+    t21 = tcw;//-Rcw*tcw;
 
-    vector<bool> vbMatchesInliers(vMatches12[0].size(), false);
+    vector<vector<bool> > vbMatchesInliers(cameras, vector<bool>(vMatches12[0].size(), false));
     for(int i =0; i<ransac.inliers_.size(); i++) {
-        vbMatchesInliers[ransac.inliers_[i]] = true;
+        for (int j = 0; j < cameras; ++j) {
+            for (int k = 0; k < vMatches12[0].size(); ++k) {
+                if (matchesBearing[j][k] == ransac.inliers_[i]) {
+                    vbMatchesInliers[j][k] = true;
+                }
+            }
+        }
     }
 
     // fill old matches structure
@@ -241,125 +255,36 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         }
     }
 
+//    opengv::points_t points;
+//    TriangulateOpenGV(best_transformation, mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvR, mvT, points);
+
+    // don't know how to get the feature back from a bearing vector
+//    vector<vector<cv::Point3f> > triangulated(cameras, vector<cv::Point3f>(vMatches12[j].size()));
+//    for (int j = 0; j < cameras; ++j) {
+//        for (int i = 0; i < mvBearings1Adapter.size(); ++i) {
+//            if (mvCorr1[i] == j) {
+//                triangulated[j][i] ==
+//            }
+//        }
+//    }
+//
+//    vP3D.resize(cameras);
+//    for (int j = 0; j < cameras; ++j) {
+//        for (int i = 0; i < points.size(); ++i) {
+//            if (mvCorr1[i] == j) {
+//                cv::Point3f point(points[i](0), points[i](1), points[i](2));
+//                vP3D[j].push_back(point);
+//            }
+//        }
+//    }
+//
+//    cout << vP3D[0].size() << " triangulated" << endl;
+
+
     return CheckRelativePose(R21, t21, vP3D, vbTriangulated, vbMatchesInliers);
 }
 
-/*
-void Initializer::InitializeGenCam()
-{
-    //Transform Sample Data into Eigen Matrices
-    //fill adapter with 6 random bearing points
-
-    cout << "InitializeGenCam started" << endl;
-
-    opengv::bearingVectors_t mv1;
-    opengv::bearingVectors_t mv2;
-    //opengv::bearingVectors_t mv1c1;
-    //opengv::bearingVectors_t mv2c1;
-
-    cout << "bearing vectors created" << endl;
-
-*/
-/*    for(int i=0; i<400; i++)
-    {
-        Eigen::Matrix<double, 3, 1> mv1c1point;
-        Eigen::Matrix<double, 3, 1> mv2c1point;
-        //cout << "mv1c1point created" << endl;
-        cv::cv2eigen(v1c1[i], mv1c1point);
-        cv::cv2eigen(v2c1[i], mv2c1point);
-        //cout << "c1 vectors transformed to eigen" << endl;
-        mv1c1.push_back(mv1c1point);
-        mv2c1.push_back(mv2c1point);
-    }
-
-    cout << "bearing vectors filled" << endl;
-
-    std::vector<int> camcorr1(400,0);
-    std::vector<int> camcorr2(400,0);*//*
-
-
-        std::vector<int> camcorr(400,rand() %2); //select randomly cam 0 or 1
-
-    for(int i=0; i<400; i++)
-    {
-        Eigen::Matrix<double, 3, 1> mv1point;
-        Eigen::Matrix<double, 3, 1> mv2point;
-
-        if(camcorr[i]==0) {
-            cv::cv2eigen(v1c1[i], mv1point);
-            cv::cv2eigen(v2c1[i], mv2point);
-        }
-        else {
-            cv::cv2eigen(v1c2[i], mv1point);
-            cv::cv2eigen(v2c2[i], mv2point);
-        }
-
-        mv1.push_back(mv1point);
-        mv2.push_back(mv2point);
-    }
-
-    Eigen::Matrix3d mc1R;
-    Eigen::Vector3d mc1t;
-        Eigen::Matrix3d mc2R;
-        Eigen::Vector3d mc2t;
-    cv::cv2eigen(c1R, mc1R);
-    cv::cv2eigen(c1t, mc1t);
-        cv::cv2eigen(c2R, mc2R);
-        cv::cv2eigen(c2t, mc2t);
-
-    opengv::rotations_t cameraR;
-    opengv::translations_t cameraT;
-    cameraR.push_back(mc1R);
-        cameraR.push_back(mc2R);
-    cameraT.push_back(mc1t);
-        cameraT.push_back(mc2t);
-    // create the non-central relative adapter
-    cout << "create adapter" << endl;
-    opengv::relative_pose::NoncentralRelativeAdapter adapter(mv1, mv2, camcorr, camcorr, cameraT, cameraR );
-
-
-    //TODO fill ransac model correctly with all data
-    // create a RANSAC object
-    cout << "create ransac" << endl;
-    opengv::sac::Ransac<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
-            ransac;
-
-    // create a NoncentralRelativePoseSacProblem
-    cout << "create NoncentralRelativePoseSacProblem" << endl;
-    std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
-            relposeproblem_ptr(
-            new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
-                    adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
-    );
-    // run ransac
-    cout << "run ransac" << endl;
-    ransac.sac_model_ = relposeproblem_ptr;
-    ransac.threshold_ = 1.0 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.max_iterations_ = 100;
-    cout << "compute model" << endl;
-    ransac.computeModel();
-    // get the result
-    cout << "get result" << endl;
-    opengv::transformation_t best_transformation = ransac.model_coefficients_;
-
-    cv::Mat Tcw;
-    cv::eigen2cv(best_transformation, Tcw);
-    cv::Mat Rcw;
-    cv::Mat tcw;
-    Tcw.rowRange(0,3).colRange(0,3).copyTo(Rcw);
-    Tcw.rowRange(0,3).col(3).copyTo(tcw);
-    cout << "Rcw " << Rcw << endl;
-    cout << "Tcw " << tcw << endl;
-        cout << "Global R: " << gR << endl;
-        cout << "Global t: " << gt << endl;
-//    if(best_transformation) {
-//        return true;
-//    }
-//    return false;
-}
-*/
-
-bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated, vector<bool> vbMatchesInliers)
+bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated, vector<vector<bool> > vbMatchesInliers)
 {
     int nGood = 0;
 
@@ -382,7 +307,7 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
 //                  << "mR: " << mR[i] << std::endl
 //                  << "mt: " << mt[i] << std::endl;
 
-        nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers, mK[i], mvP3Di,
+        nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers[i], mK[i], mvP3Di,
                             4.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i]);
         vP3D.push_back(mvP3Di);
         vbTriangulated.push_back(mvbTriangulated);
@@ -405,6 +330,39 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     x3D = vt.row(3).t();
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+}
+
+void Initializer::TriangulateOpenGV(const opengv::transformation_t best_transformation, opengv::bearingVectors_t bearingVectors1, opengv::bearingVectors_t bearingVectors2,
+                                    std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotations_t mvR, opengv::translations_t mvT, opengv::points_t points)
+{
+    opengv::bearingVectors_t mBearingVectors1;
+    opengv::bearingVectors_t mBearingVectors2;
+
+    cout << "bearings size " << bearingVectors1.size() << endl;
+    for (int j = 0; j < mvR.size(); ++j) {
+        for (int i = 0; i < bearingVectors1.size(); ++i) {
+            // check for camera correspondance -> camera j
+            if (mvCorr1[i] == j) {
+                cout << "push bearing: " << bearingVectors1[i] << endl;
+                mBearingVectors1.push_back((mvR[j]*bearingVectors1[i] + mvT[j])/(mvR[j]*bearingVectors1[i] + mvT[j]).norm());
+                mBearingVectors2.push_back((mvR[j]*bearingVectors2[i] + mvT[j])/(mvR[j]*bearingVectors2[i] + mvT[j]).norm());
+            }
+        }
+    }
+
+    opengv::translation_t position = best_transformation.col(3);
+    opengv::rotation_t rotation = best_transformation.block<3,3>(0,0);
+
+    //create a central relative adapter and pass the relative pose
+    opengv::relative_pose::CentralRelativeAdapter adapter(
+            bearingVectors1,
+            bearingVectors2,
+            position,
+            rotation);
+
+    for(size_t j = 0; j < bearingVectors1.size(); j++) {
+        points.push_back(opengv::triangulation::triangulate(adapter, j));
+    }
 }
 
 int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
@@ -433,10 +391,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw1 = cv::Mat::eye(3,3,CV_32F);
     cv::Mat Rcb1 = mR;
-    cv::Mat Rcw1 = Rcb1 * Rbw1;
+    cv::Mat Rcw1 = Rcb1 * Rbw1; //Rbw1 * Rcb1;
     cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
     cv::Mat tcb1 = mt;
-    cv::Mat tcw1 = tcb1 + tbw1;
+    cv::Mat tcw1 = Rbw1*tcb1 + tbw1; //tcb1 + tbw1;
 
     // Camera 1 Projection Matrix K[I|0]
     cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
@@ -445,6 +403,13 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     P1 = K*P1;
 
     cv::Mat O1 = -Rcw1.t()*tcw1;
+
+    cout << "-----------------------------------------" << endl;
+    cout << "R base - world 1 " << Rbw1 << " t " << tbw1 << endl;
+    cout << "R camera - base 1 " << Rcb1 << " t " << tcb1 << endl;
+    cout << "R camera world 1" << Rcw1 << " t " << tcw1 << endl;
+    cout << "camera center 1 " << O1 << endl;
+    cout << "P1 " << P1 << endl;
 
 //    // Camera 2 Projection Matrix K[R|t]
 //    cv::Mat P2(3,4,CV_32F);
@@ -457,10 +422,15 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw2 = R;
     cv::Mat Rcb2 = mR;
-    cv::Mat Rcw2 = Rcb2 * Rbw2;
-    cv::Mat tbw2 = t;
+    cv::Mat Rcw2 = Rcb2 * Rbw2; //Rbw2 * Rcb2;
+    cv::Mat tbw2 = t; //cv::Mat::zeros(3,1,CV_32F); //t
     cv::Mat tcb2 = mt;
-    cv::Mat tcw2 = tcb2 + tbw2;
+    cv::Mat tcw2 = Rbw2*tcb2 + tbw2; //tcb2 + tbw2;
+
+    cout << "-------" << endl;
+    cout << "R base - world 2 " << Rbw2 << " t " << tbw2 << endl;
+    cout << "R camera - base 2 " << Rcb2 << " t " << tcb2 << endl;
+    cout << "R camera world 2" << Rcw2 << " t " << tcw2 << endl;
 
     // Camera 2 Projection Matrix K[R|t]
     cv::Mat P2(3,4,CV_32F);
@@ -469,6 +439,9 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     P2 = K*P2;
 
     cv::Mat O2 = -Rcw2.t()*tcw2;
+
+    cout << "camera center 2 " << O2 << endl;
+    cout << "P2 " << P2 << endl;
 
     int nGood=0;
 
@@ -481,8 +454,14 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
         cv::Mat p3dC1;
 
+        cout << "---------------" << endl;
+        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+
         // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
         Triangulate(kp1,kp2,P1,P2,p3dC1);
+
+        cout << "p3dC1 " << p3dC1 << endl;
         
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
@@ -497,12 +476,13 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         float dist2 = cv::norm(normal2);
 
         float cosParallax = normal1.dot(normal2)/(dist1*dist2);
+        cout << "parallax " << cosParallax << endl;
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
             continue;
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-        cv::Mat p3dC2 = R*p3dC1+t;
+        cv::Mat p3dC2 = Rcw2*p3dC1+tcw2;
 
         if(p3dC2.at<float>(2)<=0 && cosParallax<0.99998)
             continue;
@@ -513,8 +493,11 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         im1x = fx*p3dC1.at<float>(0)*invZ1+cx;
         im1y = fy*p3dC1.at<float>(1)*invZ1+cy;
 
+        cout << "x" << im1x << "," << im1y << " - " << kp1.pt.x << "," << kp1.pt.y << endl;
+
         float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
 
+        cout << "error 1: " << squareError1 << endl;
         if(squareError1>th2)
             continue;
 
@@ -526,6 +509,7 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         float squareError2 = (im2x-kp2.pt.x)*(im2x-kp2.pt.x)+(im2y-kp2.pt.y)*(im2y-kp2.pt.y);
 
+        cout << "error 2: " << squareError2 << endl;
         if(squareError2>th2)
             continue;
 
