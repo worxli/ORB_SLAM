@@ -391,18 +391,35 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw1 = cv::Mat::eye(3,3,CV_32F);
     cv::Mat Rcb1 = mR;
-    cv::Mat Rcw1 = Rcb1 * Rbw1; //Rbw1 * Rcb1;
+//    cv::Mat Rcw1 = Rcb1 * Rbw1; //Rbw1 * Rcb1;
+//    cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
+//    cv::Mat tcb1 = mt;
+//    cv::Mat tcw1 = Rbw1*tcb1 + tbw1; //tcb1 + tbw1;
+    //cv::Mat Rcw1 = Rcb1 * Rbw1;
     cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
     cv::Mat tcb1 = mt;
-    cv::Mat tcw1 = Rbw1*tcb1 + tbw1; //tcb1 + tbw1;
+    //cv::Mat tcw1 = tcb1 + tbw1;
+
+    cv::Mat Tcw1(4,4,CV_32F);
+    cv::Mat Tbw1(4,4,CV_32F);
+    cv::Mat Tcb1(4,4,CV_32F);
+    Rbw1.copyTo(Tbw1.rowRange(0,3).colRange(0,3));
+    tbw1.copyTo(Tbw1.rowRange(0,3).col(3));
+    Rcb1.copyTo(Tcb1.rowRange(0,3).colRange(0,3));
+    tcb1.copyTo(Tcb1.rowRange(0,3).col(3));
+    Tcw1 = Tbw1*Tcb1;
 
     // Camera 1 Projection Matrix K[I|0]
     cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
-    Rcw1.copyTo(P1.rowRange(0,3).colRange(0,3));
-    tcw1.copyTo(P1.rowRange(0,3).col(3));
+    //Rcw1.copyTo(P1.rowRange(0,3).colRange(0,3));
+    //tcw1.copyTo(P1.rowRange(0,3).col(3));
+    Tcw1.rowRange(0,3).colRange(0,3).copyTo(P1.rowRange(0,3).colRange(0,3));
+    Tcw1.rowRange(0,3).col(3).copyTo(P1.rowRange(0,3).col(3));
     P1 = K*P1;
 
-    cv::Mat O1 = -Rcw1.t()*tcw1;
+//    cv::Mat O1 = -Rcw1.t()*tcw1;
+    cv::Mat O1 = -Tcw1.rowRange(0,3).colRange(0,3).t()*Tcw1.rowRange(0,3).col(3);
+
 
     cout << "-----------------------------------------" << endl;
     cout << "R base - world 1 " << Rbw1 << " t " << tbw1 << endl;
@@ -422,23 +439,40 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw2 = R;
     cv::Mat Rcb2 = mR;
-    cv::Mat Rcw2 = Rcb2 * Rbw2; //Rbw2 * Rcb2;
-    cv::Mat tbw2 = t; //cv::Mat::zeros(3,1,CV_32F); //t
-    cv::Mat tcb2 = mt;
-    cv::Mat tcw2 = Rbw2*tcb2 + tbw2; //tcb2 + tbw2;
+//    cv::Mat Rcw2 = Rcb2 * Rbw2; //Rbw2 * Rcb2;
+//    cv::Mat tbw2 = t; //cv::Mat::zeros(3,1,CV_32F); //t
+//    cv::Mat tcb2 = mt;
+//    cv::Mat tcw2 = Rbw2*tcb2 + tbw2; //tcb2 + tbw2;
 
     cout << "-------" << endl;
     cout << "R base - world 2 " << Rbw2 << " t " << tbw2 << endl;
     cout << "R camera - base 2 " << Rcb2 << " t " << tcb2 << endl;
-    cout << "R camera world 2" << Rcw2 << " t " << tcw2 << endl;
+    //cout << "R camera world 2" << Rcw2 << " t " << tcw2 << endl;
+//    cv::Mat Rcw2 = Rcb2 * Rbw2;
+    cv::Mat tbw2 = t;
+    cv::Mat tcb2 = mt;
+//    cv::Mat tcw2 = tcb2 + tbw2;
+
+    cv::Mat Tcw2(4,4,CV_32F);
+    cv::Mat Tbw2(4,4,CV_32F);
+    cv::Mat Tcb2(4,4,CV_32F);
+    Rbw2.copyTo(Tbw2.rowRange(0,3).colRange(0,3));
+    tbw2.copyTo(Tbw2.rowRange(0,3).col(3));
+    Rcb2.copyTo(Tcb2.rowRange(0,3).colRange(0,3));
+    tcb2.copyTo(Tcb2.rowRange(0,3).col(3));
+    Tcw2 = Tbw2*Tcb2;
 
     // Camera 2 Projection Matrix K[R|t]
     cv::Mat P2(3,4,CV_32F);
-    Rcw2.copyTo(P2.rowRange(0,3).colRange(0,3));
-    tcw2.copyTo(P2.rowRange(0,3).col(3));
+//    Rcw2.copyTo(P2.rowRange(0,3).colRange(0,3));
+//    tcw2.copyTo(P2.rowRange(0,3).col(3));
+    Tcw2.rowRange(0,3).colRange(0,3).copyTo(P2.rowRange(0,3).colRange(0,3));
+    Tcw2.rowRange(0,3).col(3).copyTo(P2.rowRange(0,3).col(3));
     P2 = K*P2;
 
-    cv::Mat O2 = -Rcw2.t()*tcw2;
+//    cv::Mat O2 = -Rcw2.t()*tcw2;
+    cv::Mat O2 = -Tcw2.rowRange(0,3).colRange(0,3).t()*Tcw2.rowRange(0,3).col(3);
+
 
     cout << "camera center 2 " << O2 << endl;
     cout << "P2 " << P2 << endl;
