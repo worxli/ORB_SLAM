@@ -76,22 +76,34 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 {
     bool bBad=false;
     {
+        cout << "BA Erase 1:" << endl;
+
         boost::mutex::scoped_lock lock(mMutexFeatures);
         if(mObservations.count(pKF))
         {
+            cout << "BA Erase 2:" << endl;
+
             mObservations.erase(pKF);
+            cout << "BA Erase 3:" << endl;
 
             if(mpRefKF==pKF)
                 mpRefKF=mObservations.begin()->first;
+            cout << "BA Erase 3:" << endl;
 
             // If only 2 observations or less, discard point
             if(mObservations.size()<=2)
                 bBad=true;
+            cout << "BA Erase 4:" << endl;
+
         }
     }
 
+    cout << "BA Erase 5:" << endl;
+
     if(bBad)
         SetBadFlag();
+    cout << "BA Erase 6:" << endl;
+
 }
 
 map<KeyFrame*, size_t> MapPoint::GetObservations()
@@ -110,19 +122,33 @@ void MapPoint::SetBadFlag()
 {
     map<KeyFrame*,size_t> obs;
     {
+        cout << "BA Set 1:" << endl;
+
         boost::mutex::scoped_lock lock1(mMutexFeatures);
         boost::mutex::scoped_lock lock2(mMutexPos);
+        cout << "BA Set 2:" << endl;
+
         mbBad=true;
         obs = mObservations;
+        cout << "BA Set 3:" << endl;
+
         mObservations.clear();
+        cout << "BA Set 4:" << endl;
+
     }
     for(map<KeyFrame*,size_t>::iterator mit=obs.begin(), mend=obs.end(); mit!=mend; mit++)
     {
+        cout << "BA Set loop:" << endl;
+
         KeyFrame* pKF = mit->first;
         pKF->EraseMapPointMatch(mit->second);
     }
+    cout << "BA Set 5:" << endl;
+
 
     mpMap->EraseMapPoint(this);
+    cout << "BA Set 6:" << endl;
+
 }
 
 void MapPoint::Replace(MapPoint* pMP)
@@ -279,39 +305,74 @@ void MapPoint::UpdateNormalAndDepth()
     map<KeyFrame*,size_t> observations;
     KeyFrame* pRefKF;
     cv::Mat Pos;
+    cout << "BA Normal 1:" << endl;
+
     {
         boost::mutex::scoped_lock lock1(mMutexFeatures);
         boost::mutex::scoped_lock lock2(mMutexPos);
+        cout << "BA Normal 2:" << endl;
+
         if(mbBad)
             return;
         observations=mObservations;
         pRefKF=mpRefKF;
+        cout << "BA Normal 3:" << endl;
+
         Pos = mWorldPos.clone();
+        cout << "BA Normal 4:" << endl;
+
     }
+    cout << "BA Normal 5:" << endl;
 
     cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
     int n=0;
     for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
+        cout << "BA Normal 6 loop 1:" << endl;
+
         KeyFrame* pKF = mit->first;
+        cout << "BA Normal 6 loop 2:" << endl;
+
         cv::Mat Owi = pKF->GetCameraCenter();
+        cout << "BA Normal 6 loop 3:" << endl;
+
         cv::Mat normali = mWorldPos - Owi;
+        cout << "BA Normal 6 loop 4:" << endl;
+
         normal = normal + normali/cv::norm(normali);
+        cout << "BA Normal 6 loop 5:" << endl;
+
         n++;
-    } 
+    }
+    cout << "Pos: " << Pos << endl;
+    cout << "pRefKF->center: " << pRefKF->GetCameraCenter() << endl;
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();
+    cout << "BA Normal 8:" << endl;
+
     const float dist = cv::norm(PC);
+    cout << "BA Normal 9:" << endl;
+
     const int level = pRefKF->GetKeyPointScaleLevel(observations[pRefKF], camera);
+    cout << "BA Normal 10:" << endl;
+
     const float scaleFactor = pRefKF->GetScaleFactor();
+    cout << "BA Normal 11:" << endl;
+
     const float levelScaleFactor =  pRefKF->GetScaleFactor(level);
+    cout << "BA Normal 12:" << endl;
+
     const int nLevels = pRefKF->GetScaleLevels();
+    cout << "BA Normal 13:" << endl;
+
 
     {
         boost::mutex::scoped_lock lock3(mMutexPos);
         mfMinDistance = (1.0f/scaleFactor)*dist / levelScaleFactor;
         mfMaxDistance = scaleFactor*dist * pRefKF->GetScaleFactor(nLevels-1-level);
         mNormalVector = normal/n;
+        cout << "BA Normal 14:" << endl;
+
     }
 }
 

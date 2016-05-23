@@ -47,9 +47,21 @@ void Map::AddMapPoint(MapPoint *pMP)
 
 void Map::EraseMapPoint(MapPoint *pMP)
 {
+    cout << "BA MapP 0:" << endl;
+
+    if(pMP == NULL) {
+        cout << "NULL" << endl;
+    }
+
     boost::mutex::scoped_lock lock(mMutexMap);
+    cout << "BA MapP 1:" << endl;
+
     mspMapPoints.erase(pMP);
+    cout << "BA MapP 2:" << endl;
+
     mbMapUpdated=true;
+    cout << "BA MapP 3:" << endl;
+
 }
 
 void Map::EraseKeyFrame(KeyFrame *pKF)

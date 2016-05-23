@@ -367,6 +367,15 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
         vSE3->setId(pKFi->mnId);
+
+        cout << "local ID before: " << pKFi->mnId << endl;
+
+        if(pKFi->mnId < 1002) {
+            vSE3->setFixed(true);
+            cout << "FIXED: pKFi->mnId: " << pKFi->mnId << endl;
+        }
+
+        cout << "local ID after: " << pKFi->mnId << endl;
         vSE3->setFixed(pKFi->mnId==0);
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
@@ -384,6 +393,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
             maxKFid=pKFi->mnId;
+
+        cout << "Fixed " << endl;
     }
 
     // SET MAP POINT VERTICES
@@ -420,8 +431,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         {
             KeyFrame* pKFi = mit->first;
 
-            cout << "BA 7-2" << endl;
-
             if(!pKFi->isBad())
             {
                 Eigen::Matrix<double,2,1> obs;
@@ -441,13 +450,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFi->mnId)));
                 e->setMeasurement(obs);
 
-                cout << "BA 7-3" << endl;
-
                 Eigen::Matrix<double,3,1> t = Converter::toVector3d(pKF->cameraFrames[pMP->camera].mt);
                 Eigen::Matrix<double,3,3> R = Converter::toMatrix3d(pKF->cameraFrames[pMP->camera].mR);
                 e->setT(g2o::SE3Quat(R,t)); // SE3G: set relative transformation from baseframe to cameraframe
-
-                cout << "BA 7-4" << endl;
 
                 float sigma2 = pKFi->GetSigma2(kpUn.octave);
                 float invSigma2 = pKFi->GetInvSigma2(kpUn.octave);
@@ -462,8 +467,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->cx = pKFi->cameraFrames[pMP->camera].cx;
                 e->cy = pKFi->cameraFrames[pMP->camera].cy;
 
-                cout << "BA 7-5" << endl;
-
                 optimizer.addEdge(e);
                 vpEdges.push_back(e);
                 vpEdgeKF.push_back(pKFi);
@@ -473,14 +476,12 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         }
     }
 
-    cout << "BA 8:" << endl;
-
     optimizer.initializeOptimization();
-    optimizer.optimize(5);
+    optimizer.optimize(50);
 
-    cout << "BA 8-1:" << endl;
+    cout << "vpEdges.size(): " << vpEdges.size() << endl;
 
-    // Check inlier observations
+/*    // Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
     {
         g2o::EdgeSE3GProjectXYZ* e = vpEdges[i];
@@ -496,7 +497,11 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
             cout << "BA 8-3:" << endl;
 
             KeyFrame* pKFi = vpEdgeKF[i];
+            cout << "BA 8-3-a:" << endl;
+
             pKFi->EraseMapPointMatch(pMP);
+            cout << "BA 8-3-b:" << endl;
+
             pMP->EraseObservation(pKFi);
 
             cout << "BA 8-4:" << endl;
@@ -504,9 +509,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
             optimizer.removeEdge(e);
             vpEdges[i]=NULL;
         }
-    }
-
-    cout << "BA 9:" << endl;
+    }*/
 
     // Recover optimized data
 
@@ -524,17 +527,15 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-        pMP->UpdateNormalAndDepth();
+//        pMP->UpdateNormalAndDepth();
     }
-
-    cout << "BA 10:" << endl;
 
     // Optimize again without the outliers
 
-    optimizer.initializeOptimization();
-    optimizer.optimize(10);
+//    optimizer.initializeOptimization();
+//    optimizer.optimize(10);
 
-    // Check inlier observations
+/*    // Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
     {
         g2o::EdgeSE3GProjectXYZ* e = vpEdges[i];
@@ -555,8 +556,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         }
     }
 
-    cout << "BA 11:" << endl;
-
     // Recover optimized data
 
     //Keyframes
@@ -575,7 +574,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
         pMP->UpdateNormalAndDepth();
-    }
+    }*/
 }
 
 void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF, g2o::Sim3 &Scurw,
@@ -1083,8 +1082,6 @@ void Optimizer::TestLocalBundleAdjustment()
 
     srand (time(NULL));
 
-    cout << "Pos6" << endl;
-
     //
     std::vector<KeyFrame*> vAllKeyFrames;
     std::vector<MapPoint*> vAllMapPoints;
@@ -1261,7 +1258,6 @@ void Optimizer::TestLocalBundleAdjustment()
                 pKF->TestAddKeyPointUn(kpt, k); // TODO
                 pKF->TestAddMapPoint(pMPi); // TODO
                 pMPi->AddObservation(pKF,i);//(pKF,k*nMPs+i);
-                cout << "num: " << i << " | " << k*nMPs+i << endl;
                 pKF->UpdateConnections();
             }
             vAllMapPoints.push_back(pMPi);
@@ -1278,7 +1274,7 @@ void Optimizer::TestLocalBundleAdjustment()
         vOriginalMP_Position.push_back(vAllMapPoints.at(i)->GetWorldPos());
     }
 
-    // add noise for testing
+   /* // add noise for testing
     vector<MapPoint*> allMPs = pKF0->GetMapPointMatches();
     for(size_t i = 0; i < allMPs.size(); i++){
         MapPoint* pMP = allMPs[i];
@@ -1340,17 +1336,11 @@ void Optimizer::TestLocalBundleAdjustment()
         R.copyTo(T.colRange(0,3).rowRange(0,3));
         pKFi->SetPose(T);
     }
-
+*/
     // call optimization
     vector<bool> vbMatched; vbMatched.resize(nMPs, true);
-    // TODO
-//    LocalBundleAdjustment(pKF0,vbMatched);
     bool pbStopFlag = false;
-    cout << "Pos16" << endl;
-
     LocalBundleAdjustment(pKF0, &pbStopFlag);
-
-    cout << "Pos17" << endl;
 
     cout << endl << "==================== DEBUG Optimizer::LocalBA ==================" << endl;
     // compute optimization error
@@ -1359,21 +1349,21 @@ void Optimizer::TestLocalBundleAdjustment()
         cout << "+++++++ Error for camera pose   +++++++" << i << endl;
         cout << vOriginal_Poses[i]*pKFi->GetPose().inv() << endl;
 
-//        cout << "+++++++ Error for camera center +++++++" << i << endl;
+        cout << "+++++++ Error for camera center +++++++" << i << endl;
         cv::Mat T = vOriginal_Poses[i];
         cv::Mat R = T.colRange(0,3).rowRange(0,3);
         cv::Mat t = T.col(3).rowRange(0,3);
 
-//        cout << "DEBUG estimated camCenter of frame: " << pKFi->mnId << endl;
-//        cout << pKFi->GetCameraCenter() << endl;
+        cout << "DEBUG estimated camCenter of frame: " << pKFi->mnId << endl;
+        cout << pKFi->GetCameraCenter() << endl;
         cout << -R.t()*t - pKFi->GetCameraCenter() << endl << endl;
     }
 
-//    cout << "+++++++ Error for map points locations +++++++ " << endl;
-//    for(size_t i = 0; i < vAllMapPoints.size(); i++){
-//        MapPoint* pMP = vAllMapPoints[i];
-//        cout << vOriginalMP_Position[i].t() - pMP->GetWorldPos().t()<< endl;
-//    }
+    cout << "+++++++ Error for map points locations +++++++ " << endl;
+    for(size_t i = 0; i < vAllMapPoints.size(); i++){
+        MapPoint* pMP = vAllMapPoints[i];
+        cout << vOriginalMP_Position[i].t() - pMP->GetWorldPos().t()<< endl;
+    }
 }
 
 } //namespace ORB_SLAM

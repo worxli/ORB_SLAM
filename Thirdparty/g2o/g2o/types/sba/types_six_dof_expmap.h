@@ -204,7 +204,8 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
     const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
     const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
     Vector2d obs(_measurement);
-    g2o::SE3Quat Tc = Tcb*v1->estimate(); // Tcb*Tb
+//    g2o::SE3Quat Tc = Tcb*v1->estimate(); // Tcb*Tbw
+    g2o::SE3Quat Tc = v1->estimate()*Tcb; // Tbw*Tcb
     _error = obs-cam_project(Tc.map(v2->estimate()));// obs-cam_project(Tc.map(map_point))
   }
 
@@ -221,7 +222,7 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
   Vector2d cam_project(const Vector3d & trans_xyz) const;
 
   double fx, fy, cx, cy;
-  g2o::SE3Quat Tcb; // R and t matrices for transformation from base frame to camera frame
+  g2o::SE3Quat Tcb; // R and t matrices for transformation from camera frame to base frame
 };
 
 // TODO: SE3rayXYZ can be deleted after BA/ Optimization completely works
