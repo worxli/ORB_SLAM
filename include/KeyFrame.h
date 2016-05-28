@@ -189,6 +189,7 @@ public:
     void TestAddMapPoint(MapPoint *pMP);
     void TestSetFeatureSize(int nCam);
 //    void SetCalibrationMatrix(cv::Mat K);
+    void inline SetmbBad(const bool& b) { mbBad = b; return; };
 
 protected:
 

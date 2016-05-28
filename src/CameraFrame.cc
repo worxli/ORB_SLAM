@@ -27,7 +27,7 @@
 namespace ORB_SLAM
 {
 bool CameraFrame::mbInitialComputations=true;
-float CameraFrame::cx, CameraFrame::cy, CameraFrame::fx, CameraFrame::fy;
+//float CameraFrame::cx, CameraFrame::cy, CameraFrame::fx, CameraFrame::fy;
 int CameraFrame::mnMinX, CameraFrame::mnMinY, CameraFrame::mnMaxX, CameraFrame::mnMaxY;
 
 CameraFrame::CameraFrame()

@@ -40,6 +40,7 @@ class CameraFrame
 {
 public:
     CameraFrame();
+
     CameraFrame(const CameraFrame &frame);
     CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
@@ -60,10 +61,10 @@ public:
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
+    float fx;
+    float fy;
+    float cx;
+    float cy;
     cv::Mat mDistCoef;
 
     cv::Mat mR;

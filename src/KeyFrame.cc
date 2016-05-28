@@ -303,7 +303,6 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
 
 cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx, int camera) const
 {
-    cout << "keysUn size: " << mvKeysUn.size() << " | " << mvKeysUn[camera].size() << endl;
     return mvKeysUn[camera][idx];
 }
 
