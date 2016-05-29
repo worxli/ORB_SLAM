@@ -368,8 +368,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
 
     // TODO
-    int start = 2;
-    int end = 3;
+    int start = 0;
+    int end = 4;
 
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
     {
@@ -618,14 +618,10 @@ void Tracking::Initialize()
     cv::Mat tcw; // Current Camera Translation
     vector<vector<bool> > vbTriangulated; // Triangulated Correspondences (mvIniMatches)
 
-
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
-        cout << Rcw << endl;
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
-                if (vbTriangulated[j][i])
-                    cout << "vbTriangulated " << i << " ";
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
                     nmatches--;
@@ -636,7 +632,6 @@ void Tracking::Initialize()
         CreateInitialMap(Rcw,tcw);
         cout << "Initial Map created" << endl;
     }
-
 }
 
 void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
@@ -646,6 +641,8 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mCurrentFrame.mTcw = cv::Mat::eye(4,4,CV_32F);
     Rcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3));
     tcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).col(3));
+
+    mCurrentFrame.mTcw = mCurrentFrame.mTcw.inv();
 
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
@@ -662,11 +659,13 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
         // Create MapPoints and asscoiate to keyframes
         for (size_t i = 0; i < mvIniMatches[j].size(); i++) {
 
-            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
-            cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
-
             if (mvIniMatches[j][i] < 0)
                 continue;
+
+//            cout << "camera " << j << " match i: " << i << endl;
+//            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
+            cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
+            //TODO somehow add all mappoints to a common map
 
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[j][i]);
@@ -687,7 +686,6 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
             //Add to Map
             mpMap->AddMapPoint(pMP);
-
         }
     }
 
@@ -704,7 +702,10 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth = 1.0f/medianDepth;
 
-    if(medianDepth<0 || pKFcur->TrackedMapPoints()<100)
+    cout << "median " << medianDepth << endl;
+
+//    if(medianDepth<0 || pKFcur->TrackedMapPoints()<100)
+    if(medianDepth<0 || pKFcur->TrackedMapPoints()<20)
     {
         ROS_INFO("Wrong initialization, reseting...");
         Reset();

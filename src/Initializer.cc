@@ -57,90 +57,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
-
-    //generateSampleData();
-    //test();
 }
-
-    /*
-void Initializer::generateSampleData()
-{
-//    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
-//    gt =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
-    gR =(cv::Mat_<float>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-    gt =(cv::Mat_<float>(3,1) << 0, 0, 0);
-    cv::Mat mc1R;
-    cv::Mat mc1t;
-    cv::Mat mc2R;
-    cv::Mat mc2t;
-
-    mc1R =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
-    mc1t =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
-    mc2R =(cv::Mat_<float>(3,3) << 0.01, 1, 0.2, 0.001, -1.1, 0.06, -0.008, 0.004, 0.7);
-    mc2t =(cv::Mat_<float>(3,1) << -1, 0.5, 2);
-
-    vector<cv::Mat> mv1c1;
-    vector<cv::Mat> mv2c1;
-    vector<cv::Mat> mv1c2;
-    vector<cv::Mat> mv2c2;
-
-    Eigen::Matrix<double, 3, 1> mv1point;
-    Eigen::Matrix<double, 3, 1> mv2point;
-
-    srand (time(NULL));
-    cv::Mat p1;
-    cv::Mat p2;
-    for(uint i = 0; i<100; i++) {
-        p1 = (cv::Mat_<float>(3,1) << rand() % 1+0.1, rand() % 1+0.05, rand() % 1-0.1 );
-//        cv::Mat p1 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
-//        cv::Mat p2 = (cv::Mat_<float>(3,1) << rand() % 10, rand() % 10, rand() % 10 );
-        p2 = (cv::Mat_<float>(3,1) << rand() % 1+0.12, rand() % 1+0.07, rand() % 1-0.2 );
-        mv1c1.push_back(mc1R*p1+mc1t);
-        mv2c1.push_back(mc1R*(gR*p1+gt)+mc1t);
-        mv1c2.push_back(mc2R*p2+mc2t);
-        mv2c2.push_back(mc2R*(gR*p2+gt)+mc2t);
-
-        //cout << "gR: " << gR << endl;
-        //cout << "gR.inv()*gR: " << gR.inv()*gR << endl;
-        //cout << "p1: " << p1;
-        //cout << " p1 back calc from mv2c1: " << gR.inv()*(mc1R.inv()*(mv2c1[i]-mc1t)-gt) << endl;
-        cout << "mv1c1[" << i << "] w/o norm:" << mv1c1[i] << endl;
-        //cout << "mv2c1[" << i << "] w/o norm:" << mv2c1[i] << endl;
-        //cout << "mv1c1[" << i << "] back calculated: " << mc1R*(gR.inv()*(mc1R.inv()*(mv2c1[i]-mc1t)-gt))+mc1t << endl;
-
-        mv1c1[i] = mv1c1[i]/cv::norm(mv1c1[i]);
-        mv2c1[i] = mv2c1[i]/cv::norm(mv2c1[i]);
-        mv1c2[i] = mv1c2[i]/cv::norm(mv1c2[i]);
-        mv2c2[i] = mv2c2[i]/cv::norm(mv2c2[i]);
-
-        //cout << "mv1c1[" << i << "] with norm:" << mv1c1[i] << endl;
-        //cout << "mv2c1[" << i << "] with norm:" << mv2c1[i] << endl;
-
-        cv::cv2eigen(mv1c1[i], mv1point);
-        cv::cv2eigen(mv1c2[i], mv2point);
-        v1c1.push_back(mv1point);
-        v1c2.push_back(mv2point);
-
-        cv::cv2eigen(mv2c1[i], mv1point);
-        cv::cv2eigen(mv2c2[i], mv2point);
-        v2c1.push_back(mv1point);
-        v2c2.push_back(mv2point);
-    }
-
-    cv::cv2eigen(mc1R, c1R);
-    cv::cv2eigen(mc1t, c1t);
-    cv::cv2eigen(mc2R, c2R);
-    cv::cv2eigen(mc2t, c2t);
-
-    cout << "done generating sample data" << endl;
-}
-     */
-
-//void test()
-//    {
-//
-//    }
-
 
 bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int> > &vMatches12, cv::Mat &R21, cv::Mat &t21,
                              vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated)
@@ -292,7 +209,6 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     // get the result
     best_transformation = ransac.model_coefficients_;
 
-
     cv::Mat Tcw;
     cv::eigen2cv(best_transformation, Tcw);
 
@@ -337,6 +253,11 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
     int nGood = 0;
 
     // reproject points and check score
+    vbTriangulated.clear();
+    vbTriangulated.resize(cameras);
+    vP3D.clear();
+    vP3D.resize(cameras);
+
     for(uint i = 0; i<cameras; i++) {
         float parallaxi;
         vector<cv::Point3f> mvP3Di;
@@ -356,13 +277,13 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
 //                  << "mt: " << mt[i] << std::endl;
 
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers[i], mK[i], mvP3Di,
-                            8.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i], matchesBearing[i], i);
+                            12.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i], matchesBearing[i], i);
         // should be 4.0 * mSigma2
-        vP3D.push_back(mvP3Di);
-        vbTriangulated.push_back(mvbTriangulated);
+        vP3D[i] = mvP3Di;
+        vbTriangulated[i] = mvbTriangulated;
         cout << "CheckRelativePose: ngood " << nGood << endl;
     }
-    return nGood > 10;
+    return nGood > 5;
 }
 
 
@@ -497,8 +418,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 //    Tbc.rowRange(0,3).colRange(0,3).copyTo(P2.rowRange(0,3).colRange(0,3));
 //    Tbc.rowRange(0,3).col(3).copyTo(P2.rowRange(0,3).col(3));
 
-    cout << "K " << Kproj << endl;
-
     P2 = Kproj*Tbc*Twb2;
 
     cv::Mat O2 = Rbw2.t()*tcb-Rbw2.t()*tbw2;
@@ -549,8 +468,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         }
 
 //        cout << "---------------" << endl;
-        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
-        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+//        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+//        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
 //        cout << "bearing" << mvBearings1[camera][vMatches12[i].first] << endl;
 //        cout << "bearing" << mvBearings1[camera][vMatches12[i].second] << endl;
 
@@ -564,7 +483,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
-//        if(p3dC1.at<float>(2)<=0 && cosParallax<0.995)
             continue;
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
 //        cv::Mat p3dC2 = Rcw2*p3dC1+tcw2;
@@ -576,7 +494,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         cv::Mat p3dC2world = Twb2*p3dC1;
         if(p3dC2world.at<float>(2)<=0 && cosParallax<0.99998)
-//        if(p3dC2world.at<float>(2)<=0 && cosParallax<0.995)
             continue;
 
         // directly transform to camera coordinate system
@@ -597,7 +514,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
             continue;
 
 //        cout << im1x << "," << im1y << " - " << kp1.pt.x << "," << kp1.pt.y << endl;
-        cout << "error 1: " << squareError1 << endl;
 //        cout << "P1" << P1 << endl;
 //        cout << "p2" << P2 << endl;
 //        cout << "3d points " << p3dC1 << " " << p3dC2 << " world: " << p3dC2world << endl;
@@ -612,8 +528,6 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
 //        cout << im2x << "," << im2y << " - " << kp2.pt.x << "," << kp2.pt.y << endl;
 
-        cout << "error 2: " << squareError2 << endl;
-
         if(squareError2>th2)
             continue;
 
@@ -621,8 +535,17 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
         nGood++;
 
-        if(cosParallax<0.99998)
+        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+        cout << "error 1: " << squareError1 << endl;
+        cout << "error 2: " << squareError2 << endl;
+        cout << "p3dC1 " << p3dC1 << endl;
+
+        if(cosParallax<0.99998) {
             vbGood[vMatches12[i].first]=true;
+//            cout << "set vbgood at " << vMatches12[i].first << " at camera " << camera << endl;
+//            cout << vP3D[vMatches12[i].first] << " to " << vbGood[vMatches12[i].first] << endl;
+        }
     }
 
     if(nGood>0)
