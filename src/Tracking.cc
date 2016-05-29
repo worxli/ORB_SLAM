@@ -282,8 +282,8 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2, int camera)
             float Y = (P[1]/P[2])*fy + cy;
 
             // Add new pixel(v,u)/(x,y) to maps
-            mapX.at<float>(v,u) = X*1.0f;
-            mapY.at<float>(v,u) = Y*1.0f;
+            mapX.at<float>(v,u) = X*1.0f + imageSize.width;
+            mapY.at<float>(v,u) = Y*1.0f + imageSize.height;
         }
     }
 
@@ -368,8 +368,8 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
 
     // TODO
-    int start = 0;
-    int end = 4;
+    int start = 2;
+    int end = 3;
 
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
     {
@@ -391,12 +391,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 //            fileY << "mapY" << mmapY[i];
 //
 //            // Compute/Remap new image
-//            cv::Mat* img_new;
-//            *img_new = cv::Mat::zeros(imgs[i].size(), imgs[i].type());
+//            cv::Mat img_new = cv::Mat::zeros(3*imgs[i].rows, 3*imgs[i].cols, imgs[i].type());
 //            ConvertUndistImgFromMaps(mmapX[i], mmapY[i], imgs[i], img_new);
 //
 //            std::string PathNew = ros::package::getPath("ORB_SLAM") + "/Data/" + boost::lexical_cast<std::string>(i) + ".bmp";
-//            cv::imwrite(PathNew, *img_new);
+//            cv::imwrite(PathNew, img_new);
         }
     }
 
@@ -414,7 +413,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
-        //cout << "Init frame pushed" << endl;
+        cout << "Init frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
     }
 
@@ -536,21 +535,20 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 }
 
 void Tracking::ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2,
-                                         const cv::Mat& img_old, cv::Mat* img_new)
+                                         const cv::Mat& img_old, cv::Mat& img_new)
 {
     // Convert and Write new undistorted image
     for (int u=0; u<img_old.cols; u++) {
         for (int v=0; v<img_old.rows; v++) {
             int new_v = static_cast<int>(map1.at<float>(v,u));
             int new_u = static_cast<int>(map2.at<float>(v,u));
-            if (new_u > 0 && new_u < img_old.rows && new_v > 0 && new_v < img_old.cols)
+            if (new_u > 0 && new_u < img_new.rows && new_v > 0 && new_v < img_new.cols)
             {
-                img_new->at<uint8_t>(new_u,new_v) = img_old.at<uint8_t>(v, u);
+                img_new.at<uint8_t>(new_u,new_v) = img_old.at<uint8_t>(v, u);
             }
             else
             {
                 ROS_ERROR("Image bounds exceeded!!");
-                return;
             }
         }
     }
@@ -749,7 +747,6 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mState=WORKING;
 }
 
-
 bool Tracking::TrackPreviousFrame()
 {
     cout << "track previous frame" << endl;
@@ -891,7 +888,6 @@ bool Tracking::TrackLocalMap()
         return true;
 }
 
-
 bool Tracking::NeedNewKeyFrame()
 {
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
@@ -1029,7 +1025,6 @@ void Tracking::UpdateReferencePoints()
         }
     }
 }
-
 
 void Tracking::UpdateReferenceKeyFrames()
 {

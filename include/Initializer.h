@@ -47,7 +47,7 @@ public:
 private:
 
     void TriangulateOpenGV(const opengv::transformation_t best_transformation, opengv::bearingVectors_t bearingVectors1, opengv::bearingVectors_t bearingVectors2,
-                           std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotations_t mvR, opengv::translations_t mvT, opengv::points_t points);
+                           std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotation_t mR, opengv::translation_t mt, int index, opengv::point_t point);
 
     bool CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated,  vector<vector<bool> > vbMatchesInliers);
 
@@ -56,7 +56,7 @@ private:
 
     int CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
                        const vector<Match> &vMatches12, vector<bool> &vbInliers,
-                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax, cv::Mat mR, cv::Mat mt);
+                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax, cv::Mat mR, cv::Mat mt, vector<int> bearingMatch, int camera);
 
 
 
@@ -116,6 +116,7 @@ private:
     opengv::translations_t mvT;
 
     vector<vector<int> > matchesBearing;
+    opengv::transformation_t best_transformation;
 
 };
 

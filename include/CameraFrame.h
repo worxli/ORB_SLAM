@@ -60,10 +60,10 @@ public:
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
+    float fx;
+    float fy;
+    float cx;
+    float cy;
     cv::Mat mDistCoef;
 
     cv::Mat mR;
@@ -96,12 +96,12 @@ public:
     vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
     // Undistorted Image Bounds (computed once)
-    static int mnMinX;
-    static int mnMaxX;
-    static int mnMinY;
-    static int mnMaxY;
+    int mnMinX;
+    int mnMaxX;
+    int mnMinY;
+    int mnMaxY;
 
-    static bool mbInitialComputations;
+    bool mbInitialComputations;
 
     cv::Mat mOw;
     cv::Mat mRcw;

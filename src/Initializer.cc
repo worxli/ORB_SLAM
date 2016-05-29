@@ -34,7 +34,10 @@
 #include <opengv/triangulation/methods.hpp>
 #include <opengv/sac/Ransac.hpp>
 #include <opengv/sac_problems/relative_pose/NoncentralRelativePoseSacProblem.hpp>
+#include "../Thirdparty/opengv/test/random_generators.hpp"
+#include "../Thirdparty/opengv/test/experiment_helpers.hpp"
 
+using namespace opengv;
 
 namespace ORB_SLAM
 {
@@ -59,6 +62,7 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     //test();
 }
 
+    /*
 void Initializer::generateSampleData()
 {
 //    gR =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
@@ -130,6 +134,7 @@ void Initializer::generateSampleData()
 
     cout << "done generating sample data" << endl;
 }
+     */
 
 //void test()
 //    {
@@ -160,9 +165,11 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
                 const cv::KeyPoint &kp1 = mvKeys1[j][i];
                 const cv::KeyPoint &kp2 = mvKeys2[j][vMatches12[j][i]];
 
-                cout << "---------------" << endl;
-                cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
-                cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+//                cout << "---------------" << endl;
+//                cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+//                cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+//                cout << "bearing" << mvBearings1[j][i] << endl;
+//                cout << "bearing" << mvBearings1[j][vMatches12[j][i]] << endl;
 
                 mvBearings1Adapter.push_back(mvBearings1[j][i]);
                 mvBearings2Adapter.push_back(CurrentFrame.cameraFrames[j].vBearings[vMatches12[j][i]]);
@@ -182,9 +189,11 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
         mvT.push_back(mt);
     }
 
+    //generateSampleData();
 
     // create the non-central relative adapter
-    opengv::relative_pose::NoncentralRelativeAdapter adapter(mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvT, mvR );
+    relative_pose::NoncentralRelativeAdapter adapter(mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvT, mvR);
+
 
     // create a RANSAC object
     opengv::sac::Ransac<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
@@ -194,16 +203,79 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     std::shared_ptr<opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem>
             relposeproblem_ptr(
             new opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem(
-                    adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SIXPT)
+                    adapter, opengv::sac_problems::relative_pose::NoncentralRelativePoseSacProblem::SEVENTEENPT)
     );
     // run ransac
     ransac.sac_model_ = relposeproblem_ptr;
-    //ransac.threshold_ = 0.8 - cos(atan(sqrt(2.0)*10/800.0));
-    ransac.threshold_ = 1.0*(1.0 - cos(atan(sqrt(2.0)*0.5/800.0)));
+//    ransac.threshold_ = 0.8 - cos(atan(sqrt(2.0)*10/800.0));
+    ransac.threshold_ = 2.0*(1.0 - cos(atan(sqrt(2.0)*0.5/800.0)));
     ransac.max_iterations_ = 1000;
     cout << "compute model" << endl;
 
+
     ransac.computeModel();
+/*
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    vector<size_t> vAvailableIndices;
+    vector<size_t> vAllIndices;
+
+    for(int i=0; i<mvBearings1Adapter.size(); i++)
+    {
+        vAllIndices.push_back(i);
+    }
+
+    opengv::rotations_t sixpt_rotations;
+    opengv::transformation_t seventeenpt_transformation_all;
+
+    for( size_t i = 0; i < 400; i++ ) {
+        std::vector<int> indices6(6,0);
+        vAvailableIndices = vAllIndices;
+        for(size_t j=0; j<6; j++)
+        {
+            int randi = DUtils::Random::RandomInt(0,vAvailableIndices.size()-1);
+            int idx = vAvailableIndices[randi];
+
+            indices6[j] = idx;
+
+            vAvailableIndices[randi] = vAvailableIndices.back();
+            vAvailableIndices.pop_back();
+        }
+        sixpt_rotations = opengv::relative_pose::sixpt(adapter,indices6);
+        seventeenpt_transformation_all = relative_pose::seventeenpt(adapter);
+    }
+
+
+    std::cout << "results from 6pt algorithm:" << std::endl;
+    for( int i = 0; i < sixpt_rotations.size(); i++ )
+        std::cout << sixpt_rotations[i] << std::endl << std::endl;
+
+    std::cout << "results from 17pt algorithm with all points:" << std::endl;
+    std::cout << seventeenpt_transformation_all << std::endl << std::endl;
+*/
+
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+//
+//    opengv::transformation_t seventeenpt_transformation_all;
+//
+//    for( size_t i = 0; i < 10; i++ ) {
+//        seventeenpt_transformation_all = opengv::relative_pose::seventeenpt(adapter);
+//    }
+//
+//    translation_t translation = seventeenpt_transformation_all.col(3);
+//    rotation_t rotation = seventeenpt_transformation_all.block<3,3>(0,0);
+//
+//    adapter.sett12(translation);
+//    adapter.setR12(rotation);
+//    transformation_t best_transformation =
+//            relative_pose::optimize_nonlinear(adapter);
+//
+//    std::cout << best_transformation << std::endl << std::endl;
+
+    //////////////////////////////////////////////////////////////////////////////////
+
 
     //print the results
     std::cout << "the ransac threshold is: " << ransac.threshold_ << std::endl;
@@ -218,19 +290,21 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
     std::cout << std::endl << std::endl;
 
     // get the result
-    opengv::transformation_t best_transformation = ransac.model_coefficients_;
+    best_transformation = ransac.model_coefficients_;
+
 
     cv::Mat Tcw;
     cv::eigen2cv(best_transformation, Tcw);
-    cv::Mat Rcw;
-    cv::Mat tcw;
+
+    cv::Mat Rcw = cv::Mat::eye(3,3,CV_32F);
+    cv::Mat tcw = cv::Mat::zeros(3,1, CV_32F);
     Tcw.rowRange(0,3).colRange(0,3).copyTo(Rcw);
     Tcw.rowRange(0,3).col(3).copyTo(tcw);
 
     Rcw.convertTo(Rcw, CV_32F);
     tcw.convertTo(tcw, CV_32F);
     R21 = Rcw;
-    t21 = tcw;//-Rcw*tcw;
+    t21 = tcw;
 
     vector<vector<bool> > vbMatchesInliers(cameras, vector<bool>(vMatches12[0].size(), false));
     for(int i =0; i<ransac.inliers_.size(); i++) {
@@ -254,32 +328,6 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<vector<int>
                 mvMatches12[j].push_back(make_pair(i, vMatches12[j][i]));
         }
     }
-
-//    opengv::points_t points;
-//    TriangulateOpenGV(best_transformation, mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvR, mvT, points);
-
-    // don't know how to get the feature back from a bearing vector
-//    vector<vector<cv::Point3f> > triangulated(cameras, vector<cv::Point3f>(vMatches12[j].size()));
-//    for (int j = 0; j < cameras; ++j) {
-//        for (int i = 0; i < mvBearings1Adapter.size(); ++i) {
-//            if (mvCorr1[i] == j) {
-//                triangulated[j][i] ==
-//            }
-//        }
-//    }
-//
-//    vP3D.resize(cameras);
-//    for (int j = 0; j < cameras; ++j) {
-//        for (int i = 0; i < points.size(); ++i) {
-//            if (mvCorr1[i] == j) {
-//                cv::Point3f point(points[i](0), points[i](1), points[i](2));
-//                vP3D[j].push_back(point);
-//            }
-//        }
-//    }
-//
-//    cout << vP3D[0].size() << " triangulated" << endl;
-
 
     return CheckRelativePose(R21, t21, vP3D, vbTriangulated, vbMatchesInliers);
 }
@@ -308,12 +356,13 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
 //                  << "mt: " << mt[i] << std::endl;
 
         nGood += CheckRT(R, t, mvKeys1[i], mvKeys2[i], mvMatches12[i], vbMatchesInliers[i], mK[i], mvP3Di,
-                            4.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i]);
+                            8.0 * mSigma2, mvbTriangulated, parallaxi, mR[i], mt[i], matchesBearing[i], i);
+        // should be 4.0 * mSigma2
         vP3D.push_back(mvP3Di);
         vbTriangulated.push_back(mvbTriangulated);
         cout << "CheckRelativePose: ngood " << nGood << endl;
     }
-    return nGood > 5; //TODO
+    return nGood > 10;
 }
 
 
@@ -328,27 +377,23 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
 
     cv::Mat u,w,vt;
     cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
-    x3D = vt.row(3).t();
-    x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+    cv::Mat x3d = vt.row(3).t();
+    x3d = x3d.rowRange(0,3)/x3d.at<float>(3);
+    x3D.at<float>(0) = x3d.at<float>(0);
+    x3D.at<float>(1) = x3d.at<float>(1);
+    x3D.at<float>(2) = x3d.at<float>(2);
+    x3D.at<float>(3) = 1.0f;
 }
 
-void Initializer::TriangulateOpenGV(const opengv::transformation_t best_transformation, opengv::bearingVectors_t bearingVectors1, opengv::bearingVectors_t bearingVectors2,
-                                    std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotations_t mvR, opengv::translations_t mvT, opengv::points_t points)
+void Initializer::TriangulateOpenGV(opengv::transformation_t best_transformation, opengv::bearingVectors_t bearingVectors1, opengv::bearingVectors_t bearingVectors2,
+                                    std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotation_t mR, opengv::translation_t mt, int index, opengv::point_t point)
 {
     opengv::bearingVectors_t mBearingVectors1;
     opengv::bearingVectors_t mBearingVectors2;
 
-    cout << "bearings size " << bearingVectors1.size() << endl;
-    for (int j = 0; j < mvR.size(); ++j) {
-        for (int i = 0; i < bearingVectors1.size(); ++i) {
-            // check for camera correspondance -> camera j
-            if (mvCorr1[i] == j) {
-                cout << "push bearing: " << bearingVectors1[i] << endl;
-                mBearingVectors1.push_back((mvR[j]*bearingVectors1[i] + mvT[j])/(mvR[j]*bearingVectors1[i] + mvT[j]).norm());
-                mBearingVectors2.push_back((mvR[j]*bearingVectors2[i] + mvT[j])/(mvR[j]*bearingVectors2[i] + mvT[j]).norm());
-            }
-        }
-    }
+    cout << "push bearing: " << bearingVectors1[index] << endl;
+    mBearingVectors1.push_back((mR*bearingVectors1[index] + mt)/(mR*bearingVectors1[index] + mt).norm());
+    mBearingVectors2.push_back((mR*bearingVectors2[index] + mt)/(mR*bearingVectors2[index] + mt).norm());
 
     opengv::translation_t position = best_transformation.col(3);
     opengv::rotation_t rotation = best_transformation.block<3,3>(0,0);
@@ -360,14 +405,12 @@ void Initializer::TriangulateOpenGV(const opengv::transformation_t best_transfor
             position,
             rotation);
 
-    for(size_t j = 0; j < bearingVectors1.size(); j++) {
-        points.push_back(opengv::triangulation::triangulate(adapter, j));
-    }
+    point = opengv::triangulation::triangulate(adapter, 0);
 }
 
 int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
                        const vector<Match> &vMatches12, vector<bool> &vbMatchesInliers,
-                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax, cv::Mat mR, cv::Mat mt)
+                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax, cv::Mat mR, cv::Mat mt, vector<int> bearingMatch, int camera)
 {
     // Calibration parameters
     const float fx = K.at<float>(0,0);
@@ -375,107 +418,94 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     const float cx = K.at<float>(0,2);
     const float cy = K.at<float>(1,2);
 
+    cv::Mat Kproj = cv::Mat::zeros(3,4, CV_32F);
+    K.copyTo(Kproj.rowRange(0,3).colRange(0,3));
+
     vbGood = vector<bool>(vKeys1.size(),false);
     vP3D.resize(vKeys1.size());
 
     vector<float> vCosParallax;
     vCosParallax.reserve(vKeys1.size());
 
-//    // Camera 1 Projection Matrix K[I|0]
-//    cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
-//    K.copyTo(P1.rowRange(0,3).colRange(0,3));
-
-//    cv::Mat O1 = cv::Mat::zeros(3,1,CV_32F);
-
     // Camera 1 with baseframe at position 0 --> Rot. = eye and trans = 0
     // Comined rotation and translation world->base->camera //Tcb
-    cv::Mat Rbw1 = cv::Mat::eye(3,3,CV_32F);
-    cv::Mat Rcb1 = mR;
-//    cv::Mat Rcw1 = Rcb1 * Rbw1; //Rbw1 * Rcb1;
-//    cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
-//    cv::Mat tcb1 = mt;
-//    cv::Mat tcw1 = Rbw1*tcb1 + tbw1; //tcb1 + tbw1;
-    //cv::Mat Rcw1 = Rcb1 * Rbw1;
-    cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
-    cv::Mat tcb1 = mt;
-    //cv::Mat tcw1 = tcb1 + tbw1;
 
-    cv::Mat Tcw1(4,4,CV_32F);
-    cv::Mat Tbw1(4,4,CV_32F);
-    cv::Mat Tcb1(4,4,CV_32F);
+    cv::Mat Tbw1 = cv::Mat::zeros(4,4,CV_32F);
+    cv::Mat Rbw1 = cv::Mat::eye(3,3,CV_32F);
+    cv::Mat tbw1 = cv::Mat::zeros(3,1,CV_32F);
     Rbw1.copyTo(Tbw1.rowRange(0,3).colRange(0,3));
     tbw1.copyTo(Tbw1.rowRange(0,3).col(3));
-    Rcb1.copyTo(Tcb1.rowRange(0,3).colRange(0,3));
-    tcb1.copyTo(Tcb1.rowRange(0,3).col(3));
-    Tcw1 = Tbw1*Tcb1;
+    Tbw1.at<float>(3,3) = 1.0f;
+    cv::Mat Twb1 = Tbw1.inv();
 
-    // Camera 1 Projection Matrix K[I|0]
+
+    cv::Mat Rcb = mR;
+    cv::Mat tcb = mt;
+    cv::Mat Tcb = cv::Mat::zeros(4,4,CV_32F);
+    Rcb.copyTo(Tcb.rowRange(0,3).colRange(0,3));
+    tcb.copyTo(Tcb.rowRange(0,3).col(3));
+    Tcb.at<float>(3,3) = 1.0f;
+
+    cv::Mat Tbc = Tcb.inv();
+
+    cv::Mat Rbc1, tbc1;
+    Tbc.rowRange(0,3).colRange(0,3).copyTo(Rbc1);
+    Tbc.rowRange(0,3).col(3).copyTo(tbc1);
+
+    cv::Mat Tcw1(4,4,CV_32F);
+    Tcw1 = Tbw1*Tcb;
+
+    // Camera 1 Projection Matrix K[Rc|tc][I|0]
     cv::Mat P1(3,4,CV_32F,cv::Scalar(0));
-    //Rcw1.copyTo(P1.rowRange(0,3).colRange(0,3));
-    //tcw1.copyTo(P1.rowRange(0,3).col(3));
-    Tcw1.rowRange(0,3).colRange(0,3).copyTo(P1.rowRange(0,3).colRange(0,3));
-    Tcw1.rowRange(0,3).col(3).copyTo(P1.rowRange(0,3).col(3));
-    P1 = K*P1;
+//    Tbc.rowRange(0,3).colRange(0,3).copyTo(P1.rowRange(0,3).colRange(0,3));
+//    Tbc.rowRange(0,3).col(3).copyTo(P1.rowRange(0,3).col(3));
+    P1 = Kproj*Tbc*Twb1;
 
-//    cv::Mat O1 = -Rcw1.t()*tcw1;
-    cv::Mat O1 = -Tcw1.rowRange(0,3).colRange(0,3).t()*Tcw1.rowRange(0,3).col(3);
+    cv::Mat O1 = tcb;
+//    cv::Mat O1 = -Tcw1.rowRange(0,3).colRange(0,3).t()*Tcw1.rowRange(0,3).col(3);
 
+//    cout << "-----------------------------------------" << endl;
+//    cout << "R base - world 1 " << Rbw1 << " t " << tbw1 << endl;
+//    cout << "R camera - base " << Rcb << " t " << tcb << endl;
+//    cout << "camera center 1 " << O1 << endl;
 
-    cout << "-----------------------------------------" << endl;
-    cout << "R base - world 1 " << Rbw1 << " t " << tbw1 << endl;
-    cout << "R camera - base 1 " << Rcb1 << " t " << tcb1 << endl;
-    cout << "R camera world 1" << Rcw1 << " t " << tcw1 << endl;
-    cout << "camera center 1 " << O1 << endl;
-    cout << "P1 " << P1 << endl;
-
-//    // Camera 2 Projection Matrix K[R|t]
-//    cv::Mat P2(3,4,CV_32F);
-//    R.copyTo(P2.rowRange(0,3).colRange(0,3));
-//    t.copyTo(P2.rowRange(0,3).col(3));
-//    P2 = K*P2;
-
-//    cv::Mat O2 = -R.t()*t;
-
-    // Comined rotation and translation world->base->camera //Tcb
     cv::Mat Rbw2 = R;
-    cv::Mat Rcb2 = mR;
-//    cv::Mat Rcw2 = Rcb2 * Rbw2; //Rbw2 * Rcb2;
-//    cv::Mat tbw2 = t; //cv::Mat::zeros(3,1,CV_32F); //t
-//    cv::Mat tcb2 = mt;
-//    cv::Mat tcw2 = Rbw2*tcb2 + tbw2; //tcb2 + tbw2;
-
-    cout << "-------" << endl;
-    cout << "R base - world 2 " << Rbw2 << " t " << tbw2 << endl;
-    cout << "R camera - base 2 " << Rcb2 << " t " << tcb2 << endl;
-    //cout << "R camera world 2" << Rcw2 << " t " << tcw2 << endl;
-//    cv::Mat Rcw2 = Rcb2 * Rbw2;
     cv::Mat tbw2 = t;
-    cv::Mat tcb2 = mt;
-//    cv::Mat tcw2 = tcb2 + tbw2;
-
-    cv::Mat Tcw2(4,4,CV_32F);
-    cv::Mat Tbw2(4,4,CV_32F);
-    cv::Mat Tcb2(4,4,CV_32F);
+    cv::Mat Tbw2 = cv::Mat::zeros(4,4,CV_32F);
     Rbw2.copyTo(Tbw2.rowRange(0,3).colRange(0,3));
     tbw2.copyTo(Tbw2.rowRange(0,3).col(3));
-    Rcb2.copyTo(Tcb2.rowRange(0,3).colRange(0,3));
-    tcb2.copyTo(Tcb2.rowRange(0,3).col(3));
-    Tcw2 = Tbw2*Tcb2;
+    Tbw2.at<float>(3,3) = 1.0f;
+    cv::Mat Twb2 = Tbw2.inv();
+
+    cv::Mat Tcw2(4,4,CV_32F);
+    Tcw2 = Tbw2*Tcb;
+
+//    cout << "Tcw2 " << Tcw2 << endl;
+
+    cv::Mat Twc2 = Tcw2.inv();
+    cv::Mat Rcw2 = Tcw2.rowRange(0,3).colRange(0,3);
+    cv::Mat tcw2 = Tcw2.rowRange(0,3).col(3);
+    cv::Mat Rwc2 = Twc2.rowRange(0,3).colRange(0,3);
+    cv::Mat twc2 = Twc2.rowRange(0,3).col(3);
+
+//    cout << "-------" << endl;
+//    cout << "R base - world 2 " << Rbw2 << " t " << tbw2 << endl;
+//    cout << "R camera world 2" << Rcw2 << " t " << tcw2 << endl;
 
     // Camera 2 Projection Matrix K[R|t]
     cv::Mat P2(3,4,CV_32F);
-//    Rcw2.copyTo(P2.rowRange(0,3).colRange(0,3));
-//    tcw2.copyTo(P2.rowRange(0,3).col(3));
-    Tcw2.rowRange(0,3).colRange(0,3).copyTo(P2.rowRange(0,3).colRange(0,3));
-    Tcw2.rowRange(0,3).col(3).copyTo(P2.rowRange(0,3).col(3));
-    P2 = K*P2;
+//    Tbc.rowRange(0,3).colRange(0,3).copyTo(P2.rowRange(0,3).colRange(0,3));
+//    Tbc.rowRange(0,3).col(3).copyTo(P2.rowRange(0,3).col(3));
 
+    cout << "K " << Kproj << endl;
+
+    P2 = Kproj*Tbc*Twb2;
+
+    cv::Mat O2 = Rbw2.t()*tcb-Rbw2.t()*tbw2;
 //    cv::Mat O2 = -Rcw2.t()*tcw2;
-    cv::Mat O2 = -Tcw2.rowRange(0,3).colRange(0,3).t()*Tcw2.rowRange(0,3).col(3);
+//    cv::Mat O2 = -Tcw2.rowRange(0,3).colRange(0,3).t()*Tcw2.rowRange(0,3).col(3);
 
-
-    cout << "camera center 2 " << O2 << endl;
-    cout << "P2 " << P2 << endl;
+//    cout << "camera center 2 " << O2 << endl;
 
     int nGood=0;
 
@@ -486,40 +516,74 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         const cv::KeyPoint &kp1 = vKeys1[vMatches12[i].first];
         const cv::KeyPoint &kp2 = vKeys2[vMatches12[i].second];
-        cv::Mat p3dC1;
 
-        cout << "---------------" << endl;
-        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
-        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+        //-- --------------- ------------ ------------ ------------ ------------ ------------ ------------ -------
 
-        // TODO: P1 and P2 not baseframe but cameraframe instead, also for reprojection error needed
+//        int index = bearingMatch[i];
+//        opengv::point_t point;
+//        TriangulateOpenGV(best_transformation, mvBearings1Adapter, mvBearings2Adapter, mvCorr1, mvCorr2, mvR[camera], mvT[camera], index, point);
+
+        // -------------------------------------------------------------------------------------------------------
+        cv::Mat p3dC1(4,1,CV_32F);
+
+//        cout << "opengv triangulated " << point << endl;
+
+//        cv::Mat p3dC1 = (cv::Mat_<double>(1,3) << point(0) , point(1) , point(2));
+//        p3dC1(0) = point(0);
+//        p3dC1(1) = point(1);
+//        p3dC1(2) = point(2);
+
+//        cout << "---------------" << endl;
+//        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+//        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+
         Triangulate(kp1,kp2,P1,P2,p3dC1);
 
-        cout << "p3dC1 " << p3dC1 << endl;
-        
+//        cout << "p3dC1 " << p3dC1 << endl;
+//        cv::Mat p3dC1 = p3dC*Tbw1.t();
+
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {
             vbGood[vMatches12[i].first]=false;
             continue;
         }
 
+//        cout << "---------------" << endl;
+        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+//        cout << "bearing" << mvBearings1[camera][vMatches12[i].first] << endl;
+//        cout << "bearing" << mvBearings1[camera][vMatches12[i].second] << endl;
+
         // Check parallax
-        cv::Mat normal1 = p3dC1 - O1;
+        cv::Mat normal1 = p3dC1.rowRange(0,3) - O1;
         float dist1 = cv::norm(normal1);
-        cv::Mat normal2 = p3dC1 - O2;
+        cv::Mat normal2 = p3dC1.rowRange(0,3) - O2;
         float dist2 = cv::norm(normal2);
 
         float cosParallax = normal1.dot(normal2)/(dist1*dist2);
-        cout << "parallax " << cosParallax << endl;
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
+//        if(p3dC1.at<float>(2)<=0 && cosParallax<0.995)
             continue;
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-        cv::Mat p3dC2 = Rcw2*p3dC1+tcw2;
+//        cv::Mat p3dC2 = Rcw2*p3dC1+tcw2;
 
-        if(p3dC2.at<float>(2)<=0 && cosParallax<0.99998)
+        // inverse transformation bc [R,t] is b->w
+//        cv::Mat p3dC2 = R.t()*p3dC1-R.t()*t;
+
+//        cv::hconcat(p3dC1, cv::Mat::ones(1, 1, CV_32F), p3dC1);
+
+        cv::Mat p3dC2world = Twb2*p3dC1;
+        if(p3dC2world.at<float>(2)<=0 && cosParallax<0.99998)
+//        if(p3dC2world.at<float>(2)<=0 && cosParallax<0.995)
             continue;
+
+        // directly transform to camera coordinate system
+        cv::Mat p3dC2 = Twc2*p3dC1;
+
+        // transform to camera: Tbc
+        p3dC1 = Tbc*p3dC1;
 
         // Check reprojection error in first image
         float im1x, im1y;
@@ -527,13 +591,16 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         im1x = fx*p3dC1.at<float>(0)*invZ1+cx;
         im1y = fy*p3dC1.at<float>(1)*invZ1+cy;
 
-        cout << "x" << im1x << "," << im1y << " - " << kp1.pt.x << "," << kp1.pt.y << endl;
-
         float squareError1 = (im1x-kp1.pt.x)*(im1x-kp1.pt.x)+(im1y-kp1.pt.y)*(im1y-kp1.pt.y);
 
-        cout << "error 1: " << squareError1 << endl;
         if(squareError1>th2)
             continue;
+
+//        cout << im1x << "," << im1y << " - " << kp1.pt.x << "," << kp1.pt.y << endl;
+        cout << "error 1: " << squareError1 << endl;
+//        cout << "P1" << P1 << endl;
+//        cout << "p2" << P2 << endl;
+//        cout << "3d points " << p3dC1 << " " << p3dC2 << " world: " << p3dC2world << endl;
 
         // Check reprojection error in second image
         float im2x, im2y;
@@ -543,7 +610,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         float squareError2 = (im2x-kp2.pt.x)*(im2x-kp2.pt.x)+(im2y-kp2.pt.y)*(im2y-kp2.pt.y);
 
+//        cout << im2x << "," << im2y << " - " << kp2.pt.x << "," << kp2.pt.y << endl;
+
         cout << "error 2: " << squareError2 << endl;
+
         if(squareError2>th2)
             continue;
 
@@ -568,28 +638,45 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
     return nGood;
 }
 
-    /*
-void Initializer::DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat &t)
+void Initializer::generateSampleData()
 {
-    cv::Mat u,w,vt;
-    cv::SVD::compute(E,w,u,vt);
+    // initialize random seed
+    struct timeval tic;
+    gettimeofday( &tic, 0 );
+    srand ( tic.tv_usec );
 
-    u.col(2).copyTo(t);
-    t=t/cv::norm(t);
+    //set experiment parameters
+    double noise = 0.3;
+    double outlierFraction = 0.3;
+    size_t numberPoints = 1000;
+    int numberCameras = 4;
 
-    cv::Mat W(3,3,CV_32F,cv::Scalar(0));
-    W.at<float>(0,1)=-1;
-    W.at<float>(1,0)=1;
-    W.at<float>(2,2)=1;
+    //generate a random pose for viewpoint 1
+    translation_t position1 = Eigen::Vector3d::Zero();
+    rotation_t rotation1 = Eigen::Matrix3d::Identity();
 
-    R1 = u*W*vt;
-    if(cv::determinant(R1)<0)
-        R1=-R1;
+    //generate a random pose for viewpoint 2
+    translation_t position2 = generateRandomTranslation(2.0);
+    rotation_t rotation2 = generateRandomRotation(0.5);
 
-    R2 = u*W.t()*vt;
-    if(cv::determinant(R2)<0)
-        R2=-R2;
+    //create a fake central camera
+    generateRandomCameraSystem( numberCameras, mvT, mvR );
+
+    //derive correspondences based on random point-cloud
+    Eigen::MatrixXd gt(3,numberPoints);
+    generateRandom2D2DCorrespondences(
+            position1, rotation1, position2, rotation2,
+            mvT, mvR, numberPoints, noise, outlierFraction,
+            mvBearings1Adapter, mvBearings2Adapter,
+            mvCorr1, mvCorr2, gt );
+
+    //Extract the relative pose
+    translation_t position; rotation_t rotation;
+    extractRelativePose(
+            position1, position2, rotation1, rotation2, position, rotation, false );
+
+    //print experiment characteristics
+    printExperimentCharacteristics( position, rotation, noise, outlierFraction );
 }
-*/
 
 } //namespace ORB_SLAM

@@ -78,18 +78,12 @@ cv::Mat FramePublisher::DrawFrame()
         if(mState==Tracking::NOT_INITIALIZED)
         {            
             vIniKeys = mvIniKeys;
-            cout << "--------------------------------------------------------" << endl;
-            cout << mvIniKeys.size() << endl;
         }
         else if(mState==Tracking::INITIALIZING)
         {
             vCurrentKeys = mvCurrentKeys;
             vIniKeys = mvIniKeys;
             vMatches = mvIniMatches;
-            cout << "--------------------------------------------------------" << endl;
-            cout << vCurrentKeys.size() << " " << vCurrentKeys[0].pt << " " << vCurrentKeys[10].pt << vCurrentKeys[100].pt << " " << vCurrentKeys[1000].pt << " " << endl;
-            cout << mvIniKeys.size() << " " << vIniKeys[0].pt << " " << vIniKeys[10].pt << vIniKeys[100].pt << " " << vIniKeys[1000].pt << " " << endl;
-            cout << vMatches.size() << " " << vMatches[0] << " " << vMatches[10] << vMatches[100] << " " << vMatches[1000] << " " << endl;
         }
         else if(mState==Tracking::WORKING)
         {
@@ -196,7 +190,7 @@ void FramePublisher::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 void FramePublisher::Update(Tracking *pTracker)
 {
-    int camera = 2;
+    int camera = 0;
     boost::mutex::scoped_lock lock(mMutex);
     pTracker->mCurrentFrame.cameraFrames[camera].im.copyTo(mIm);
     mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[camera].mvKeys;
