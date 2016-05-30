@@ -56,6 +56,7 @@ ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
 cholmod
 ${PROJECT_SOURCE_DIR}/Thirdparty/opengv/build/lib/libopengv.a
+${PROJECT_SOURCE_DIR}/Thirdparty/opengv/build/lib/librandom_generators.a
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_core.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_solver_cholmod.so

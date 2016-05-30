@@ -10,5 +10,5 @@ with rosbag.Bag('output.bag', 'w') as outbag:
             break
         num_msgs -= 1
         i += 1
-        if i % 5 == 0:
+        if i % 15 == 0:
             outbag.write(topic, msg, t)
