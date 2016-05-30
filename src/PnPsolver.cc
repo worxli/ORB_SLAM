@@ -30,7 +30,7 @@
 #include <ros/ros.h>
 #include <algorithm>
 #include <opengv/absolute_pose/methods.hpp>
-#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+#include <opengv/absolute_pose/NonCentralAbsoluteAdapter.hpp>
 #include <opencv2/core/eigen.hpp>
 
 using namespace std;
@@ -109,7 +109,7 @@ cv::Mat PnPsolver::gpnp()
     }
 
     // absolute central pose
-    const opengv::absolute_pose::CentralAbsoluteAdapter* pose = new opengv::absolute_pose::CentralAbsoluteAdapter(vBearings, points);
+    const opengv::absolute_pose::NonCentralAbsoluteAdapter* pose = new opengv::absolute_pose::NonCentralAbsoluteAdapter(vBearings, points);
 
     // returns rotation and translation
     opengv::transformation_t gpnp_transformation = opengv::absolute_pose::gpnp(*pose);
