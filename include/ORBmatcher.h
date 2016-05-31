@@ -71,12 +71,12 @@ public:
     int SearchByProjection(Frame &F1, Frame &F2, int windowSize, std::vector<MapPoint *> &vpMapPointMatches2);
 
     // Matching for the Map Initialization
-    vector<int> SearchForInitialization(Frame &F1, Frame &F2, std::vector<vector<cv::Point2f> > &vbPrevMatched, std::vector< vector<int> > &vnMatches12Frame, int windowSize=10);
+    int SearchForInitialization(Frame &F1, Frame &F2, std::vector<cv::Point2f> &vbPrevMatched, std::vector<int> &vnMatches12Frame, int camera, int windowSize=10);
 
     // Matching to triangulate new MapPoints. Check Epipolar Constraint
     int SearchForTriangulation(KeyFrame *pKF1, KeyFrame* pKF2, cv::Mat F12,
                                std::vector<cv::KeyPoint> &vMatchedKeys1, std::vector<cv::KeyPoint> &vMatchedKeys2,
-                               std::vector<pair<size_t, size_t> > &vMatchedPairs);
+                               std::vector<pair<size_t, size_t> > &vMatchedPairs, int camera);
 
     // Search matches between MapPoints seen in KF1 and KF2 transforming by a Sim3 [s12*R12|t12]
     int SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<MapPoint *> &vpMatches12, const float &s12, const cv::Mat &R12, const cv::Mat &t12, float th);
