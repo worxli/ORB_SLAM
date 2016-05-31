@@ -206,7 +206,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
         KeyFrame* pKF = mit->first;
 
         if(!pKF->isBad())
-            vDescriptors.push_back(pKF->GetDescriptor(mit->second));
+            vDescriptors.push_back(pKF->GetDescriptor(mit->second, camera));
     }
 
     if(vDescriptors.empty())
@@ -298,7 +298,7 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();
     const float dist = cv::norm(PC);
-    const int level = pRefKF->GetKeyPointScaleLevel(observations[pRefKF]);
+    const int level = pRefKF->GetKeyPointScaleLevel(observations[pRefKF], camera);
     const float scaleFactor = pRefKF->GetScaleFactor();
     const float levelScaleFactor =  pRefKF->GetScaleFactor(level);
     const int nLevels = pRefKF->GetScaleLevels();

@@ -46,33 +46,19 @@ public:
 
 private:
 
-    void FindHomography(vector<bool> &vbMatchesInliers, float &score, cv::Mat &H21);
-    void FindFundamental(vector<bool> &vbInliers, float &score, cv::Mat &F21);
+    void TriangulateOpenGV(const opengv::transformation_t best_transformation, opengv::bearingVectors_t bearingVectors1, opengv::bearingVectors_t bearingVectors2,
+                           std::vector<int> mvCorr1, std::vector<int> mvCorr2, opengv::rotation_t mR, opengv::translation_t mt, int index, opengv::point_t point);
 
-    cv::Mat ComputeH21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2);
-    cv::Mat ComputeF21(const vector<cv::Point2f> &vP1, const vector<cv::Point2f> &vP2);
-
-    float CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vector<bool> &vbMatchesInliers, float sigma);
-
-    float CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesInliers, float sigma);
-
-    bool CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated);
-
-    bool ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv::Mat &K,
-                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
-
-    bool ReconstructH(vector<bool> &vbMatchesInliers, cv::Mat &H21, cv::Mat &K,
-                      cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated, float minParallax, int minTriangulated);
+    bool CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<vector<cv::Point3f> > &vP3D, vector<vector<bool> > &vbTriangulated,  vector<vector<bool> > vbMatchesInliers);
 
     void Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, const cv::Mat &P1, const cv::Mat &P2, cv::Mat &x3D);
 
-    void Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T);
 
     int CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::KeyPoint> &vKeys1, const vector<cv::KeyPoint> &vKeys2,
                        const vector<Match> &vMatches12, vector<bool> &vbInliers,
-                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax);
+                       const cv::Mat &K, vector<cv::Point3f> &vP3D, float th2, vector<bool> &vbGood, float &parallax, cv::Mat mR, cv::Mat mt, vector<int> bearingMatch, int camera);
 
-    void DecomposeE(const cv::Mat &E, cv::Mat &R1, cv::Mat &R2, cv::Mat &t);
+
 
 
     // Keypoints from Reference Frame (Frame 1)
@@ -87,6 +73,8 @@ private:
 
     // Calibration
     vector<cv::Mat> mK;
+    vector<cv::Mat> mR;
+    vector<cv::Mat> mt;
 
     // Standard Deviation and Variance
     float mSigma, mSigma2;
@@ -104,20 +92,31 @@ private:
     vector<vector<Eigen::Vector3d> > mvBearings1;
 
     // sample data
-    vector<cv::Mat> v1c1;
-    vector<cv::Mat> v2c1;
-    vector<cv::Mat> v1c2;
-    vector<cv::Mat> v2c2;
-
     cv::Mat gR;
     cv::Mat gt;
-    cv::Mat c1R;
-    cv::Mat c1t;
-    cv::Mat c2R;
-    cv::Mat c2t;
 
+    vector<Eigen::Vector3d> v1c1;
+    vector<Eigen::Vector3d> v2c1;
+    vector<Eigen::Vector3d> v1c2;
+    vector<Eigen::Vector3d> v2c2;
+
+    Eigen::Matrix3d c1R;
+    Eigen::Vector3d c1t;
+    Eigen::Matrix3d c2R;
+    Eigen::Vector3d c2t;
 
     void generateSampleData();
+
+    // generalized camera
+    opengv::bearingVectors_t mvBearings1Adapter;
+    opengv::bearingVectors_t mvBearings2Adapter;
+    std::vector<int> mvCorr1;
+    std::vector<int> mvCorr2;
+    opengv::rotations_t mvR;
+    opengv::translations_t mvT;
+
+    vector<vector<int> > matchesBearing;
+    opengv::transformation_t best_transformation;
 
 };
 

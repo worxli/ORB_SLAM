@@ -20,15 +20,13 @@
 
 #include "CameraFrame.h"
 #include "Converter.h"
+#include "../include/CameraFrame.h"
 #include <opencv2/core/eigen.hpp>
 
 #include <ros/ros.h>
 
 namespace ORB_SLAM
 {
-bool CameraFrame::mbInitialComputations=true;
-float CameraFrame::cx, CameraFrame::cy, CameraFrame::fx, CameraFrame::fy;
-int CameraFrame::mnMinX, CameraFrame::mnMinY, CameraFrame::mnMaxX, CameraFrame::mnMaxY;
 
 CameraFrame::CameraFrame()
 {}
@@ -41,7 +39,8 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
      mDescriptors(frame.mDescriptors.clone()),
      pluckerLines(frame.pluckerLines),vBearings(frame.vBearings),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
-     mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv)
+     mfGridElementWidthInv(frame.mfGridElementWidthInv), mfGridElementHeightInv(frame.mfGridElementHeightInv),
+     fx(frame.fx), fy(frame.fy), cx(frame.cx), cy(frame.cy), mnMinY(frame.mnMinY), mnMaxY(frame.mnMaxY), mnMinX(frame.mnMinX), mnMaxX(frame.mnMaxX)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -62,25 +61,35 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
 
     UndistortKeyPoints();
 
-    //PluckerLine();
+    // This is done for the first created Frame
+    ComputeImageBounds();
+
+    mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
+    mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+
+    fx = K.at<float>(0,0);
+    fy = K.at<float>(1,1);
+    cx = K.at<float>(0,2);
+    cy = K.at<float>(1,2);
+
     KeyfeatureBearings();
 
+    //Scale Levels Info
+    mnScaleLevels = mpORBextractor->GetLevels();
+    mfScaleFactor = mpORBextractor->GetScaleFactor();
 
-    // This is done for the first created Frame
-    if(mbInitialComputations)
-    {
-        ComputeImageBounds();
-
-        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
-
-        fx = K.at<float>(0,0);
-        fy = K.at<float>(1,1);
-        cx = K.at<float>(0,2);
-        cy = K.at<float>(1,2);
-
-        mbInitialComputations=false;
+    mvScaleFactors.resize(mnScaleLevels);
+    mvLevelSigma2.resize(mnScaleLevels);
+    mvScaleFactors[0] = 1.0f;
+    mvLevelSigma2[0] = 1.0f;
+    for (int i = 1; i < mnScaleLevels; i++) {
+        mvScaleFactors[i] = mvScaleFactors[i - 1] * mfScaleFactor;
+        mvLevelSigma2[i] = mvScaleFactors[i] * mvScaleFactors[i];
     }
+
+    mvInvLevelSigma2.resize(mvLevelSigma2.size());
+    for (int i = 0; i < mnScaleLevels; i++)
+        mvInvLevelSigma2[i] = 1 / mvLevelSigma2[i];
 
     // Assign Features to Grid Cells
     int nReserve = 0.5*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);
@@ -94,11 +103,13 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
         cv::KeyPoint &kp = mvKeysUn[i];
 
         int nGridPosX, nGridPosY;
-        if(PosInGrid(kp,nGridPosX,nGridPosY))
+        if(PosInGrid(kp,nGridPosX,nGridPosY)) {
             mGrid[nGridPosX][nGridPosY].push_back(i);
+        }
+
     }
 
-  //  mvbOutlier = vector<bool>(N,false);
+    mvbOutlier = vector<bool>(N,false);
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
@@ -354,43 +365,26 @@ void CameraFrame::LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P)
     }
 }
 
-//void CameraFrame::PluckerLine()
-//{
-//	for(unsigned int i=0; i<mvKeys.size(); i++)
-//	{
-//		Eigen::Vector2d p_in;
-//
-//		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
-//		Eigen::Vector3d P;
-//		Eigen::Matrix3d R;
-//		Eigen::Vector3d t;
-//		cv::cv2eigen(mR,R);
-//		cv::cv2eigen(mt,t);
-//		LiftToSphere(p_in, P);
-//		std::vector<Eigen::Vector3d> pluckerLine;
-//		Eigen::Vector3d q = R.inverse()*(P-t);
-//		q.normalize();
-//		pluckerLine.push_back(q);
-//		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
-//		pluckerLines.push_back(pluckerLine);
-//	}
-//
-//}
-
 void CameraFrame::KeyfeatureBearings()
 {
-
+    cout << "first" << endl;
 	for(unsigned int i=0; i<mvKeys.size(); i++)
 	{
 		Eigen::Vector2d p_in;
 		Eigen::Vector2d p_temp;
-		Eigen::Vector3d bearing;
+		Eigen::Vector3d bearing, bearing2;
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
         LiftToSphere(p_in, bearing);
-		bearing.normalize(); //needed?
-		vBearings.push_back(bearing);
+        bearing.normalize();
+//        cout << bearing << endl;
+        const float invfx = 1.0f / fx;
+        const float invfy = 1.0f / fy;
+        bearing2 << (mvKeysUn[i].pt.x-cx) * invfx, (mvKeysUn[i].pt.y - cy) * invfy , 1.0f;
+		bearing2.normalize(); //needed?
+//        cout << bearing2 << endl;
+		vBearings.push_back(bearing2);
 	}
 
 

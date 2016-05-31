@@ -101,7 +101,7 @@ protected:
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
-    void ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2, const cv::Mat& img1, cv::Mat* img);
+    void ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2, const cv::Mat& img1, cv::Mat& img);
 
     void FirstInitialization();
     void Initialize();

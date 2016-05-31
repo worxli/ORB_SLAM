@@ -35,6 +35,8 @@
 
 namespace ORB_SLAM
 {
+#define FRAME_GRID_ROWS 48
+#define FRAME_GRID_COLS 64
 
 class Map;
 class MapPoint;
@@ -60,8 +62,8 @@ public:
     cv::Mat GetTranslation();
 
     // Calibration
-    cv::Mat GetProjectionMatrix();
-    cv::Mat GetCalibrationMatrix() const;
+//    cv::Mat GetProjectionMatrix(int camera);
+    cv::Mat GetCalibrationMatrix(int camera) const;
 
     // Bag of Words Representation
     void ComputeBoW();
@@ -102,17 +104,17 @@ public:
     MapPoint* GetMapPoint(const size_t &idx);
 
     // KeyPoint functions
-    cv::KeyPoint GetKeyPointUn(const size_t &idx) const;
-    cv::Mat GetDescriptor(const size_t &idx);
-    int GetKeyPointScaleLevel(const size_t &idx) const;
-    std::vector<cv::KeyPoint> GetKeyPoints() const;
-    std::vector<cv::KeyPoint> GetKeyPointsUn() const;
-    cv::Mat GetDescriptors();
-    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
+    cv::KeyPoint GetKeyPointUn(const size_t &idx, int camera) const;
+    cv::Mat GetDescriptor(const size_t &idx, int camera);
+    int GetKeyPointScaleLevel(const size_t &idx, int camera) const;
+    std::vector<cv::KeyPoint> GetKeyPoints(int camera) const;
+    std::vector<cv::KeyPoint> GetKeyPointsUn(int camera) const;
+    cv::Mat GetDescriptors(int camera);
+    std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, int camera) const;
 
     // Image
-    cv::Mat GetImage();
-    bool IsInImage(const float &x, const float &y) const;
+//    cv::Mat GetImage();
+    bool IsInImage(const float &x, const float &y, int camera) const;
 
     // Activate/deactivate erasable flags
     void SetNotErase();
@@ -149,8 +151,8 @@ public:
     // Grid (to speed up feature matching)
     int mnGridCols;
     int mnGridRows;
-    float mfGridElementWidthInv;
-    float mfGridElementHeightInv;
+    vector<float> mfGridElementWidthInv;
+    vector<float> mfGridElementHeightInv;
 
     // Variables used by the tracking
     long unsigned int mnTrackReferenceForFrame;
@@ -187,21 +189,17 @@ protected:
     cv::Mat Ow;
 
     // Original image, undistorted image bounds, and calibration matrix
-    cv::Mat im;
+//    vector<cv::Mat> im;
     int mnMinX;
     int mnMinY;
     int mnMaxX;
     int mnMaxY;
-    cv::Mat mK;
+    vector<cv::Mat> mK;
 
     // KeyPoints, Descriptors, MapPoints vectors (all associated by an index)
-    std::vector<cv::KeyPoint> mvKeys;
-    std::vector<cv::KeyPoint> mvKeysUn;
-    cv::Mat mDescriptors;
-    //TODO ?
-//    vector<std::vector<cv::KeyPoint> > mvKeys;
-//    vector<std::vector<cv::KeyPoint> > mvKeysUn;
-//    vector<cv::Mat> mDescriptors;
+    vector<std::vector<cv::KeyPoint> > mvKeys;
+    vector<std::vector<cv::KeyPoint> > mvKeysUn;
+    vector<cv::Mat> mDescriptors;
     std::vector<MapPoint*> mvpMapPoints;
 
     // BoW
@@ -211,7 +209,7 @@ protected:
 
 
     // Grid over the image to speed up feature matching
-    std::vector< std::vector <std::vector<size_t> > > mGrid;
+    std::vector<std::vector<std::vector<std::vector<std::size_t> > > > mGrid;
 
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;

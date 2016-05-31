@@ -32,6 +32,7 @@
 
 #include"Optimizer.h"
 #include"PnPsolver.h"
+#include "../include/Tracking.h"
 
 #include<iostream>
 #include<fstream>
@@ -100,7 +101,7 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
         R[i].at<float>(2,1) = fSettings["r32"];
         R[i].at<float>(2,2) = fSettings["r33"];
 
-        T.push_back(cv::Mat(4,1,CV_32F));
+        T.push_back(cv::Mat(3,1,CV_32F));
         T[i].at<float>(0) = fSettings["t1"];
         T[i].at<float>(1) = fSettings["t2"];
         T[i].at<float>(2) = fSettings["t3"];
@@ -281,8 +282,8 @@ void Tracking::initUndistortMap(cv::Mat& map1, cv::Mat& map2, int camera)
             float Y = (P[1]/P[2])*fy + cy;
 
             // Add new pixel(v,u)/(x,y) to maps
-            mapX.at<float>(v,u) = X*1.0f;
-            mapY.at<float>(v,u) = Y*1.0f;
+            mapX.at<float>(v,u) = X*1.0f + imageSize.width;
+            mapY.at<float>(v,u) = Y*1.0f + imageSize.height;
         }
     }
 
@@ -390,12 +391,11 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 //            fileY << "mapY" << mmapY[i];
 //
 //            // Compute/Remap new image
-//            cv::Mat* img_new;
-//            *img_new = cv::Mat::zeros(imgs[i].size(), imgs[i].type());
+//            cv::Mat img_new = cv::Mat::zeros(3*imgs[i].rows, 3*imgs[i].cols, imgs[i].type());
 //            ConvertUndistImgFromMaps(mmapX[i], mmapY[i], imgs[i], img_new);
 //
 //            std::string PathNew = ros::package::getPath("ORB_SLAM") + "/Data/" + boost::lexical_cast<std::string>(i) + ".bmp";
-//            cv::imwrite(PathNew, *img_new);
+//            cv::imwrite(PathNew, img_new);
         }
     }
 
@@ -413,7 +413,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
-        //cout << "Init frame pushed" << endl;
+        cout << "Init frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpIniORBextractor, mpORBVocabulary);
     }
 
@@ -535,21 +535,20 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 }
 
 void Tracking::ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2,
-                                         const cv::Mat& img_old, cv::Mat* img_new)
+                                         const cv::Mat& img_old, cv::Mat& img_new)
 {
     // Convert and Write new undistorted image
     for (int u=0; u<img_old.cols; u++) {
         for (int v=0; v<img_old.rows; v++) {
             int new_v = static_cast<int>(map1.at<float>(v,u));
             int new_u = static_cast<int>(map2.at<float>(v,u));
-            if (new_u > 0 && new_u < img_old.rows && new_v > 0 && new_v < img_old.cols)
+            if (new_u > 0 && new_u < img_new.rows && new_v > 0 && new_v < img_new.cols)
             {
-                img_new->at<uint8_t>(new_u,new_v) = img_old.at<uint8_t>(v, u);
+                img_new.at<uint8_t>(new_u,new_v) = img_old.at<uint8_t>(v, u);
             }
             else
             {
                 ROS_ERROR("Image bounds exceeded!!");
-                return;
             }
         }
     }
@@ -577,9 +576,7 @@ void Tracking::FirstInitialization()
         }
 
         if(mpInitializer) {
-            //cout << "delete Initializer" << mpInitializer << endl;
             delete mpInitializer;
-            //cout << "deleted" << endl;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
@@ -590,40 +587,32 @@ void Tracking::FirstInitialization()
 
 void Tracking::Initialize()
 {
-    // Check if current frame has enough keypoints, otherwise reset initialization process
-    int features = 0;
-    for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
-        features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+    int nmatches = 0;
+    mvIniMatches.clear();
+    for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
 
-    cout << "features " << features << endl;
+        vector<cv::Point2f> vbPrevMatched = mvbPrevMatched[j];
+        vector<int> vIniMatches;
 
-    if(features<100)
-    {
-        mvIniMatches.clear();
+        // Check if current frame has enough keypoints, otherwise reset initialization process
+        if (mCurrentFrame.cameraFrames[j].mvKeys.size() <= 30) {
+            mState = NOT_INITIALIZED;
+            return;
+        }
+
+        // Find correspondences
+        ORBmatcher matcher(0.9, true);
+
+        nmatches += matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, vbPrevMatched, vIniMatches, j, 100);
+        mvbPrevMatched[j] = vbPrevMatched;
+        mvIniMatches.push_back(vIniMatches);
+    }
+
+    // Check if there are enough correspondences
+    if (nmatches < 100) {
         mState = NOT_INITIALIZED;
         return;
     }
-
-    // Find correspondences
-    ORBmatcher matcher(0.9,true);
-    vector<int> nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
-
-    // Check if there are enough correspondences in each cameraframe
-    int minNmatches = *min_element(nmatches.begin(),nmatches.end());
-    int maxNmatches = *max_element(nmatches.begin(),nmatches.end());
-
-    cout << "min number of correspondences " << minNmatches << endl;
-    cout << "max number of correspondences " << maxNmatches << endl;
-
-    if(maxNmatches<50)
-    {
-        mState = NOT_INITIALIZED;
-        return;
-    }
-
-    // test output
-    cout << "matches 1-1: " << nmatches[0]  << endl;
-    cout << "matches 2-2: " << nmatches[1]  << endl;
 
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
@@ -632,13 +621,10 @@ void Tracking::Initialize()
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
         for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
-            cout << "camera " << j << endl;
             for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
-                if (mvIniMatches[j][i]>0)
-                   // cout << "vbTriangulated " << vbTriangulated[j][i] << endl;
                 if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
                     mvIniMatches[j][i] = -1;
-                    minNmatches--;
+                    nmatches--;
                 }
             }
         }
@@ -646,7 +632,6 @@ void Tracking::Initialize()
         CreateInitialMap(Rcw,tcw);
         cout << "Initial Map created" << endl;
     }
-
 }
 
 void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
@@ -656,6 +641,8 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mCurrentFrame.mTcw = cv::Mat::eye(4,4,CV_32F);
     Rcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3));
     tcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).col(3));
+
+    mCurrentFrame.mTcw = mCurrentFrame.mTcw.inv();
 
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
@@ -670,12 +657,15 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
     for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
         // Create MapPoints and asscoiate to keyframes
-        for (size_t i = 0; i < mvIniMatches.size(); i++) {
+        for (size_t i = 0; i < mvIniMatches[j].size(); i++) {
+
             if (mvIniMatches[j][i] < 0)
                 continue;
 
-            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
+//            cout << "camera " << j << " match i: " << i << endl;
+//            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
             cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
+            //TODO somehow add all mappoints to a common map
 
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[j][i]);
@@ -696,7 +686,6 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
             //Add to Map
             mpMap->AddMapPoint(pMP);
-
         }
     }
 
@@ -713,7 +702,10 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     float medianDepth = pKFini->ComputeSceneMedianDepth(2);
     float invMedianDepth = 1.0f/medianDepth;
 
-    if(medianDepth<0 || pKFcur->TrackedMapPoints()<100)
+    cout << "median " << medianDepth << endl;
+
+//    if(medianDepth<0 || pKFcur->TrackedMapPoints()<100)
+    if(medianDepth<0 || pKFcur->TrackedMapPoints()<20)
     {
         ROS_INFO("Wrong initialization, reseting...");
         Reset();
@@ -755,7 +747,6 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
 
     mState=WORKING;
 }
-
 
 bool Tracking::TrackPreviousFrame()
 {
@@ -898,7 +889,6 @@ bool Tracking::TrackLocalMap()
         return true;
 }
 
-
 bool Tracking::NeedNewKeyFrame()
 {
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
@@ -1036,7 +1026,6 @@ void Tracking::UpdateReferencePoints()
         }
     }
 }
-
 
 void Tracking::UpdateReferenceKeyFrames()
 {
