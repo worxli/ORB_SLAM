@@ -135,6 +135,11 @@ public:
     // Median MapPoint depth
     float ComputeSceneMedianDepth(int q = 2);
 
+    // Testing
+    void SetCalibrationMatrix(cv::Mat K);
+    void TestAddMapPoint(MapPoint *pMP);
+    void TestAddKeyPointUn(cv::KeyPoint &kpt);
+
 public:
     static long unsigned int nNextId;
     long unsigned int mnId;

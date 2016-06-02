@@ -988,29 +988,32 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
 void Optimizer::TestLocalBundleAdjustment()
 {
-    // define config parameters
+    // Define config parameters
     bool bFixData = false;
     unsigned int nKFs = 3;
-    unsigned int nMPs = 30;
+    unsigned int nMPs = 6;
     unsigned int nReferenceKF_ID = 1000;
     unsigned int nFirstMapPointID = nReferenceKF_ID + nKFs;
 
-    float fMPSigma = 1; // noise level, (+-)0.1 m
-
+    // Noise
+    // Map Point translational noise
+    float fMPSigma = 0.1;//0.2;//1; // noise level, (+-)0.1 m
+    // Key Frame translational noise
     float f_t1Noise = 0.1;
     float f_t2Noise = 0.1;
     float f_t3Noise = 0.1;
-
-    float fRollError = 0; //degree
-    float fPitchError = 0;
-    float fYawError = 0;
+    // Key Frame rotational noise
+    float fRollError = 0.5; //degree
+    float fPitchError = 0.5;
+    float fYawError = 0.5;
 
     int nMAX_X2 = 2*10*10;
     int nMAX_Y2 = 2*10*10;
     int nMAX_Z2 = 20*20;
 
-    float fx, fy, cx, cy;
-    fx = 268.963; fy = 269.986; cx = 157.609; cy = 114.637;
+    // Generate Intrinsics
+    float fx, fy, cx, cy; // mono-front
+    fx = 1408.7635631701; fy = 1408.2906649996; cx = 653.2604772699; cy = 389.0180463604;
     cv::Mat K = cv::Mat::eye(3,3,CV_32F);
     K.at<float>(0,0) = fx;
     K.at<float>(1,1) = fy;
@@ -1019,18 +1022,12 @@ void Optimizer::TestLocalBundleAdjustment()
 
     srand (time(NULL));
 
-    //
+    // Store all Keyframes and Mappoints
     std::vector<KeyFrame*> vAllKeyFrames;
     std::vector<MapPoint*> vAllMapPoints;
-//    // generate test data for KF0;
-    KeyFrame* pKF0;
-//    pKF0->mnId = nReferenceKF_ID;
-//    cv::Mat T = cv::Mat:: (4,4,CV_32F);
-//    pKF0->SetPose(T);
-//    pKF0->SetCalibrationMatrix(K);
-//    vAllKeyFrames.push_back(pKF0);
 
-//    cout << endl;
+    // Generate test data for KF0;
+    KeyFrame* pKF0;
 
     // generate extra KFs
     for(unsigned int i = 0; i < nKFs; i++){
@@ -1077,9 +1074,7 @@ void Optimizer::TestLocalBundleAdjustment()
         }
 
 //        cout << "DEBUG camCenter " << endl << camCenter << endl;
-
         cv::Mat tcw2 = -Rcw2*camCenter;
-
 //        cout << "DEBUG tcw2 "<< endl << tcw2 << endl;
 
         cv::Mat Tcw2 = cv::Mat::eye(4,4,CV_32F);
@@ -1211,33 +1206,58 @@ void Optimizer::TestLocalBundleAdjustment()
         pKFi->SetPose(T);
     }
 
+    // store  pose and MP locations after noise is added
+    std::vector<cv::Mat> vNoise_Poses;
+    std::vector<cv::Mat> vNoiseMP_Position;
+    for(size_t i = 0; i < vAllKeyFrames.size(); i++){
+        vNoise_Poses.push_back(vAllKeyFrames.at(i)->GetPose());
+    }
+    for(size_t i = 0; i < vAllMapPoints.size(); i++){
+        vNoiseMP_Position.push_back(vAllMapPoints.at(i)->GetWorldPos());
+    }
 
     // call optimization
     vector<bool> vbMatched; vbMatched.resize(nMPs, true);
     LocalBundleAdjustment(pKF0,vbMatched);
 
     cout << endl << "==================== DEBUG Optimizer::LocalBA ==================" << endl;
+
+    cout << "Number of KeyFrames: " << nKFs << endl;
+    cout << "Number of Map Points: " << nMPs << endl << endl;
+
+    cout << "Noise Map Point translation (xyz): " <<  fMPSigma << endl;
+    cout << "Noise KeyFrame Pose translation (xyz): " << f_t1Noise << " | " << f_t2Noise << " | " << f_t3Noise << endl;
+    cout << "Noise KeyFrame Pose rotation (RPY): " << fRollError << " | " << fPitchError << " | " << fYawError << endl << endl;
+
     // compute optimization error
     for(size_t i = 0; i < vAllKeyFrames.size(); i++){
         KeyFrame* pKFi = vAllKeyFrames[i];
-        cout << "+++++++ Error for camera pose   +++++++" << i << endl;
+        cout << "+++++++ Error for keyframe pose   +++++++ " << i << endl;
         cout << vOriginal_Poses[i]*pKFi->GetPose().inv() << endl;
 
-//        cout << "+++++++ Error for camera center +++++++" << i << endl;
+        cout << "+++++++ Error for keyframe center +++++++ " << i << endl;
         cv::Mat T = vOriginal_Poses[i];
         cv::Mat R = T.colRange(0,3).rowRange(0,3);
         cv::Mat t = T.col(3).rowRange(0,3);
+        cv::Mat T_noise = vNoise_Poses[i];
+        cv::Mat R_noise = T_noise.colRange(0,3).rowRange(0,3);
+        cv::Mat t_noise = T_noise.col(3).rowRange(0,3);
 
-//        cout << "DEBUG estimated camCenter of frame: " << pKFi->mnId << endl;
-//        cout << pKFi->GetCameraCenter() << endl;
-        cout << -R.t()*t - pKFi->GetCameraCenter() << endl << endl;
+        cout << "DEBUG estimated keyframe center of frame: " << pKFi->mnId << endl;
+        cout << "ORIGINAL: " << -R.t()*t << endl; // original
+        cout << "with NOISE: " << -R_noise.t()*t_noise << endl; // after noise
+        cout << "OPTIMIZED: " << pKFi->GetCameraCenter() << endl; // optimized
+        cout << "DIFFERENCE: " << -R.t()*t - pKFi->GetCameraCenter() << endl << endl; // difference
     }
 
-//    cout << "+++++++ Error for map points locations +++++++ " << endl;
-//    for(size_t i = 0; i < vAllMapPoints.size(); i++){
-//        MapPoint* pMP = vAllMapPoints[i];
-//        cout << vOriginalMP_Position[i].t() - pMP->GetWorldPos().t()<< endl;
-//    }
+    cout << "+++++++ Error for map points locations +++++++ " << endl;
+    for(size_t i = 0; i < vAllMapPoints.size(); i++){
+        MapPoint* pMP = vAllMapPoints[i];
+        cout << "ORIGINAL: " << vOriginalMP_Position[i].t() << endl; // original
+        cout << "with NOISE: " << vNoiseMP_Position[i].t() << endl; // after noise
+        cout << "OPTIMIZED: " << pMP->GetWorldPos().t() << endl; // optimized
+        cout << "DIFFERENCE: " << vOriginalMP_Position[i].t() - pMP->GetWorldPos().t()<< endl; // difference
+    }
 }
 
 } //namespace ORB_SLAM

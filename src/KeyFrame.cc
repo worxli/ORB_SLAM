@@ -216,6 +216,13 @@ void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx)
     mvpMapPoints[idx]=pMP;
 }
 
+void KeyFrame::TestAddMapPoint(MapPoint *pMP){
+    boost::mutex::scoped_lock lock(mMutexFeatures);
+    mvpMapPoints.push_back(pMP);
+    mvLevelSigma2.resize(3,2);
+    mvInvLevelSigma2.resize(3,0.5);
+}
+
 void KeyFrame::EraseMapPointMatch(const size_t &idx)
 {
     boost::mutex::scoped_lock lock(mMutexFeatures);
@@ -281,6 +288,10 @@ cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx) const
     return mvKeysUn[idx];
 }
 
+void KeyFrame::TestAddKeyPointUn(cv::KeyPoint &kpt){
+    mvKeysUn.push_back(kpt);
+}
+
 int KeyFrame::GetKeyPointScaleLevel(const size_t &idx) const
 {
     return mvKeysUn[idx].octave;
@@ -309,6 +320,14 @@ vector<cv::KeyPoint> KeyFrame::GetKeyPointsUn() const
 cv::Mat KeyFrame::GetCalibrationMatrix() const
 {
     return mK.clone();
+}
+
+void KeyFrame::SetCalibrationMatrix(cv::Mat K){
+    mK = K.clone();
+    this->fx = K.at<float>(0,0);
+    this->fy = K.at<float>(1,1);
+    this->cx = K.at<float>(0,2);
+    this->cy = K.at<float>(1,2);
 }
 
 DBoW2::FeatureVector KeyFrame::GetFeatureVector()
