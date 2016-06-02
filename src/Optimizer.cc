@@ -502,6 +502,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
 
     std::cout << std::endl << "####################### OPTIMIZE #########################" << std::endl << std::endl;
 
+    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(100);
 
@@ -552,11 +553,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     {
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-        pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
-
-        std::cout << "vPoint->est: " << vPoint->estimate() << std::endl;
-        std::cout << "pMP->GetWorldPos: " << pMP->GetWorldPos().t() << std::endl;
-
+pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
 //        pMP->UpdateNormalAndDepth();
     }
 
@@ -1061,21 +1058,21 @@ void Optimizer::TestLocalBundleAdjustment()
 {
     // define config parameters
     bool bFixData = false;
-    unsigned int nKFs = 3;
-    unsigned int nCams = 2;
-    unsigned int nMPs = 1;
+    unsigned int nKFs = 6;
+    unsigned int nCams = 1;
+    unsigned int nMPs = 6;
     unsigned int nReferenceKF_ID = 1000;
     unsigned int nFirstMapPointID = nReferenceKF_ID + nKFs;
 
-    float fMPSigma = 0.2;//1; // noise level, (+-)0.1 m
+    float fMPSigma = 0.1;//0.2;//1; // noise level, (+-)0.1 m
 
     float f_t1Noise = 0.1;
     float f_t2Noise = 0.1;
     float f_t3Noise = 0.1;
 
-    float fRollError = 0; //degree
-    float fPitchError = 0;
-    float fYawError = 0;
+    float fRollError = 0.5; //degree
+    float fPitchError = 0.5;
+    float fYawError = 0.5;
 
     int nMAX_X2 = 2*10*10;
     int nMAX_Y2 = 2*10*10;

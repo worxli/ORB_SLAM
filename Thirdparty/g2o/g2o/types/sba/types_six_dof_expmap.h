@@ -218,8 +218,7 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
     std::cout << "obs: " << obs << std::endl;
     std::cout << "cam_project: " << cam_project(Tc.map(v2->estimate())) << std::endl;
     std::cout << "fx: " << fx << " | fy: " << fy << " | cx: " << cx << " | cy: " << cy << std::endl << std::endl;
-
-    std::cout << "######################## NEXT EDGE ##########################" << std::endl << std::endl;
+    std::cout << "######################## NEXT EDGE ########################## " << std::endl << std::endl;
   }
 
   bool isDepthPositive() {
