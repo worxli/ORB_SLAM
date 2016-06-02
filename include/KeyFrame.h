@@ -112,7 +112,7 @@ public:
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, int camera) const;
 
     // Image
-    cv::Mat GetImage();
+    cv::Mat GetImage(int camera);
     bool IsInImage(const float &x, const float &y, int camera) const;
 
     // Activate/deactivate erasable flags
