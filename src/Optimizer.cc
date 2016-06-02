@@ -476,7 +476,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
 
 //    optimizer.setVerbose(true);
     optimizer.initializeOptimization();
-    optimizer.optimize(100);
+    optimizer.optimize(10);
 
     // Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
