@@ -539,7 +539,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     }*/
 
     // Recover optimized data
-
     //Keyframes
     for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
     {
@@ -553,7 +552,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     {
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = static_cast<g2o::VertexSBAPointXYZ*>(optimizer.vertex(pMP->mnId+maxKFid+1));
-pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
+        pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
 //        pMP->UpdateNormalAndDepth();
     }
 
@@ -1056,20 +1055,22 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
 
 void Optimizer::TestLocalBundleAdjustment()
 {
-    // define config parameters
+    // Define config parameters
     bool bFixData = false;
-    unsigned int nKFs = 6;
-    unsigned int nCams = 1;
+    unsigned int nKFs = 3;
+    unsigned int nCams = 2;
     unsigned int nMPs = 6;
     unsigned int nReferenceKF_ID = 1000;
     unsigned int nFirstMapPointID = nReferenceKF_ID + nKFs;
 
+    // Noise
+    // Map Point translational noise
     float fMPSigma = 0.1;//0.2;//1; // noise level, (+-)0.1 m
-
+    // Key Frame translational noise
     float f_t1Noise = 0.1;
     float f_t2Noise = 0.1;
     float f_t3Noise = 0.1;
-
+    // Key Frame rotational noise
     float fRollError = 0.5; //degree
     float fPitchError = 0.5;
     float fYawError = 0.5;
@@ -1078,6 +1079,7 @@ void Optimizer::TestLocalBundleAdjustment()
     int nMAX_Y2 = 2*10*10;
     int nMAX_Z2 = 20*20;
 
+    // Generate Intrinsics
     float fx1, fy1, cx1, cy1; // mono-front
     fx1 = 1408.7635631701; fy1 = 1408.2906649996; cx1 = 653.2604772699; cy1 = 389.0180463604;
     cv::Mat K1 = cv::Mat::eye(3,3,CV_32F);
@@ -1098,23 +1100,10 @@ void Optimizer::TestLocalBundleAdjustment()
     K.push_back(K1);
     K.push_back(K2);
 
-    srand (time(NULL));
-
-    //
-    std::vector<KeyFrame*> vAllKeyFrames;
-    std::vector<MapPoint*> vAllMapPoints;
-    // generate test data for KF0;
-    KeyFrame* pKF0;
-//    pKF0->mnId = nReferenceKF_ID;
-//    cv::Mat T = cv::Mat:: (4,4,CV_32F);
-//    pKF0->SetPose(T);
-//    pKF0->SetCalibrationMatrix(K);
-//    vAllKeyFrames.push_back(pKF0);
-
+    // Generate Extrinsics
     // mono-front
     cv::Mat Rcb1 =(cv::Mat_<float>(3,3) << -0.0062716301, 0.0303626693, 0.9995192719, -0.9999429069, -0.0088381698, -0.0060058088, 0.0086515687, -0.9994998725, 0.0304163655);
     cv::Mat tcb1 =(cv::Mat_<float>(3,1) << 3.3273137587, -0.1992388656, 0.5566928679);
-
     // mono-left
     cv::Mat Rcb2 =(cv::Mat_<float>(3,3) << 0.9975167526, -0.0094179208, 0.0697970700, -0.0572561871, -0.6855342392, 0.7257854613, 0.0410128913, -0.7279794706, -0.6843711224);
     cv::Mat tcb2 =(cv::Mat_<float>(3,1) << 1.8693504635, 0.7787120638, 0.8834578976);
@@ -1126,7 +1115,15 @@ void Optimizer::TestLocalBundleAdjustment()
     tcb.push_back(tcb1);
     tcb.push_back(tcb2);
 
-    // generate extra KFs
+    srand (time(NULL));
+
+    // Store all Keyframes and Mappoints
+    std::vector<KeyFrame*> vAllKeyFrames;
+    std::vector<MapPoint*> vAllMapPoints;
+
+    // Generate test data for KF0;
+    KeyFrame* pKF0;
+    // Generate extra KFs
     for(unsigned int i = 0; i < nKFs; i++){
         KeyFrame* pKFi = new KeyFrame();
 
@@ -1307,12 +1304,11 @@ void Optimizer::TestLocalBundleAdjustment()
         pMP->SetWorldPos(x3D);
     }
 
-    // pose translation noise
+    // Pose translation noise
     for(size_t i = 0; i < vAllKeyFrames.size(); i++){
         KeyFrame* pKFi = vAllKeyFrames[i];
         std::cout << "ID KF: " << pKFi->mnId << std::endl;
-//        if (pKFi->mnId == nReferenceKF_ID) continue;
-        if (pKFi->mnId == nReferenceKF_ID || pKFi->mnId == nReferenceKF_ID + 1) continue;
+        if (pKFi->mnId == nReferenceKF_ID || pKFi->mnId == nReferenceKF_ID + 1) continue; // TODO: generalize for more KF's
         cout << "DEBUG Previous Pose: " << endl << pKFi->GetPose() << endl;
         cv::Mat camCenter = pKFi->GetRotation().t()*pKFi->GetTranslation()*(-1.0);
 
@@ -1328,7 +1324,7 @@ void Optimizer::TestLocalBundleAdjustment()
         cout << "DEBUG noise corrupted cam center: " << endl << pKFi->GetCameraCenter() << endl;
     }
 
-    // pose rotation noise
+    // Pose rotation noise
     for(size_t i = 0; i <  vAllKeyFrames.size(); i++){
         KeyFrame* pKFi = vAllKeyFrames[i];
         if(pKFi->mnId == nReferenceKF_ID || pKFi->mnId == nReferenceKF_ID + 1) continue;
@@ -1375,7 +1371,6 @@ void Optimizer::TestLocalBundleAdjustment()
         KeyFrame* pKFi = vAllKeyFrames[l];
         std::cout << "KEYFRAME2" << pKFi->mnId << " is BAD?: " << pKFi->isBad() << std::endl;
     }
-
 
     LocalBundleAdjustment(pKF0, &pbStopFlag);
 
