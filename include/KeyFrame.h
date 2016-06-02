@@ -112,7 +112,7 @@ public:
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, int camera) const;
 
     // Image
-//    cv::Mat GetImage();
+    cv::Mat GetImage();
     bool IsInImage(const float &x, const float &y, int camera) const;
 
     // Activate/deactivate erasable flags
@@ -193,7 +193,7 @@ protected:
     cv::Mat Ow;
 
     // Original image, undistorted image bounds, and calibration matrix
-//    vector<cv::Mat> im;
+    vector<cv::Mat> im;
     int mnMinX;
     int mnMinY;
     int mnMaxX;
@@ -213,7 +213,6 @@ protected:
 
 
     // Grid over the image to speed up feature matching
-    //TODO
     std::vector< std::vector <std::vector<size_t> > > mGrid;
 
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;

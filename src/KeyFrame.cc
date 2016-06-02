@@ -356,11 +356,11 @@ DBoW2::BowVector KeyFrame::GetBowVector()
     return mBowVec;
 }
 
-//cv::Mat KeyFrame::GetImage(int camera)
-//{
-//    boost::mutex::scoped_lock lock(mMutexImage);
-//    return im[camera].clone();
-//}
+cv::Mat KeyFrame::GetImage(int camera)
+{
+    boost::mutex::scoped_lock lock(mMutexImage);
+    return im[camera].clone();
+}
 
 void KeyFrame::UpdateConnections()
 {
