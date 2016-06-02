@@ -462,10 +462,11 @@ Vector2d EdgeSE3GProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
   Vector2d res;
   res[0] = proj[0]*fx + cx;
   res[1] = proj[1]*fy + cy;
+
   return res;
 }
 
-// TODO: SE3rayXYZ can be deleted after BA/ Optimization fully done
+// TODO: SE3rayXYZ implementation for angle optimisation with rays
 SE3rayXYZ::SE3rayXYZ() : BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>() {
 }
 

@@ -32,6 +32,7 @@
 
 #include"Optimizer.h"
 #include"PnPsolver.h"
+#include "../include/Tracking.h"
 
 #include<iostream>
 #include<fstream>
@@ -367,13 +368,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     imgs.push_back(cv::Mat(im, cv::Rect(width, height, width, height)));
 
     // TODO
-    int camera = 2;
+    int start = 0;
+    int end = 4;
 
     if (mState==NO_IMAGES_YET) // true only for first incoming frame
     {
         cout << "mState==NO_IMAGES_YET: " << (mState==NO_IMAGES_YET) << endl;
 
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=start; i<end; i++) {
             Tracking::initUndistortMap(mmapX[i], mmapY[i], i);
 
             // TODO
@@ -401,14 +403,14 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     vector<CameraFrame> cameraFrames;
 
     if(mState==WORKING || mState==LOST) {
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=start; i<end; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
-        for(int i=camera; i<camera+1; i++) {
+        for(int i=start; i<end; i++) {
             CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
@@ -428,6 +430,7 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     {
         cout << "do first init" << endl;
         FirstInitialization();
+        cout << "finished first init" << endl;
     }
     else if(mState==INITIALIZING)
     {
@@ -557,67 +560,84 @@ void Tracking::ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map
 void Tracking::FirstInitialization()
 {
     //We ensure a minimum ORB features to continue, otherwise discard frame
-    if(mCurrentFrame.cameraFrames[0].mvKeysUn.size()>100)
+    int features = 0;
+    for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++)
+        features += mCurrentFrame.cameraFrames[j].mvKeysUn.size();
+
+    cout << "features " << features << endl;
+
+    if(features>100)
     {
         mInitialFrame = Frame(mCurrentFrame);
         mLastFrame = Frame(mCurrentFrame);
-        mvbPrevMatched.resize(mCurrentFrame.cameraFrames[0].mvKeysUn.size());
-        for(size_t i=0; i<mCurrentFrame.cameraFrames[0].mvKeysUn.size(); i++)
-            mvbPrevMatched[i]=mCurrentFrame.cameraFrames[0].mvKeysUn[i].pt;
+
+        mvbPrevMatched.clear();
+        for(uint j=0; j<mCurrentFrame.cameraFrames.size(); j++) {
+            vector<cv::Point2f> matches(mCurrentFrame.cameraFrames[j].mvKeysUn.size());
+            for (size_t i = 0; i < mCurrentFrame.cameraFrames[j].mvKeysUn.size(); i++)
+                matches[i] = mCurrentFrame.cameraFrames[j].mvKeysUn[i].pt;
+            mvbPrevMatched.push_back(matches);
+        }
 
         if(mpInitializer) {
-            //cout << mState << endl;
-            cout << "delete Initializer" << mpInitializer << endl;
-            //delete mpInitializer;
-            cout << "deleted" << endl;
+            delete mpInitializer;
         }
 
         mpInitializer =  new Initializer(mCurrentFrame,1.0,200);
-
         mState = INITIALIZING;
     }
 }
 
 void Tracking::Initialize()
 {
-    // Check if current frame has enough keypoints, otherwise reset initialization process
-    if(mCurrentFrame.cameraFrames[0].mvKeys.size()<=100)
-    {
-        cout << "not enough keys" << endl;
-        fill(mvIniMatches.begin(),mvIniMatches.end(),-1);
+    int nmatches = 0;
+    mvIniMatches.clear();
+    for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+
+        vector<cv::Point2f> vbPrevMatched = mvbPrevMatched[j];
+        vector<int> vIniMatches;
+
+        // Check if current frame has enough keypoints, otherwise reset initialization process
+        if (mCurrentFrame.cameraFrames[j].mvKeys.size() <= 30) {
+            mState = NOT_INITIALIZED;
+            return;
+        }
+
+        // Find correspondences
+        ORBmatcher matcher(0.9, true);
+
+        nmatches += matcher.SearchForInitialization(mInitialFrame, mCurrentFrame, vbPrevMatched, vIniMatches, j, 100);
+        mvbPrevMatched[j] = vbPrevMatched;
+        mvIniMatches.push_back(vIniMatches);
+    }
+
+    // Check if there are enough correspondences
+    if (nmatches < 100) {
         mState = NOT_INITIALIZED;
         return;
     }
 
-    // Find correspondences
-    ORBmatcher matcher(0.9,true);
-    int nmatches = matcher.SearchForInitialization(mInitialFrame,mCurrentFrame,mvbPrevMatched,mvIniMatches,100);
-
-    // Check if there are enough correspondences
-    if(nmatches<100)
-    {
-        cout << "number of correspondences " << nmatches << endl;
-        cout << "set state not init" << endl;
-        mState = NOT_INITIALIZED;
-        return;
-    }  
-
     cv::Mat Rcw; // Current Camera Rotation
     cv::Mat tcw; // Current Camera Translation
-    vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
+    vector<vector<bool> > vbTriangulated; // Triangulated Correspondences (mvIniMatches)
+
 
     if(mpInitializer->Initialize(mCurrentFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
-        for(size_t i=0, iend=mvIniMatches.size(); i<iend;i++)
-        {
-            if(mvIniMatches[i]>=0 && !vbTriangulated[i])
-            {
-                mvIniMatches[i]=-1;
-                nmatches--;
-            }           
+        cout << Rcw << endl;
+        for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+            for (size_t i = 0, iend = mvIniMatches[j].size(); i < iend; i++) {
+                if (mvIniMatches[j][i]>0)
+                   // cout << "vbTriangulated " << vbTriangulated[j][i] << endl;
+                if (mvIniMatches[j][i] >= 0 && !vbTriangulated[j][i]) {
+                    mvIniMatches[j][i] = -1;
+                    nmatches--;
+                }
+            }
         }
 
         CreateInitialMap(Rcw,tcw);
+        cout << "Initial Map created" << endl;
     }
 
 }
@@ -641,32 +661,36 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mpMap->AddKeyFrame(pKFini);
     mpMap->AddKeyFrame(pKFcur);
 
-    // Create MapPoints and asscoiate to keyframes
-    for(size_t i=0; i<mvIniMatches.size();i++)
-    {
-        if(mvIniMatches[i]<0)
-            continue;
+    for(int j =0; j<mCurrentFrame.cameraFrames.size(); j++) {
+        // Create MapPoints and asscoiate to keyframes
+        for (size_t i = 0; i < mvIniMatches.size(); i++) {
+            if (mvIniMatches[j][i] < 0)
+                continue;
 
-        //Create MapPoint.
-        cv::Mat worldPos(mvIniP3D[i]);
+            cout << "mvIniMatches " << mvIniMatches[j][i] << endl;
+            cout << "mvIniP3D " << mvIniP3D[j][i] << endl;
 
-        MapPoint* pMP = new MapPoint(worldPos,pKFcur,mpMap);
+            //Create MapPoint.
+            cv::Mat worldPos(mvIniP3D[j][i]);
 
-        pKFini->AddMapPoint(pMP,i);
-        pKFcur->AddMapPoint(pMP,mvIniMatches[i]);
+            MapPoint *pMP = new MapPoint(worldPos, pKFcur, mpMap, j);
 
-        pMP->AddObservation(pKFini,i);
-        pMP->AddObservation(pKFcur,mvIniMatches[i]);
+            pKFini->AddMapPoint(pMP, i);
+            pKFcur->AddMapPoint(pMP, mvIniMatches[j][i]);
 
-        pMP->ComputeDistinctiveDescriptors();
-        pMP->UpdateNormalAndDepth();
+            pMP->AddObservation(pKFini, i);
+            pMP->AddObservation(pKFcur, mvIniMatches[j][i]);
 
-        //Fill Current Frame structure
-        mCurrentFrame.mvpMapPoints[mvIniMatches[i]] = pMP;
+            pMP->ComputeDistinctiveDescriptors();
+            pMP->UpdateNormalAndDepth();
 
-        //Add to Map
-        mpMap->AddMapPoint(pMP);
+            //Fill Current Frame structure
+            mCurrentFrame.mvpMapPoints[mvIniMatches[j][i]] = pMP;
 
+            //Add to Map
+            mpMap->AddMapPoint(pMP);
+
+        }
     }
 
     // Update Connections

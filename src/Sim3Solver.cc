@@ -29,6 +29,7 @@
 #include "ORBmatcher.h"
 
 #include "Thirdparty/DBoW2/DUtils/Random.h"
+#include "../include/MapPoint.h"
 
 namespace ORB_SLAM
 {
@@ -78,8 +79,8 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
             if(indexKF1<0 || indexKF2<0)
                 continue;
 
-            const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(indexKF1);
-            const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(indexKF2);
+            const cv::KeyPoint &kp1 = pKF1->GetKeyPointUn(indexKF1, pMP1->camera);
+            const cv::KeyPoint &kp2 = pKF2->GetKeyPointUn(indexKF2, pMP2->camera);
 
             const float sigmaSquare1 = pKF1->GetSigma2(kp1.octave);
             const float sigmaSquare2 = pKF2->GetSigma2(kp2.octave);
@@ -102,8 +103,9 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
         }
     }
 
-    mK1 = pKF1->GetCalibrationMatrix();
-    mK2 = pKF2->GetCalibrationMatrix();
+    //TODO probably move into FromCameraTOImae method
+    mK1 = pKF1->GetCalibrationMatrix(0);
+    mK2 = pKF2->GetCalibrationMatrix(0);
 
     FromCameraToImage(mvX3Dc1,mvP1im1,mK1);
     FromCameraToImage(mvX3Dc2,mvP2im2,mK2);

@@ -85,9 +85,9 @@ public:
 
     // Initialization Variables
     std::vector<int> mvIniLastMatches;
-    std::vector<int> mvIniMatches;
-    std::vector<cv::Point2f> mvbPrevMatched;
-    std::vector<cv::Point3f> mvIniP3D;
+    vector<vector<int> > mvIniMatches;
+    vector<vector<cv::Point2f> > mvbPrevMatched;
+    vector<vector<cv::Point3f> > mvIniP3D;
     Frame mInitialFrame;
 
 

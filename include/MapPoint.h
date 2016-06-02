@@ -39,7 +39,8 @@ class Map;
 class MapPoint
 {
 public:
-    MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
+    MapPoint();
+    MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap, int camera);
 
     void SetWorldPos(const cv::Mat &Pos);
     cv::Mat GetWorldPos();
@@ -78,6 +79,9 @@ public:
     long unsigned int mnId;
     static long unsigned int nNextId;
     long int mnFirstKFid;
+
+    // camera frame where the positon came from
+    int camera;
 
     // Variables used by the tracking
     float mTrackProjX;

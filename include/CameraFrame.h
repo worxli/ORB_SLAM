@@ -40,6 +40,7 @@ class CameraFrame
 {
 public:
     CameraFrame();
+
     CameraFrame(const CameraFrame &frame);
     CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
@@ -53,16 +54,17 @@ public:
     std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
     std::vector< std::vector<Eigen::Vector3d> > pluckerLines;
+    std::vector<Eigen::Vector3d> vBearings;
 
     // Number of KeyPoints
     int N;
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
+    float fx;
+    float fy;
+    float cx;
+    float cy;
     cv::Mat mDistCoef;
 
     cv::Mat mR;
@@ -77,6 +79,9 @@ public:
 
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;
+
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
     float mfGridElementWidthInv;
@@ -105,6 +110,7 @@ public:
 
     // Scale Pyramid Info
     int mnScaleLevels;
+    float mfScaleFactor;
     vector<float> mvScaleFactors;
     vector<float> mvLevelSigma2;
     vector<float> mvInvLevelSigma2;
@@ -113,10 +119,15 @@ public:
     void SetPoseMatrices(cv::Mat _mRcw, cv::Mat _mtcw, cv::Mat _mOw);
     void SetORB(ORBextractor* mpORBextractor, ORBVocabulary* mpORBvocabulary);
 
+    // Neede for testing
+    void TestSetExtrinsics(cv::Mat &R, cv::Mat &t);
+    void TestSetIntrinsics(cv::Mat &K);
+
 private:
 
     void UndistortKeyPoints();
     void PluckerLine();
+    void KeyfeatureBearings();
     void ComputeImageBounds();
     void undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u);
     void LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P);
