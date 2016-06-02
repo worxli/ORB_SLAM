@@ -54,7 +54,9 @@ Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iteration
     cout << "Pos5" << endl;
 
     //generateSampleData();
-    ORB_SLAM::Optimizer::TestLocalBundleAdjustment();
+
+    // Test BundleAdjustment
+    //ORB_SLAM::Optimizer::TestLocalBundleAdjustment();
 }
 
 void Initializer::generateSampleData()
