@@ -444,11 +444,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
             if(!pKFi->isBad())
             {
                 Eigen::Matrix<double,2,1> obs;
-
                 cv::KeyPoint kpUn = pKFi->GetKeyPointUn(mit->second, pMP->camera);
                 obs << kpUn.pt.x, kpUn.pt.y;
-
-                cv::Mat Tbw = pKFi->GetPose();
 
                 g2o::EdgeSE3GProjectXYZ* e = new g2o::EdgeSE3GProjectXYZ();   // SE3G
 
@@ -1342,12 +1339,6 @@ void Optimizer::TestLocalBundleAdjustment()
     // call optimization
     vector<bool> vbMatched; vbMatched.resize(nMPs, true);
     bool pbStopFlag = false;
-
-    // Check if keyframe is bad
-    for (int l = 0; l < vAllKeyFrames.size(); ++l) {
-        KeyFrame* pKFi = vAllKeyFrames[l];
-    }
-
     LocalBundleAdjustment(pKF0, &pbStopFlag);
 
     cout << endl << "==================== DEBUG Optimizer::LocalBA ==================" << endl;
