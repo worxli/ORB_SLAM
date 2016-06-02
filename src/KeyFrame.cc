@@ -307,11 +307,6 @@ cv::KeyPoint KeyFrame::GetKeyPointUn(const size_t &idx, int camera) const
 }
 
 void KeyFrame::TestAddKeyPointUn(cv::KeyPoint &kpt, int camera){
-//    mvKeysUn.push_back(kpt);
-
-//    std::vector<cv::KeyPoint> cam;
-//    cam.push_back(kpt);
-//    mvKeysUn.push_back(cam);
     mvKeysUn[camera].push_back(kpt);
 }
 
@@ -348,14 +343,6 @@ cv::Mat KeyFrame::GetCalibrationMatrix(int camera) const
 {
     return mK[camera].clone();
 }
-
-//void KeyFrame::SetCalibrationMatrix(cv::Mat K){
-//    mK = K.clone();
-//    this->fx = K.at<float>(0,0);
-//    this->fy = K.at<float>(1,1);
-//    this->cx = K.at<float>(0,2);
-//    this->cy = K.at<float>(1,2);
-//}
 
 DBoW2::FeatureVector KeyFrame::GetFeatureVector()
 {

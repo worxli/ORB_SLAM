@@ -323,7 +323,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 if(!pMP->isBad())
                     if(pMP->mnBALocalForKF!=pKF->mnId)
                     {
-                        std::cout << "pMP good: " << pMP->GetWorldPos() << std::endl;
                         lLocalMapPoints.push_back(pMP);
                         pMP->mnBALocalForKF=pKF->mnId;
                     }
@@ -441,24 +440,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
             KeyFrame* pKFi = mit->first;
-            cout << "keyframe num" << endl;
-//            std::cout << "BEFORE: pkfi fx...: " << pKFi->cameraFrames[pMP->camera].fx << " | "
-//                <<pKFi->cameraFrames[pMP->camera].fy << " | "
-//                << pKFi->cameraFrames[pMP->camera].cx << " | "
-//                << pKFi->cameraFrames[pMP->camera].cy << endl;
 
             if(!pKFi->isBad())
             {
                 Eigen::Matrix<double,2,1> obs;
 
-                cout << "pMP->camera: " << pMP->camera << endl;
-                cout << "keyframe id: " << mit->first->mnId << endl;
-                cout << "mit->second: " << mit->second << endl;
-
                 cv::KeyPoint kpUn = pKFi->GetKeyPointUn(mit->second, pMP->camera);
                 obs << kpUn.pt.x, kpUn.pt.y;
 
-                cout << "kpUn.x: " << kpUn.pt.x << " | kpUn.y: " << kpUn.pt.y << endl;
                 cv::Mat Tbw = pKFi->GetPose();
 
                 g2o::EdgeSE3GProjectXYZ* e = new g2o::EdgeSE3GProjectXYZ();   // SE3G
@@ -479,17 +468,10 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
                 e->setRobustKernel(rk);
                 rk->setDelta(thHuber);
 
-//                e->fx = pKFi->cameraFrames[pMP->camera].fx;
-//                e->fy = pKFi->cameraFrames[pMP->camera].fy;
-//                e->cx = pKFi->cameraFrames[pMP->camera].cx;
-//                e->cy = pKFi->cameraFrames[pMP->camera].cy;
-
                 e->fx = pKFi->cameraFrames[pMP->camera].mK.at<float>(0,0);
                 e->fy = pKFi->cameraFrames[pMP->camera].mK.at<float>(1,1);
                 e->cx = pKFi->cameraFrames[pMP->camera].mK.at<float>(0,2);
                 e->cy = pKFi->cameraFrames[pMP->camera].mK.at<float>(1,2);
-
-                std::cout << "e fx...: " << e->fx << " | " << e->fy << " | " << e->cx << " | " << e->cy << endl << endl;
 
                 optimizer.addEdge(e);
                 vpEdges.push_back(e);
@@ -505,8 +487,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag)
     optimizer.setVerbose(true);
     optimizer.initializeOptimization();
     optimizer.optimize(100);
-
-    cout << "vpEdges.size(): " << vpEdges.size() << endl;
 
 /*    // Check inlier observations
     for(size_t i=0, iend=vpEdges.size(); i<iend;i++)
@@ -1127,11 +1107,8 @@ void Optimizer::TestLocalBundleAdjustment()
     for(unsigned int i = 0; i < nKFs; i++){
         KeyFrame* pKFi = new KeyFrame();
 
-        // Check if keyframe is bad
-        std::cout << "KEYFRAME1  " << i << " is BAD?: " << pKFi->isBad() << std::endl;
-
+        // Check if keyframe is bad and set to not bad
         pKFi->SetmbBad(false);
-        std::cout << "KEYFRAME1  " << i << " is BAD?: " << pKFi->isBad() << std::endl;
 
         // generate pose
         float roll, pitch, yaw;
@@ -1369,7 +1346,6 @@ void Optimizer::TestLocalBundleAdjustment()
     // Check if keyframe is bad
     for (int l = 0; l < vAllKeyFrames.size(); ++l) {
         KeyFrame* pKFi = vAllKeyFrames[l];
-        std::cout << "KEYFRAME2" << pKFi->mnId << " is BAD?: " << pKFi->isBad() << std::endl;
     }
 
     LocalBundleAdjustment(pKF0, &pbStopFlag);

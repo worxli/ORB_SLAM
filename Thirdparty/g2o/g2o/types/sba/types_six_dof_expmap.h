@@ -204,21 +204,21 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
     const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
     const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
     Vector2d obs(_measurement);
-    g2o::SE3Quat Tc_test = Tcb*v1->estimate(); // Tcb*Tbw
-    g2o::SE3Quat Tc = v1->estimate()*Tcb;// Tbw*Tcb
-    std::cout << "Tcb -- g2o:" << Tcb << std::endl;
-    std::cout << "Tbw -- v1-est-g2o: " << v1->estimate() << std::endl;
-    std::cout << "Tcw -- g2o: R: " << Tc.rotation().toRotationMatrix() << std::endl << "\tT: " << Tc.translation() << std::endl;
-    std::cout << "MPw -- v2->est-g2o: " << v2->estimate() << std::endl;
+    g2o::SE3Quat Tc = v1->estimate()*Tcb; // Tbw*Tcb
     Tc = Tc.inverse();
-    _error = obs-cam_project(Tc.map(v2->estimate()));// obs-cam_project(Tc.map(map_point))
-//    Eigen::Matrix<double,2,1> error = obs-cam_project(Tc_test.map(v2->estimate()));
-    std::cout << "_error: " << _error(0) << " | " << _error(1) << std::endl;
-//    std::cout << "error_test: " << error(0) << " | " << error(1) << std::endl;
-    std::cout << "obs: " << obs << std::endl;
-    std::cout << "cam_project: " << cam_project(Tc.map(v2->estimate())) << std::endl;
-    std::cout << "fx: " << fx << " | fy: " << fy << " | cx: " << cx << " | cy: " << cy << std::endl << std::endl;
-    std::cout << "######################## NEXT EDGE ########################## " << std::endl << std::endl;
+
+//    std::cout << "Tcb -- g2o:" << Tcb << std::endl;
+//    std::cout << "Tbw -- v1-est-g2o: " << v1->estimate() << std::endl;
+//    std::cout << "Tcw -- g2o: R: " << Tc.rotation().toRotationMatrix() << std::endl << "\tT: " << Tc.translation() << std::endl;
+//    std::cout << "MPw -- v2->est-g2o: " << v2->estimate() << std::endl;
+
+    _error = obs-cam_project(Tc.map(v2->estimate())); // obs-cam_project(Tc.map(map_point))
+
+//    std::cout << "_error: " << _error(0) << " | " << _error(1) << std::endl;
+//    std::cout << "obs: " << obs << std::endl;
+//    std::cout << "cam_project: " << cam_project(Tc.map(v2->estimate())) << std::endl;
+//    std::cout << "fx: " << fx << " | fy: " << fy << " | cx: " << cx << " | cy: " << cy << std::endl << std::endl;
+//    std::cout << "######################## NEXT EDGE ########################## " << std::endl << std::endl;
   }
 
   bool isDepthPositive() {
@@ -226,8 +226,6 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
     const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
     return (v1->estimate().map(v2->estimate()))(2)>0.0;
   }
-
-//  virtual void linearizeOplus();
 
   void setT(g2o::SE3Quat T) {
     Tcb = T;
@@ -239,7 +237,7 @@ class G2O_TYPES_SBA_API EdgeSE3GProjectXYZ: public  BaseBinaryEdge<2, Vector2d, 
   g2o::SE3Quat Tcb; // R and t matrices for transformation from camera frame to base frame
 };
 
-// TODO: SE3rayXYZ can be deleted after BA/ Optimization completely works
+// TODO: SE3rayXYZ for implementation of angle minimization with rays
 class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBAPointXYZ, VertexSE3Expmap>{
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -258,7 +256,6 @@ class G2O_TYPES_SBA_API SE3rayXYZ: public  BaseBinaryEdge<3, Vector3d, VertexSBA
     estimated_unit_feature_ray.normalize();
     // _error is Vector3d even though we only need scalar
     _error << 1-obs.dot(estimated_unit_feature_ray), 0, 0;
-//    _error = obs-cam_project(v1->estimate().map(v2->estimate()));
   }
 
   bool isDepthPositive() {
