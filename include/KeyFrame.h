@@ -44,6 +44,7 @@ class DatabaseResult;
 class KeyFrame
 {
 public:
+    KeyFrame();
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Pose functions

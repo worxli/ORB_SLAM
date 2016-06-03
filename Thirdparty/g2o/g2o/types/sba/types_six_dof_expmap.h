@@ -101,10 +101,7 @@ public:
     _estimate = SE3Quat();
   }
 
-  virtual void oplusImpl(const double* update_)  {
-    Eigen::Map<const Vector6d> update(update_);
-    setEstimate(SE3Quat::exp(update)*estimate());
-  }
+  void oplusImpl(const double* update_);
 };
 
 
@@ -190,6 +187,55 @@ public:
   double fx, fy, cx, cy;
 };
 
+class G2O_TYPES_SBA_API EdgeProjectInverseDepth2SE3: public  BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>{
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  EdgeProjectInverseDepth2SE3();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError();
+
+  bool isDepthPositive() {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]); // keyframe pose
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]); // map point pos in reference camera frame
+    Vector3d v2_inverseDepthParam = v2->estimate(); // inverse depth representation
+    // in reference camera frame
+    Vector3d v2_XYZ(v2_inverseDepthParam[0]/v2_inverseDepthParam[2], v2_inverseDepthParam[1]/v2_inverseDepthParam[2], 1.0/v2_inverseDepthParam[2]);
+
+    // convert to current camera frame
+    return (v1->estimate().map(v2_XYZ))(2)>0.0;
+  }
+
+  double reProjectionError(){
+      return sqrt(_error[0]*_error[0] + _error[1]*_error[1]);
+  }
+
+  void linearizeOplus();
+
+  Vector2d cam_project(const Vector3d & trans_xyz) const;
+
+  double fx, fy, cx, cy;
+  bool bRefinePose;
+};
+
+class G2O_TYPES_SBA_API EdgeSE3ToSE3: public  BaseBinaryEdge<3, Vector3d, VertexSE3Expmap, VertexSE3Expmap>{
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  EdgeSE3ToSE3();
+
+  bool read(std::istream& is);
+
+  bool write(std::ostream& os) const;
+
+  void computeError();
+
+  void linearizeOplus();
+};
 
 class G2O_TYPES_SBA_API EdgeProjectPSI2UV : public  g2o::BaseMultiEdge<2, Vector2d>
 {

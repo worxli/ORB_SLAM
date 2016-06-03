@@ -27,6 +27,9 @@ namespace ORB_SLAM
 
 long unsigned int MapPoint::nNextId=0;
 
+MapPoint::MapPoint() {
+
+}
 
 MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
     mnFirstKFid(pRefKF->mnId), mnTrackReferenceForFrame(0), mnLastFrameSeen(0), mnBALocalForKF(0),

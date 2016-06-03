@@ -38,6 +38,7 @@
 
 #include "Converter.h"
 
+#include "Optimizer.h"
 
 using namespace std;
 
@@ -69,6 +70,10 @@ int main(int argc, char **argv)
         ros::shutdown();
         return 1;
     }
+
+//    ////////////////////////// TESTING /////////////////////////////
+//    ORB_SLAM::Optimizer::TestLocalBundleAdjustment();
+//    ////////////////////////////////////////////////////////////////
 
     //Create Frame Publisher for image_view
     ORB_SLAM::FramePublisher FramePub;

@@ -142,6 +142,10 @@ Tracking::Tracking(ORBVocabulary* pVoc, FramePublisher *pFramePublisher, MapPubl
     tf::Transform tfT;
     tfT.setIdentity();
     mTfBr.sendTransform(tf::StampedTransform(tfT,ros::Time::now(), "/ORB_SLAM/World", "/ORB_SLAM/Camera"));
+
+    ////////////////////////// TESTING /////////////////////////////
+    ORB_SLAM::Optimizer::TestLocalBundleAdjustment();
+    ////////////////////////////////////////////////////////////////
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)

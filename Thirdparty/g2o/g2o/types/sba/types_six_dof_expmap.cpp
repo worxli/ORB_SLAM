@@ -39,6 +39,7 @@ G2O_REGISTER_TYPE(EDGE_SE3:EXPMAP, EdgeSE3Expmap);
 G2O_REGISTER_TYPE(EDGE_PROJECT_XYZ2UV:EXPMAP, EdgeProjectXYZ2UV);
 G2O_REGISTER_TYPE(EDGE_PROJECT_XYZ2UVU:EXPMAP, EdgeProjectXYZ2UVU);
 G2O_REGISTER_TYPE(PARAMS_CAMERAPARAMETERS, CameraParameters);
+//G2O_REGISTER_TYPE(EDGE_PROJECT_INVERSE_DEPTH2SE3:EXPMAP, EdgeProjectInverseDepth2SE3);
 
 CameraParameters
 ::CameraParameters()
@@ -100,6 +101,12 @@ bool VertexSE3Expmap::write(std::ostream& os) const {
   for (int i=0; i<7; i++)
     os << cam2world[i] << " ";
   return os.good();
+}
+
+void VertexSE3Expmap::oplusImpl(const double *update_)
+{
+    Eigen::Map<const Vector6d> update(update_);
+    setEstimate(SE3Quat::exp(update)*estimate());
 }
 
 EdgeSE3Expmap::EdgeSE3Expmap() :
@@ -425,6 +432,332 @@ Vector2d EdgeSE3ProjectXYZ::cam_project(const Vector3d & trans_xyz) const{
   res[0] = proj[0]*fx + cx;
   res[1] = proj[1]*fy + cy;
   return res;
+}
+
+EdgeProjectInverseDepth2SE3::EdgeProjectInverseDepth2SE3(): BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>() {
+    bRefinePose = false;
+}
+
+bool EdgeProjectInverseDepth2SE3::read(std::istream& is){
+  for (int i=0; i<2; i++){
+    is >> _measurement[i];
+  }
+  for (int i=0; i<2; i++)
+    for (int j=i; j<2; j++) {
+      is >> information()(i,j);
+      if (i!=j)
+        information()(j,i)=information()(i,j);
+    }
+  return true;
+}
+
+bool EdgeProjectInverseDepth2SE3::write(std::ostream& os) const {
+
+  for (int i=0; i<2; i++){
+    os << measurement()[i] << " ";
+  }
+
+  for (int i=0; i<2; i++)
+    for (int j=i; j<2; j++){
+      os << " " <<  information()(i,j);
+    }
+  return os.good();
+}
+
+void EdgeProjectInverseDepth2SE3::computeError()  {
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+    const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
+    // convert inverse depth parameterization for 3D point location to Euclidean XYZ representation
+    Vector3d v2_inverseDepthParam = v2->estimate();
+    //in cam frame
+    Vector3d v2_XYZ(v2_inverseDepthParam[0]/v2_inverseDepthParam[2], v2_inverseDepthParam[1]/v2_inverseDepthParam[2], 1.0/v2_inverseDepthParam[2]);
+
+    Vector2d obs(_measurement); // in camera frame
+    _error = (obs-cam_project(v1->estimate().map(v2_XYZ)));
+//    std::cout << "[g2o:471] DEBUG obs " << obs << endl;
+//    std::cout << "[g2o:472] DEBUG v1->estimate.map(v2_XYZ) " << v1->estimate().map(v2_XYZ) << endl;
+//    std::cout << "[g2o:473] DEBUG v2_XYZ " << v2_XYZ << endl;
+//    SE3Quat T(v1->estimate());
+//    std::cout << "[g2o:474] DEBUG v1->rotation " << endl << T.rotation().toRotationMatrix() << endl << T.translation() << endl;
+//    std::cout << "[g2o:473] Edge " << this->id() << " compute Error: " << sqrt(_error[0]*_error[0] + _error[1]*_error[1]) << " chi2 " << this->chi2() << std::endl;
+//    std::cout << v2_inverseDepthParam << endl<< endl;
+}
+
+
+void EdgeProjectInverseDepth2SE3::linearizeOplus() {
+    VertexSE3Expmap * vj = static_cast<VertexSE3Expmap *>(_vertices[1]);
+    SE3Quat T(vj->estimate());
+    VertexSBAPointXYZ* vi = static_cast<VertexSBAPointXYZ*>(_vertices[0]);
+    Vector3d xyRou = vi->estimate(); //[x y rou]
+
+    Matrix<double,3,3> R1 = T.rotation().toRotationMatrix();
+    Vector3d t1 = T.translation();
+    double r1, r2, r3, r4, r5, r6, r7, r8, r9;
+    r1 = R1(0,0); r2 = R1(0,1); r3 = R1(0,2);
+    r4 = R1(1,0); r5 = R1(1,1); r6 = R1(1,2);
+    r7 = R1(2,0); r8 = R1(2,1); r9 = R1(2,2);
+
+    double a1, b1, c1;
+    a1 = t1[0]; b1 = t1[1]; c1 = t1[2];
+
+    double x, y, Rou;
+    x = xyRou[0]; y = xyRou[1]; Rou = xyRou[2];
+
+    // assin value to functions
+    double g1 = fx*(r1*x + r2*y + r3 + a1*Rou);
+    double g2 = fy*(r4*x + r5*y + r6 + b1*Rou);
+    double g3 = r7*x + r8*y + r9 + c1*Rou;
+
+    double dg1dx = r1*fx;
+    double dg1dy = r2*fx;
+    double dg1dRou = a1*fx;
+
+    double dg2dx = r4*fy;
+    double dg2dy = r5*fy;
+    double dg2dRou = b1*fy;
+
+    double dg3dx = r7;
+    double dg3dy = r8;
+    double dg3dRou = c1;
+
+    double g32 = g3*g3;
+    // assigne value to jacobian matrix for VertexSBAPointXYZ only, since VertexSE3Expmap is fixed
+    _jacobianOplusXi(0,0) = (-1.0)*(g3*dg1dx - g1*dg3dx)/g32;
+    _jacobianOplusXi(1,0) = (-1.0)*(g3*dg2dx - g2*dg3dx)/g32;
+
+    _jacobianOplusXi(0,1) = (-1.0)*(g3*dg1dy - g1*dg3dy)/g32;
+    _jacobianOplusXi(1,1) = (-1.0)*(g3*dg2dy - g2*dg3dy)/g32;
+
+    _jacobianOplusXi(0,2) = (-1.0)*(g3*dg1dRou - g1*dg3dRou)/g32;
+    _jacobianOplusXi(1,2) = (-1.0)*(g3*dg2dRou - g2*dg3dRou)/g32;
+
+    // jacobian of SE3 pose
+    double w1, w2, w3, t_1, t2, t3; w1 = w2 = w3 = t_1 = t2 = t3 = 0;
+    double P11 = r1 - w3*r4 + w2*r7;
+    double P12 = r2 - w3*r5 + w2*r8;
+    double P13 = r3 - w3*r6 + w2*r9;
+    double P14 = a1 - w3*b1 + w2*c1 + t_1;
+
+    double P21 = w3*r1 + r4 - w1*r7;
+    double P22 = w3*r2 + r5 - w1*r8;
+    double P23 = w3*r3 + r6 - w1*r9;
+    double P24 = w3*a1 + b1 - w1*c1 + t2;
+
+    double P31 = -w2*r1 + w1*r4 + r7;
+    double P32 = -w2*r2 + w1*r5 + r8;
+    double P33 = -w2*r3 + w1*r6 + r9;
+    double P34 = -w2*a1 + w1*b1 + c1 + t3;
+
+    double g_1 = P11*x + P12*y + P13 + Rou*P14;
+    double g_2 = P21*x + P22*y + P23 + Rou*P24;
+    double g_3 = P31*x + P32*y + P33 + Rou*P34;
+
+    double g_33 = g_3*g_3;
+
+    double dg1dw1 = 0;
+    double dg1dw2 = r7*x + r8*y + r9 + c1*Rou;
+    double dg1dw3 = -r4*x - r5*y - r6 - b1*Rou;
+    double dg1dt1 = Rou;
+    double dg1dt2 = 0;
+    double dg1dt3 = 0;
+
+    double dg2dw1 = -r7*x - r8*y - r9 - c1*Rou;
+    double dg2dw2 = 0;
+    double dg2dw3 = r1*x + r2*y + r3 + a1*Rou;
+    double dg2dt1 = 0;
+    double dg2dt2 = Rou;
+    double dg2dt3 = 0;
+
+    double dg3dw1 = r4*x + r5*y + r6 + b1*Rou;
+    double dg3dw2 = -r1*x - r2*y - r3 - a1*Rou;
+    double dg3dw3 = 0;
+    double dg3dt1 = 0;
+    double dg3dt2 = 0;
+    double dg3dt3 = Rou;
+
+    _jacobianOplusXj(0,0) = (-1.0)*fx*((g_3*dg1dw1 - g_1*dg3dw1)/g_33);
+    _jacobianOplusXj(0,1) = (-1.0)*fx*((g_3*dg1dw2 - g_1*dg3dw2)/g_33);
+    _jacobianOplusXj(0,2) = (-1.0)*fx*((g_3*dg1dw3 - g_1*dg3dw3)/g_33);
+    _jacobianOplusXj(0,3) = (-1.0)*fx*((g_3*dg1dt1 - g_1*dg3dt1)/g_33);
+    _jacobianOplusXj(0,4) = (-1.0)*fx*((g_3*dg1dt2 - g_1*dg3dt2)/g_33);
+    _jacobianOplusXj(0,5) = (-1.0)*fx*((g_3*dg1dt3 - g_1*dg3dt3)/g_33);
+
+    _jacobianOplusXj(1,0) = (-1.0)*fy*((g_3*dg2dw1 - g_2*dg3dw1)/g_33);
+    _jacobianOplusXj(1,1) = (-1.0)*fy*((g_3*dg2dw2 - g_2*dg3dw2)/g_33);
+    _jacobianOplusXj(1,2) = (-1.0)*fy*((g_3*dg2dw3 - g_2*dg3dw3)/g_33);
+    _jacobianOplusXj(1,3) = (-1.0)*fy*((g_3*dg2dt1 - g_2*dg3dt1)/g_33);
+    _jacobianOplusXj(1,4) = (-1.0)*fy*((g_3*dg2dt2 - g_2*dg3dt2)/g_33);
+    _jacobianOplusXj(1,5) = (-1.0)*fy*((g_3*dg2dt3 - g_2*dg3dt3)/g_33);
+//    std::cout << "DEBUG _jacobians " << std::endl;
+//    std::cout << _jacobianOplusXi << std::endl;
+//    std::cout << _jacobianOplusXj << std::endl;
+}
+
+Vector2d EdgeProjectInverseDepth2SE3::cam_project(const Vector3d & trans_xyz) const{
+  Vector2d proj = project2d(trans_xyz);
+  Vector2d res;
+  res[0] = proj[0]*fx + cx;
+  res[1] = proj[1]*fy + cy;
+  return res;
+}
+
+EdgeSE3ToSE3::EdgeSE3ToSE3(): BaseBinaryEdge<3, Vector3d, VertexSE3Expmap, VertexSE3Expmap>(){
+
+}
+
+bool EdgeSE3ToSE3::read(istream &is)
+{
+    for (int i=0; i<3; i++){
+      is >> _measurement[i];
+    }
+    for (int i=0; i<3; i++)
+      for (int j=i; j<3; j++) {
+        is >> information()(i,j);
+        if (i!=j)
+          information()(j,i)=information()(i,j);
+      }
+    return true;
+}
+
+bool EdgeSE3ToSE3::write(ostream &os) const
+{
+    for (int i=0; i<3; i++){
+      os << measurement()[i] << " ";
+    }
+
+    for (int i=0; i<3; i++)
+      for (int j=i; j<3; j++){
+        os << " " <<  information()(i,j);
+      }
+    return os.good();
+}
+
+void EdgeSE3ToSE3::computeError()
+{
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[0]);
+    const VertexSE3Expmap* v2 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+
+    // KF1 - KF0
+    SE3Quat T1(v1->estimate());
+    SE3Quat T2(v2->estimate());
+
+    // get camera center
+    Matrix<double,3,3> R1 = T1.rotation().toRotationMatrix();
+    Vector3d t1 = T1.translation();
+    Vector3d camCenter1 = (-1.0)*R1.transpose()*t1;
+
+    Matrix<double,3,3> R2 = T2.rotation().toRotationMatrix();
+    Vector3d t2 = T2.translation();
+    Vector3d camCenter2 = (-1.0)*R2.transpose()*t2;
+
+    Vector3d camCenterDiff2m1 = camCenter2 - camCenter1;
+
+    // compute error
+    Vector3d obs(_measurement);
+    _error = (obs-camCenterDiff2m1);
+}
+
+void EdgeSE3ToSE3::linearizeOplus()
+{
+    const VertexSE3Expmap* v1 = static_cast<const VertexSE3Expmap*>(_vertices[0]);
+    const VertexSE3Expmap* v2 = static_cast<const VertexSE3Expmap*>(_vertices[1]);
+
+    // KF2 - KF1
+    SE3Quat T1(v1->estimate());
+    SE3Quat T2(v2->estimate());
+
+    // compute jacobian of SE3 cam1 pose
+    Matrix<double,3,3> R1 = T1.rotation().toRotationMatrix();
+    Vector3d translation1 = T1.translation();
+
+    double r1, r2, r3, r4, r5, r6, r7, r8, r9, a1, b1, c1;
+    r1 = R1(0,0); r2 = R1(0,1); r3 = R1(0,2);
+    r4 = R1(1,0); r5 = R1(1,1); r6 = R1(1,2);
+    r7 = R1(2,0); r8 = R1(2,1); r9 = R1(2,2);
+    a1 = translation1(0); b1 = translation1(1); c1 = translation1(2);
+
+    double w1, w2, w3, t1, t2, t3; w1 = w2 = w3 = t1 = t2 = t3 = 0;
+    double P11 = r1 - w3*r4 + w2*r7;
+    double P12 = r2 - w3*r5 + w2*r8;
+    double P13 = r3 - w3*r6 + w2*r9;
+    double P14 = a1 - w3*b1 + w2*c1 + t1;
+
+    double P21 = w3*r1 + r4 - w1*r7;
+    double P22 = w3*r2 + r5 - w1*r8;
+    double P23 = w3*r3 + r6 - w1*r9;
+    double P24 = w3*a1 + b1 - w1*c1 + t2;
+
+    double P31 = -w2*r1 + w1*r4 + r7;
+    double P32 = -w2*r2 + w1*r5 + r8;
+    double P33 = -w2*r3 + w1*r6 + r9;
+    double P34 = -w2*a1 + w1*b1 + c1 + t3;
+
+    _jacobianOplusXi(0,0) = (-1.0)*(-r7*P24 -c1*P21 + r4*P34 + P31*b1);
+    _jacobianOplusXi(0,1) = (-1.0)*(r7*P14 + P11*c1 -r1*P34 - a1*P31);
+    _jacobianOplusXi(0,2) = (-1.0)*(-r4*P14 - b1*P11 + r1*P24 + P21*a1);
+    _jacobianOplusXi(0,3) = -P11;
+    _jacobianOplusXi(0,4) = -P21;
+    _jacobianOplusXi(0,5) = -P31;
+
+    _jacobianOplusXi(1,0) = (-1.0)*(-r8*P24 - c1*P22 + r5*P34 + P32*b1);
+    _jacobianOplusXi(1,1) = (-1.0)*(r8*P14 + P12*c1 -r2*P34 - a1*P32);
+    _jacobianOplusXi(1,2) = (-1.0)*(-r5*P14 - P12*b1 + r2*P24 + P22*a1);
+    _jacobianOplusXi(1,3) = -P12;
+    _jacobianOplusXi(1,4) = -P22;
+    _jacobianOplusXi(1,5) = -P32;
+
+    _jacobianOplusXi(2,0) = (-1.0)*(-r9*P24 - P23*c1 + r6*P34 + P33*b1);
+    _jacobianOplusXi(2,1) = (-1.0)*(r9*P14 + P13*c1 - r3*P34 - a1*P33);
+    _jacobianOplusXi(2,2) = (-1.0)*(-r6*P14 - b1*P13 + r3*P24 + P23*a1);
+    _jacobianOplusXi(2,3) = -P13;
+    _jacobianOplusXi(2,4) = -P23;
+    _jacobianOplusXi(2,5) = -P33;
+
+    // compute jacobian of camera 2 pose
+    R1 = T2.rotation().toRotationMatrix();
+    translation1 = T2.translation();
+
+    r1 = R1(0,0); r2 = R1(0,1); r3 = R1(0,2);
+    r4 = R1(1,0); r5 = R1(1,1); r6 = R1(1,2);
+    r7 = R1(2,0); r8 = R1(2,1); r9 = R1(2,2);
+    a1 = translation1(0); b1 = translation1(1); c1 = translation1(2);
+
+    w1 = w2 = w3 = t1 = t2 = t3 = 0;
+    P11 = r1 - w3*r4 + w2*r7;
+    P12 = r2 - w3*r5 + w2*r8;
+    P13 = r3 - w3*r6 + w2*r9;
+    P14 = a1 - w3*b1 + w2*c1 + t1;
+
+    P21 = w3*r1 + r4 - w1*r7;
+    P22 = w3*r2 + r5 - w1*r8;
+    P23 = w3*r3 + r6 - w1*r9;
+    P24 = w3*a1 + b1 - w1*c1 + t2;
+
+    P31 = -w2*r1 + w1*r4 + r7;
+    P32 = -w2*r2 + w1*r5 + r8;
+    P33 = -w2*r3 + w1*r6 + r9;
+    P34 = -w2*a1 + w1*b1 + c1 + t3;
+
+    _jacobianOplusXj(0,0) = (-r7*P24 -c1*P21 + r4*P34 + P31*b1);
+    _jacobianOplusXj(0,1) = (r7*P14 + P11*c1 -r1*P34 - a1*P31);
+    _jacobianOplusXj(0,2) = (-r4*P14 - b1*P11 + r1*P24 + P21*a1);
+    _jacobianOplusXj(0,3) = P11;
+    _jacobianOplusXj(0,4) = P21;
+    _jacobianOplusXj(0,5) = P31;
+
+    _jacobianOplusXj(1,0) = (-r8*P24 - c1*P22 + r5*P34 + P32*b1);
+    _jacobianOplusXj(1,1) = (r8*P14 + P12*c1 -r2*P34 - a1*P32);
+    _jacobianOplusXj(1,2) = (-r5*P14 - P12*b1 + r2*P24 + P22*a1);
+    _jacobianOplusXj(1,3) = P12;
+    _jacobianOplusXj(1,4) = P22;
+    _jacobianOplusXj(1,5) = P32;
+
+    _jacobianOplusXj(2,0) = (-r9*P24 - P23*c1 + r6*P34 + P33*b1);
+    _jacobianOplusXj(2,1) = (r9*P14 + P13*c1 - r3*P34 - a1*P33);
+    _jacobianOplusXj(2,2) = (-r6*P14 - b1*P13 + r3*P24 + P23*a1);
+    _jacobianOplusXj(2,3) = P13;
+    _jacobianOplusXj(2,4) = P23;
+    _jacobianOplusXj(2,5) = P33;
 }
 
 

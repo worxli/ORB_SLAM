@@ -27,6 +27,9 @@ namespace ORB_SLAM
 
 long unsigned int KeyFrame::nNextId=0;
 
+KeyFrame::KeyFrame() {
+}
+
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mfGridElementWidthInv(F.mfGridElementWidthInv),
     mfGridElementHeightInv(F.mfGridElementHeightInv), mnTrackReferenceForFrame(0),mnBALocalForKF(0), mnBAFixedForKF(0),
