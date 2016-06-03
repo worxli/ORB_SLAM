@@ -1023,6 +1023,29 @@ int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nIn;
 }
 
+/*INSTRUCTIONS FOR SETUP OF TEST BA
+ *
+ * In function LocalBundleAdjustment:
+ * 1) Replace (where Local Keyframe Vertices are set)
+ *      vSE3->setFixed(pKFi->mnId==0)
+ *    with:
+ *      if(pKFi->mnId < 1002) { // fix first two keyframes
+ *          vSE3->setFixed(true);
+ *      }
+ *
+ * 2) Comment (where Map Point vertices are set)
+ *      vPoint->setMarginalized(true);
+ *
+ * 3) Comment (where optimized data is recovered)
+ *      pMP->UpdateNormalandDepth();
+ *
+ * 4) Comment the rest:
+ *      inlier & outlier & second optimization
+ *
+ * 5) To get debug print statements (just before optimizer.optimize)
+ *      optimizer.setVerbose(true);
+ *
+ **/
 void Optimizer::TestLocalBundleAdjustment()
 {
     // Define config parameters
