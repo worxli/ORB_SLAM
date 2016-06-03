@@ -140,6 +140,7 @@ public:
     void SetCalibrationMatrix(cv::Mat K);
     void TestAddMapPoint(MapPoint *pMP);
     void TestAddKeyPointUn(cv::KeyPoint &kpt);
+    void inline SetmbBad(const bool& b) { mbBad = b; return; };
 
 public:
     static long unsigned int nNextId;

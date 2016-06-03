@@ -75,7 +75,10 @@ public:
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
 
-public:
+    // Testing
+    void inline SetmbBad(const bool& b) { mbBad = b; return; };
+
+ public:
     long unsigned int mnId;
     static long unsigned int nNextId;
     long int mnFirstKFid;
