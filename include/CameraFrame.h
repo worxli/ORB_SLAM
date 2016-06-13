@@ -41,7 +41,7 @@ class CameraFrame
 public:
     CameraFrame();
     CameraFrame(const CameraFrame &frame);
-    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat* mapX, cv::Mat* mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractor;
@@ -60,10 +60,10 @@ public:
 
     // Calibration Matrix and k1,k2,p1,p2 Distortion Parameters
     cv::Mat mK;
-    static float fx;
-    static float fy;
-    static float cx;
-    static float cy;
+    float fx;
+    float fy;
+    float cx;
+    float cy;
     cv::Mat mDistCoef;
 
     cv::Mat mR;
@@ -73,11 +73,14 @@ public:
     float mXi;
 
     // Maps for lense undistortion
-    cv::Mat mmapX;
-    cv::Mat mmapY;
+    cv::Mat* mmapX;
+    cv::Mat* mmapY;
 
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;
+
+    // Flag to identify outlier associations
+    std::vector<bool> mvbOutlier;
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints
     float mfGridElementWidthInv;
@@ -93,12 +96,12 @@ public:
     vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
     // Undistorted Image Bounds (computed once)
-    static int mnMinX;
-    static int mnMaxX;
-    static int mnMinY;
-    static int mnMaxY;
+    int mnMinX;
+    int mnMaxX;
+    int mnMinY;
+    int mnMaxY;
 
-    static bool mbInitialComputations;
+    bool mbInitialComputations;
 
     cv::Mat mOw;
     cv::Mat mRcw;
@@ -106,6 +109,7 @@ public:
 
     // Scale Pyramid Info
     int mnScaleLevels;
+    float mfScaleFactor;
     vector<float> mvScaleFactors;
     vector<float> mvLevelSigma2;
     vector<float> mvInvLevelSigma2;

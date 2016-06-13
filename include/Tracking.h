@@ -85,9 +85,9 @@ public:
 
     // Initialization Variables
     std::vector<int> mvIniLastMatches;
-    std::vector<int> mvIniMatches;
-    std::vector<cv::Point2f> mvbPrevMatched;
-    std::vector<cv::Point3f> mvIniP3D;
+    vector<vector<int> > mvIniMatches;
+    vector<vector<cv::Point2f> > mvbPrevMatched;
+    vector<vector<cv::Point3f> > mvIniP3D;
     Frame mInitialFrame;
 
 
@@ -101,7 +101,7 @@ protected:
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
-    void ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2, const cv::Mat& img1, cv::Mat* img);
+    void ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2, const cv::Mat& img1, cv::Mat& img);
 
     void FirstInitialization();
     void Initialize();
@@ -124,7 +124,6 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
-
 
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;

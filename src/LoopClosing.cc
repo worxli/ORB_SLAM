@@ -63,6 +63,7 @@ void LoopClosing::Run()
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
         {
+            cout << "loop closing" << endl;
             // Detect loop candidates and check covisibility consistency
             if(DetectLoop())
             {

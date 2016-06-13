@@ -43,6 +43,7 @@ namespace ORB_SLAM {
     public:
         Frame();
         Frame(const Frame &frame);
+        Frame(const Frame &frame, int i);
         Frame(vector <CameraFrame> cameraFrames, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc);
 
         // Camera
@@ -80,7 +81,7 @@ namespace ORB_SLAM {
         // Check if a MapPoint is in the frustum of the camera and also fills variables of the MapPoint to be used by the tracking
         bool isInFrustum(MapPoint *pMP, float viewingCosLimit);
 
-        vector <size_t> GetFeaturesInArea(const float &x, const float &y, const float &r, const int minLevel = -1,
+        vector <size_t> GetFeaturesInArea(const float &x, const float &y, const float &r, int camera, const int minLevel = -1,
                                           const int maxLevel = -1) const;
 
         // Scale Pyramid Info

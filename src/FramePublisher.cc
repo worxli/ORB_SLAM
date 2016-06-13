@@ -20,6 +20,7 @@
 
 #include "FramePublisher.h"
 #include "Tracking.h"
+#include "../include/FramePublisher.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -189,17 +190,17 @@ void FramePublisher::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 
 void FramePublisher::Update(Tracking *pTracker)
 {
+    int camera = 0;
     boost::mutex::scoped_lock lock(mMutex);
-    // TODO
-    pTracker->mCurrentFrame.cameraFrames[0].im.copyTo(mIm);
-    mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[0].mvKeys;
+    pTracker->mCurrentFrame.cameraFrames[camera].im.copyTo(mIm);
+    mvCurrentKeys=pTracker->mCurrentFrame.cameraFrames[camera].mvKeys;
     mvpMatchedMapPoints=pTracker->mCurrentFrame.mvpMapPoints;
     mvbOutliers = pTracker->mCurrentFrame.mvbOutlier;
 
     if(pTracker->mLastProcessedState==Tracking::INITIALIZING)
     {
-        mvIniKeys=pTracker->mInitialFrame.cameraFrames[0].mvKeys;
-        mvIniMatches=pTracker->mvIniMatches;
+        mvIniKeys=pTracker->mInitialFrame.cameraFrames[camera].mvKeys;
+        mvIniMatches=pTracker->mvIniMatches[camera];
     }
     mState=static_cast<int>(pTracker->mLastProcessedState);
 
