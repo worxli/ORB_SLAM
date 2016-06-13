@@ -34,8 +34,8 @@ CameraFrame::CameraFrame()
 //Copy Constructor
 CameraFrame::CameraFrame(const CameraFrame &frame)
     :im(frame.im.clone()), mK(frame.mK.clone()), mR(frame.mR.clone()), mt(frame.mt.clone()),
-     mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX.clone()),
-     mmapY(frame.mmapY.clone()), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
+     mDistCoef(frame.mDistCoef.clone()), mXi(frame.mXi), mmapX(frame.mmapX),
+     mmapY(frame.mmapY), N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mDescriptors(frame.mDescriptors.clone()),
      pluckerLines(frame.pluckerLines),vBearings(frame.vBearings),
      mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
@@ -47,9 +47,9 @@ CameraFrame::CameraFrame(const CameraFrame &frame)
             mGrid[i][j]=frame.mGrid[i][j];
 }
 
-CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc)
+CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat* mapX, cv::Mat* mapY, ORBextractor* extractor, ORBVocabulary* voc)
     :im(im_), mK(K.clone()),mDistCoef(distCoef.clone()), mR(R.clone()), mt(t.clone()),mpORBvocabulary(voc),mpORBextractor(extractor),
-    mXi(xi), mmapX(mapX.clone()), mmapY(mapY.clone())
+    mXi(xi), mmapX(mapX), mmapY(mapY)
 {
     // Exctract ORB
     (*mpORBextractor)(im,cv::Mat(),mvKeys,mDescriptors);
@@ -280,8 +280,8 @@ void CameraFrame::UndistortKeyPoints()
     cv::Mat mat(mvKeys.size(),2,CV_32F);
     for(unsigned int i=0; i<mvKeys.size(); i++)
     {
-        mat.at<float>(i,0)= mmapX.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
-        mat.at<float>(i,1)= mmapY.at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
+        mat.at<float>(i,0)= mmapX->at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
+        mat.at<float>(i,1)= mmapY->at<float>(mvKeys[i].pt.y, mvKeys[i].pt.x);
     }
 
     // Undistort points
@@ -406,8 +406,8 @@ void CameraFrame::ComputeImageBounds()
 
         Eigen::Vector3d empty;
         for (int i = 0; i < mat.rows; ++i) {
-            mat.at<float>(i,0)= mmapX.at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
-            mat.at<float>(i,1)= mmapY.at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
+            mat.at<float>(i,0)= mmapX->at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
+            mat.at<float>(i,1)= mmapY->at<float>(mat.at<float>(i,1), mat.at<float>(i,0));
         }
 
         // Undistort corners

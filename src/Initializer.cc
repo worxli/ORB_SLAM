@@ -258,6 +258,9 @@ bool Initializer::CheckRelativePose(const cv::Mat &R, const cv::Mat &t, vector<v
     vP3D.clear();
     vP3D.resize(cameras);
 
+    cout << "R " << R << endl;
+    cout << "t " << t << endl;
+
     for(uint i = 0; i<cameras; i++) {
         float parallaxi;
         vector<cv::Point3f> mvP3Di;
@@ -382,7 +385,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 //    Tbc.rowRange(0,3).col(3).copyTo(P1.rowRange(0,3).col(3));
     P1 = Kproj*Tbc*Twb1;
 
-    cv::Mat O1 = tcb;
+    cv::Mat O1 = cv::Mat::zeros(3,1,CV_32F);
+//    cv::Mat O1 = tcb;
 //    cv::Mat O1 = -Tcw1.rowRange(0,3).colRange(0,3).t()*Tcw1.rowRange(0,3).col(3);
 
 //    cout << "-----------------------------------------" << endl;
@@ -420,9 +424,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
     P2 = Kproj*Tbc*Twb2;
 
-    cv::Mat O2 = Rbw2.t()*tcb-Rbw2.t()*tbw2;
-//    cv::Mat O2 = -Rcw2.t()*tcw2;
-//    cv::Mat O2 = -Tcw2.rowRange(0,3).colRange(0,3).t()*Tcw2.rowRange(0,3).col(3);
+    cv::Mat O2 = cv::Mat::zeros(3,1,CV_32F);
+//    cv::Mat O2 = Rbw2.t()*tcb-Rbw2.t()*tbw2;
 
 //    cout << "camera center 2 " << O2 << endl;
 
@@ -474,26 +477,25 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 //        cout << "bearing" << mvBearings1[camera][vMatches12[i].second] << endl;
 
         // Check parallax
-        cv::Mat normal1 = p3dC1.rowRange(0,3) - O1;
+        cv::Mat _p3dC1 = Tbc*p3dC1;
+        cv::Mat normal1 = _p3dC1.rowRange(0,3) - O1;
         float dist1 = cv::norm(normal1);
-        cv::Mat normal2 = p3dC1.rowRange(0,3) - O2;
+//        cout << _p3dC1 << " " << normal1 << " " << dist1 << endl;
+        cv::Mat _p3dC2 = Twc2*p3dC1;
+        cv::Mat normal2 = _p3dC2.rowRange(0,3) - O2;
         float dist2 = cv::norm(normal2);
+//        cout << _p3dC2 << " " << normal2 << " " << dist2 << endl;
 
         float cosParallax = normal1.dot(normal2)/(dist1*dist2);
+//        cout << "parallax " << cosParallax << endl;
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-        if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
+        if(_p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
             continue;
+
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
-//        cv::Mat p3dC2 = Rcw2*p3dC1+tcw2;
-
-        // inverse transformation bc [R,t] is b->w
-//        cv::Mat p3dC2 = R.t()*p3dC1-R.t()*t;
-
-//        cv::hconcat(p3dC1, cv::Mat::ones(1, 1, CV_32F), p3dC1);
-
         cv::Mat p3dC2world = Twb2*p3dC1;
-        if(p3dC2world.at<float>(2)<=0 && cosParallax<0.99998)
+        if(_p3dC2.at<float>(2)<=0 && cosParallax<0.99998)
             continue;
 
         // directly transform to camera coordinate system
@@ -535,11 +537,11 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
         nGood++;
 
-        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
-        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
-        cout << "error 1: " << squareError1 << endl;
-        cout << "error 2: " << squareError2 << endl;
-        cout << "p3dC1 " << p3dC1 << endl;
+//        cout << "kp1 " << kp1.pt.x << "," << kp1.pt.y << endl;
+//        cout << "kp2 " << kp2.pt.x << "," << kp2.pt.y << endl;
+//        cout << "error 1: " << squareError1 << endl;
+//        cout << "error 2: " << squareError2 << endl;
+//        cout << "p3dC1 " << p3dC1 << endl;
 
         if(cosParallax<0.99998) {
             vbGood[vMatches12[i].first]=true;

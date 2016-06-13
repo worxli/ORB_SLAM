@@ -327,6 +327,7 @@ void Tracking::undistort(const Eigen::Vector2d& p, Eigen::Vector2d& p_u, int cam
 
 void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 {
+    cout << "grab image" << endl;
     cv::Mat im;
 
     // Copy the ros image message to cv::Mat. Convert to grayscale if it is a color image.
@@ -379,38 +380,48 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
             Tracking::initUndistortMap(mmapX[i], mmapY[i], i);
 
             // TODO
-//            // Create files for each map
-//            std::string PathX = ros::package::getPath("ORB_SLAM") + "/Data/MapX[" + boost::lexical_cast<std::string>(i) + "].yaml";
-//            std::string PathY = ros::package::getPath("ORB_SLAM") + "/Data/MapY[" + boost::lexical_cast<std::string>(i) + "].yaml";
-//
-//            cv::FileStorage fileX(PathX, cv::FileStorage::WRITE);
-//            cv::FileStorage fileY(PathY, cv::FileStorage::WRITE);
-//
-//            // Write to file!
-//            fileX << "mapX" << mmapX[i];
-//            fileY << "mapY" << mmapY[i];
-//
-//            // Compute/Remap new image
-//            cv::Mat img_new = cv::Mat::zeros(3*imgs[i].rows, 3*imgs[i].cols, imgs[i].type());
-//            ConvertUndistImgFromMaps(mmapX[i], mmapY[i], imgs[i], img_new);
-//
-//            std::string PathNew = ros::package::getPath("ORB_SLAM") + "/Data/" + boost::lexical_cast<std::string>(i) + ".bmp";
-//            cv::imwrite(PathNew, img_new);
+            /*
+            // Create files for each map
+            std::string PathX = ros::package::getPath("ORB_SLAM") + "/Data/MapX[" + boost::lexical_cast<std::string>(i) + "].yaml";
+            std::string PathY = ros::package::getPath("ORB_SLAM") + "/Data/MapY[" + boost::lexical_cast<std::string>(i) + "].yaml";
+
+            cv::FileStorage fileX(PathX, cv::FileStorage::WRITE);
+            cv::FileStorage fileY(PathY, cv::FileStorage::WRITE);
+
+            // Write to file!
+            fileX << "mapX" << mmapX[i];
+            fileY << "mapY" << mmapY[i];
+
+            // Compute/Remap new image
+            cv::Mat img_new = cv::Mat::zeros(3*imgs[i].rows, 3*imgs[i].cols, imgs[i].type());
+            ConvertUndistImgFromMaps(mmapX[i], mmapY[i], imgs[i], img_new);
+
+            std::string PathNew = ros::package::getPath("ORB_SLAM") + "/Data/" + boost::lexical_cast<std::string>(i) + ".bmp";
+            cv::imwrite(PathNew, img_new);
+             */
         }
     }
 
     vector<CameraFrame> cameraFrames;
 
+    cout << mState << endl;
+    cout << "check1" << endl;
     if(mState==WORKING || mState==LOST) {
+        cout << "working or lost " << endl;
         for(int i=start; i<end; i++) {
-            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpORBextractor, mpORBVocabulary);
+            cv::Mat * px = &mmapX[i];
+            cv::Mat * py = &mmapY[i];
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], px, py, mpORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "working or lost frame pushed" << endl;
 	    mCurrentFrame =	Frame(cameraFrames, cv_ptr->header.stamp.toSec(), mpORBextractor, mpORBVocabulary);
     } else {
+        cout << "else" << endl;
         for(int i=start; i<end; i++) {
-            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], mmapX[i], mmapY[i], mpIniORBextractor, mpORBVocabulary);
+            cv::Mat * px = &mmapX[i];
+            cv::Mat * py = &mmapY[i];
+            CameraFrame cameraFrame = CameraFrame(imgs[i], mK[i], mDistCoef[i], mR[i], mT[i], mXi[i], px, py, mpIniORBextractor, mpORBVocabulary);
             cameraFrames.push_back(cameraFrame);
         }
         cout << "Init frame pushed" << endl;
@@ -514,24 +525,27 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         }
 
         mLastFrame = Frame(mCurrentFrame);
-     }       
+     }
 
     // Update drawer
     mpFramePublisher->Update(this);
 
-    if(!mCurrentFrame.mTcw.empty())
-    {
-        cv::Mat Rwc = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3).t();
-        cv::Mat twc = -Rwc*mCurrentFrame.mTcw.rowRange(0,3).col(3);
-        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
-                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
-                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
-        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
-
-        tf::Transform tfTcw(M,V);
-
-        mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
-    }
+//    if(!mCurrentFrame.mTcw.empty())
+//    {
+//        cv::Mat Rwc = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3).t();
+//        cout << Rwc << endl;
+//        cv::Mat twc = -Rwc*mCurrentFrame.mTcw.rowRange(0,3).col(3);
+//        cout << twc << endl;
+//        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+//                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+//                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+//        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+//
+//        tf::Transform tfTcw(M,V);
+//
+//        //mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera")); //TODO
+//    }
+    cout << "end round" << endl;
 }
 
 void Tracking::ConvertUndistImgFromMaps (const cv::Mat& map1, const cv::Mat& map2,
@@ -642,7 +656,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     Rcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3));
     tcw.copyTo(mCurrentFrame.mTcw.rowRange(0,3).col(3));
 
-    mCurrentFrame.mTcw = mCurrentFrame.mTcw.inv();
+//    mCurrentFrame.mTcw = mCurrentFrame.mTcw.inv();
 
     // Create KeyFrames
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
@@ -705,7 +719,7 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     cout << "median " << medianDepth << endl;
 
 //    if(medianDepth<0 || pKFcur->TrackedMapPoints()<100)
-    if(medianDepth<0 || pKFcur->TrackedMapPoints()<20)
+    if(pKFcur->TrackedMapPoints()<40)
     {
         ROS_INFO("Wrong initialization, reseting...");
         Reset();
@@ -735,14 +749,12 @@ void Tracking::CreateInitialMap(cv::Mat &Rcw, cv::Mat &tcw)
     mLastFrame = Frame(mCurrentFrame);
     mnLastKeyFrameId=mCurrentFrame.mnId;
     mpLastKeyFrame = pKFcur;
-
     mvpLocalKeyFrames.push_back(pKFcur);
     mvpLocalKeyFrames.push_back(pKFini);
     mvpLocalMapPoints=mpMap->GetAllMapPoints();
     mpReferenceKF = pKFcur;
 
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
     mpMapPublisher->SetCurrentCameraPose(pKFcur->GetPose());
 
     mState=WORKING;
