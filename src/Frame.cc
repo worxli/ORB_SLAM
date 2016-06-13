@@ -34,12 +34,14 @@ namespace ORB_SLAM {
             : mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor), mTimeStamp(frame.mTimeStamp),
               cameraFrames(frame.cameraFrames), mnId(frame.mnId),
               mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
-              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier),
+              mvpMapPoints(frame.mvpMapPoints),
               mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels), mfScaleFactor(frame.mfScaleFactor),
               mvScaleFactors(frame.mvScaleFactors), mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
     {
-        if (!frame.mTcw.empty())
+        if (!frame.mTcw.empty()) {
             mTcw = frame.mTcw.clone();
+        }
+
     }
 
     Frame::Frame(vector <CameraFrame> cameraFrames, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc)

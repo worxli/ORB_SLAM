@@ -41,7 +41,7 @@ class CameraFrame
 public:
     CameraFrame();
     CameraFrame(const CameraFrame &frame);
-    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat &mapX, cv::Mat &mapY, ORBextractor* extractor, ORBVocabulary* voc);
+    CameraFrame(cv::Mat &im, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R, cv::Mat &t, float &xi, cv::Mat* mapX, cv::Mat* mapY, ORBextractor* extractor, ORBVocabulary* voc);
 
     ORBVocabulary* mpORBvocabulary;
     ORBextractor* mpORBextractor;
@@ -73,8 +73,8 @@ public:
     float mXi;
 
     // Maps for lense undistortion
-    cv::Mat mmapX;
-    cv::Mat mmapY;
+    cv::Mat* mmapX;
+    cv::Mat* mmapY;
 
     // ORB descriptor, each row associated to a keypoint
     cv::Mat mDescriptors;

@@ -43,6 +43,7 @@ namespace ORB_SLAM {
     public:
         Frame();
         Frame(const Frame &frame);
+        Frame(const Frame &frame, int i);
         Frame(vector <CameraFrame> cameraFrames, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc);
 
         // Camera

@@ -47,12 +47,15 @@ void LocalMapping::SetTracker(Tracking *pTracker)
 void LocalMapping::Run()
 {
 
+    cout << "local mapping" << endl;
+
     ros::Rate r(500);
     while(ros::ok())
     {
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
-        {            
+        {
+            cout << "new keyframe" << endl;
             // Tracking will see that Local Mapping is busy
             SetAcceptKeyFrames(false);
 

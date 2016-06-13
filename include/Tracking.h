@@ -125,7 +125,6 @@ protected:
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
 
-
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;
     LoopClosing* mpLoopClosing;
