@@ -2,14 +2,18 @@
 
 ## Run the code
 Follow the instructions below on how to setup ORB SLAM. Then for running the code use:
+
 	roslaunch ExampleGroovyOrNewer.launch
+	
 and 
+
 	rosbag play --pause Data/fisheye.bag
 	
 @Marius, chömr irgendwie de BAG ihne geh?
 
 ## Our changes
 ### General
+
 We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection.
 
 ### Fisheye camera model
@@ -119,6 +123,15 @@ It only depends on OpenCV, but it should be included in the ROS distribution.
 		make  
 
 	*Tip: Set your favorite compilation flags in line 4 and 5 of* `Thirdparty/DBoW2/CMakeLists.txt` (by default -03 -march=native)
+
+5.1 Build OpenGV. Go into Thirdparty/:
+
+Clone the OpenGV repository and build it:
+
+		mkdir build
+		cd build
+		cmake ..
+		make	
 
 6. Build ORB_SLAM. In the ORB_SLAM root execute:
 
