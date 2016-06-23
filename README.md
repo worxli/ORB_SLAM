@@ -10,7 +10,7 @@ and
 
 ## Our changes
 ### General
-We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction.
+We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection.
 
 ### Fisheye camera model
 
