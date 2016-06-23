@@ -9,6 +9,9 @@ and
 @Marius, chömr irgendwie de BAG ihne geh?
 
 ## Our changes
+### General
+We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction.
+
 ### Fisheye camera model
 
 ### 2D2D Matching
