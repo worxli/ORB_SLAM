@@ -28,7 +28,7 @@ In the Initializer.cc we implemented our own motion estimation using OpenGV in I
 ### Bundle Adjustment
 
 ### 3D2D Relocalization
-PnPSolver.cc
+In PnPSolver.cc we the non-central absolute pose estimation using OpenGV's GPNP. Unfortunately we weren't able to test it on real data. 
 
 # ORB_SLAM
 
