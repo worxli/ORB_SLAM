@@ -2,9 +2,20 @@
 
 ## Run the code
 Follow the instructions below on how to setup ORB SLAM. Then for running the code use:
-roslaunch ExampleGroovyOrNewer.launch
+	roslaunch ExampleGroovyOrNewer.launch
 and 
-rosbag play --pause Data/fisheye_merged.bag
+	rosbag play --pause Data/fisheye.bag
+	
+@Marius, chömr irgendwie de BAG ihne geh?
+
+## Our changes
+### 2D2D Matching
+Tracking.cc and Initializer.cc
+
+### Bundle Adjustment
+
+### 3D2D Relocalization
+PnPSolver.cc
 
 # ORB_SLAM
 
