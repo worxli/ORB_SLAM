@@ -23,7 +23,7 @@ In Tracking.cc GrabImage() was modified to create CameraFrame objects for every 
 FirstInitialization() has been updated to use all cameras.
 Initialize uses the ORBMatching to match features within each image/camera.
 
-In the Initializer.cc we implemented our own motion estimation using OpenGV in Initialize(). There we tried different algorithms like SIXPT or SEVENTEENPT with varying RANSAC params. Further we implemented CheckRelativePose() and CheckRT() to check the motion estimation output.
+In the Initializer.cc we implemented our own motion estimation using OpenGV in Initialize(). There we tried different algorithms like SIXPT or SEVENTEENPT with varying RANSAC params. Further we implemented CheckRelativePose() and CheckRT() to check the motion estimation output. And we implemented a new triangulation method for our non-central camera configuration.
 
 ### Bundle Adjustment
 
