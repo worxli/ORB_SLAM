@@ -13,7 +13,7 @@ and
 
 ## Our changes
 ### General
-
+We added OpenGV as an additional library.
 We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection.
 
 ### Fisheye camera model
@@ -23,7 +23,7 @@ In Tracking.cc GrabImage() was modified to create CameraFrame objects for every 
 FirstInitialization() has been updated to use all cameras.
 Initialize uses the ORBMatching to match features within each image/camera.
 
-and Initializer.cc
+In the Initializer.cc we implemented our own motion estimation using OpenGV in Initialize(). There we tried different algorithms like SIXPT or SEVENTEENPT with varying RANSAC params. Further we implemented CheckRelativePose() and CheckRT() to check the motion estimation output.
 
 ### Bundle Adjustment
 
