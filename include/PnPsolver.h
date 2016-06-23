@@ -168,6 +168,13 @@ class PnPsolver {
   // Max square error associated with scale level. Max error = th*th*sigma(level)*sigma(level)
   vector<float> mvMaxError;
 
+  // generalized camera
+  opengv::bearingVectors_t bearingVectors;
+  opengv::points_t points;
+  std::vector<int> camCorrespondences;
+  opengv::rotations_t camRotations;
+  opengv::translations_t camOffsets;
+
 };
 
 } //namespace ORB_SLAM

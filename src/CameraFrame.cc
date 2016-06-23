@@ -395,7 +395,7 @@ void CameraFrame::KeyfeatureBearings()
 		Eigen::Vector2d p_in;
 		Eigen::Vector3d bearing;
 		Eigen::Vector2d p_temp;
-		Eigen::Vector3d bearing, bearing2;
+		Eigen::Vector3d bearing2;
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
