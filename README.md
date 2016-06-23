@@ -14,8 +14,12 @@ We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate
 
 ### Fisheye camera model
 
-### 2D2D Matching
-Tracking.cc and Initializer.cc
+### 2D2D Motion Estimation
+In Tracking.cc GrabImage() was modified to create CameraFrame objects for every image which are then passed into a Frame object.
+FirstInitialization() has been updated to use all cameras.
+Initialize uses the ORBMatching to match features within each image/camera.
+
+and Initializer.cc
 
 ### Bundle Adjustment
 
