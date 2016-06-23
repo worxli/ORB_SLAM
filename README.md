@@ -1,4 +1,9 @@
+# 3D Vision
+
+## Run the code
+Follow the instructions below on how to setup ORB SLAM. Then for running the code use:
 roslaunch ExampleGroovyOrNewer.launch
+and 
 rosbag play --pause Data/fisheye_merged.bag
 
 # ORB_SLAM
