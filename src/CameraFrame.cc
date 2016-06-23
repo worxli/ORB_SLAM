@@ -109,7 +109,7 @@ CameraFrame::CameraFrame(cv::Mat &im_, cv::Mat &K, cv::Mat &distCoef, cv::Mat &R
 
     }
 
-    mvbOutlier = vector<bool>(N,false);
+    //mvbOutlier = vector<bool>(N,false);
 }
 
 bool CameraFrame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
@@ -365,14 +365,37 @@ void CameraFrame::LiftToSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P)
     }
 }
 
+void CameraFrame::PluckerLine()
+{
+	for(unsigned int i=0; i<mvKeys.size(); i++)
+	{
+		Eigen::Vector2d p_in;
+
+		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
+		Eigen::Vector3d P;
+		Eigen::Matrix3d R;
+		Eigen::Vector3d t;
+		cv::cv2eigen(mR,R);
+		cv::cv2eigen(mt,t);
+		LiftToSphere(p_in, P);
+		std::vector<Eigen::Vector3d> pluckerLine;
+		Eigen::Vector3d q = R.inverse()*(P-t);
+		q.normalize();
+		pluckerLine.push_back(q);
+		pluckerLine.push_back(pluckerLine[0].cross(-1*R.inverse()*t));
+		pluckerLines.push_back(pluckerLine);
+	}
+}
+
 void CameraFrame::KeyfeatureBearings()
 {
     cout << "first" << endl;
 	for(unsigned int i=0; i<mvKeys.size(); i++)
 	{
 		Eigen::Vector2d p_in;
+		Eigen::Vector3d bearing;
 		Eigen::Vector2d p_temp;
-		Eigen::Vector3d bearing, bearing2;
+		Eigen::Vector3d bearing2;
 
 		p_in << mvKeys[i].pt.x, mvKeys[i].pt.y;
 
@@ -386,8 +409,6 @@ void CameraFrame::KeyfeatureBearings()
 //        cout << bearing2 << endl;
 		vBearings.push_back(bearing2);
 	}
-
-
 }
 
 void CameraFrame::ComputeImageBounds()

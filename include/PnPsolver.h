@@ -25,6 +25,7 @@
 #include <opencv/cv.h>
 #include "MapPoint.h"
 #include "Frame.h"
+#include <opengv/types.hpp>
 
 namespace ORB_SLAM
 {
@@ -35,16 +36,16 @@ class PnPsolver {
 
   ~PnPsolver();
 
-  void SetRansacParameters(double probability = 0.99, int minInliers = 8 , int maxIterations = 300, int minSet = 4, float epsilon = 0.4,
-                           float th2 = 5.991);
+//  void SetRansacParameters(double probability = 0.99, int minInliers = 8 , int maxIterations = 300, int minSet = 4, float epsilon = 0.4,
+//                           float th2 = 5.991);
+//
+//  cv::Mat find(vector<bool> &vbInliers, int &nInliers);
+//
+//  cv::Mat iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers);
 
-  cv::Mat find(vector<bool> &vbInliers, int &nInliers);
-
-  cv::Mat iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers);
+  cv::Mat gpnp();
 
  private:
-
-  void gpnp();
 
   void CheckInliers();
   bool Refine();
@@ -109,6 +110,9 @@ class PnPsolver {
 
   vector<MapPoint*> mvpMapPointMatches;
 
+  // vectors for key features
+  opengv::bearingVectors_t vBearings;
+
   // 2D Points
   vector<cv::Point2f> mvP2D;
   vector<float> mvSigma2;
@@ -163,6 +167,13 @@ class PnPsolver {
 
   // Max square error associated with scale level. Max error = th*th*sigma(level)*sigma(level)
   vector<float> mvMaxError;
+
+  // generalized camera
+  opengv::bearingVectors_t bearingVectors;
+  opengv::points_t points;
+  std::vector<int> camCorrespondences;
+  opengv::rotations_t camRotations;
+  opengv::translations_t camOffsets;
 
 };
 
