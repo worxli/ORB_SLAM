@@ -310,8 +310,6 @@ void LocalMapping::CreateNewMapPoints()
 
                 /////////////////////////////// Plucker line triangulation /////////////////////////////
 //
-//                // TODO Test and Reprojection to camera frame not keyframe
-//                // TODO Not in use yet
 //                // Retrieve Plucker lines of matched keypoints
 //                std::vector<Eigen::Vector3d> matched_plucker_line1 = mpCurrentKeyFrame->cameraFrames[j].pluckerLines[idx1];
 //                std::vector<Eigen::Vector3d> matched_plucker_line2 = pKF2->cameraFrames[j].pluckerLines[idx2];

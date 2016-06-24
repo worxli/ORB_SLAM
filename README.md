@@ -9,7 +9,7 @@ and
 
 	rosbag play --pause Data/fisheye.bag
 	
-@Marius, chömr irgendwie de BAG ihne geh?
+All the changes can be found in the branch "readme" (https://github.com/worxli/ORB_SLAM/tree/readme). The implementations of the test functions for the Bundle Adjustment can be found in the branches "BA" (https://github.com/worxli/ORB_SLAM/tree/BA) and "BAMonocularTest" (https://github.com/worxli/ORB_SLAM/tree/BAMonocularTest).
 
 ## Our changes
 ### General
@@ -17,6 +17,7 @@ We added OpenGV as an additional library.
 We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection.
 
 ### Fisheye camera model
+In Tracking.cc we implemented the functions initUndistortMap(), undistort() and ConvertUndistImgFromMap(). Those function serve the purpose to undistort an image from a fisheye camera. InitUndistortMap() undistorts the image and saves the correspondes of distorted-undistorted pixel in maps. It uses the function undistort() to adjust for radial and tangential distortion. The function ConvertUndistImgFromMap() is for visualization purpose. It converts the created maps in InitUndistortMap() to a new image.
 
 ### 2D2D Motion Estimation
 In Tracking.cc GrabImage() was modified to create CameraFrame objects for every image which are then passed into a Frame object.
@@ -26,6 +27,12 @@ Initialize uses the ORBMatching to match features within each image/camera.
 In the Initializer.cc we implemented our own motion estimation using OpenGV in Initialize(). There we tried different algorithms like SIXPT or SEVENTEENPT with varying RANSAC params. Further we implemented CheckRelativePose() and CheckRT() to check the motion estimation output. And we implemented a new triangulation method for our non-central camera configuration.
 
 ### Bundle Adjustment
+Please go to branch "BA" (https://github.com/worxli/ORB_SLAM/tree/BA) to see the necessary changes for the BundleAdjustment.
+For the Bundle Adjustment (Optimizer.cc) we have made the necessary changes in BundleAdjustment(), LocalBundleAdjustment() and PoseOptimisation(). For this we needed to implement a new optimisation method to take into account the constraints between the cameras and the baseframe. Those new way how to set up the optimisation graph is implemented in the Thirdparty module g2o (types_six_dof_expmap.h in EdgeSE3GProjectXYZ()).
+Furthermore, for verifying the functionality of the new implementations we have implemented a test function in Branch "BA" (Optimizer.cc in TestLocalBundleAdjustment()). In this function we generate a whole optimisation graph with keyframes, cameraframes, mappoints and everything else needed from sample data. The results can be found in the report. To better compare with the monocular optimisation method, we also implemented a Testfunction for the monocular ORB_SLAM (Branch "BAMonocularTest" Optimizer.cc).
+
+### Map Point Triangulation
+In the file LocalMapping.cc we have modified the monocular triangulation method to be applicable on the generalized camera setup. For this we needed to take into account additional transformations from the baseframe to the cameraframe. Also we have implemented the function PluckerLineTriangulation() which takes as an input two matched plucker lines and outputs the 3d world coordinate of the corresponding map point.
 
 ### 3D2D Relocalization
 In PnPSolver.cc we the non-central absolute pose estimation using OpenGV's GPNP. Unfortunately we weren't able to test it on real data. 
