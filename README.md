@@ -14,7 +14,7 @@ All the changes can be found in the branch "readme" (https://github.com/worxli/O
 ## Our changes
 ### General
 We added OpenGV as an additional library.
-We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection.
+We moded the code from the Frame.cc to a new class in CameraFrame.cc to separate the base camera (aka viewpoint) and a single camera facing a specific direction. The code was modified in every file where specifics of a camera are used, e.g. the intrinsics for reprojection. The data we got only were time synchronised images. We had to merge/stich those images (from 4 cameras) to be combined in one image. From those images we recorded several rosbags with different frame rates. Please contact us if you need any of those rosbags to test our implementations. 
 
 ### Fisheye camera model
 In Tracking.cc we implemented the functions initUndistortMap(), undistort() and ConvertUndistImgFromMap(). Those function serve the purpose to undistort an image from a fisheye camera. InitUndistortMap() undistorts the image and saves the correspondes of distorted-undistorted pixel in maps. It uses the function undistort() to adjust for radial and tangential distortion. The function ConvertUndistImgFromMap() is for visualization purpose. It converts the created maps in InitUndistortMap() to a new image.
